@@ -117,6 +117,7 @@ const navItems = [
   { href: "/delamain", label: "Overseer", icon: <DelamainIcon />, tooltip: "Talk to your AI dispatcher" },
   { href: "/tasks", label: "My Tasks", icon: <TasksIcon />, tooltip: "Things only you can do" },
   { href: "/roadmap", label: "Roadmap", icon: <RoadmapIcon />, tooltip: "All projects with progress bars" },
+  { href: "/team", label: "Team", icon: <TasksIcon />, tooltip: "Members + unified human/agent activity feed" },
   { href: "/playbook", label: "Playbook", icon: <PlaybookIcon />, tooltip: "Rules for dispatched Claude sessions" },
   { href: "/knowledge", label: "Knowledge Base", icon: <KnowledgeIcon />, tooltip: "Lessons harvested from your projects" },
   { href: "/create", label: "Create Project", icon: <CreateIcon />, tooltip: "Launch a new project with the wizard" },

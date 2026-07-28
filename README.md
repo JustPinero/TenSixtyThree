@@ -3,9 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@justpinero/create-cascade?label=create-cascade&color=0366d6)](https://www.npmjs.com/package/@justpinero/create-cascade)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
-[![Tests](https://img.shields.io/badge/tests-765+-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-1257+-brightgreen)](#)
 
-A nerve center for orchestrating multi-project Claude Code workflows. The **Overseer** — your customizable AI fleet dispatcher — manages your projects, learns from every session, and tells you when it needs you.
+A nerve center for orchestrating multi-project Claude Code workflows. The **Overseer**, your customizable AI fleet dispatcher, manages your projects, learns from every session, and tells you when it needs you.
+
+**The name:** *10-63* is the radio code a unit calls when it's en route. Dispatched, rolling, and reporting back. That's what this platform does with AI engineering sessions. (Formerly known as Cascade.)
 
 ---
 
@@ -174,11 +176,11 @@ Projects need `CLAUDE.md` + `.git` + `package.json` (or `Cargo.toml` / `pyprojec
 
 **ChatSession + workingMemory** — every chat turn is bound to a `ChatSession` row with a JSON `workingMemory` column. The Overseer writes confirmed values there during inventory walks, so a follow-up turn ("actually medipal is at 40%") reconciles cleanly instead of fighting a stale prompt.
 
-**Stop Hooks** — Claude Code hooks installed on every project. When a session ends, the hook pings Cascade's webhook. Cascade auto-scans, releases the dispatch queue slot, fires desktop notifications, and harvests lessons.
+**Stop Hooks** — Claude Code hooks installed on every project. When a session ends, the hook pings TenSixtyThree's webhook. TenSixtyThree auto-scans, releases the dispatch queue slot, fires desktop notifications, and harvests lessons.
 
 **Dispatch Queue** — process-wide concurrency gate. Every subagent spawn goes through `lib/dispatch-queue.ts`. Default cap auto-detects from host RAM; override via `CASCADE_MAX_CONCURRENT_SUBAGENTS` in `.env`.
 
-**Engineer Brain** — optional architectural pattern. A separate Claude Code instance dedicated to building Cascade itself, distinct from the per-project Claude sessions you dispatch into your other repos. Worth giving its own identity (Cascade's own author named theirs **Kilroy**) because it has a bird's-eye view across the whole fleet and is the Claude you talk to when working on Cascade's internals or your dispatch service. The engineer brain communicates with the Overseer via the engineer channel — a gitignored Markdown file the Overseer reads on load (`app/api/overseer/chat/route.ts` looks for `.claude/engineer-channel.md` first, falling back to `.claude/kilroy-channel.md` for back-compat). When the Overseer emits an `[ENGINEER]` tag in chat output, the route appends it to the channel automatically.
+**Engineer Brain** — optional architectural pattern. A separate Claude Code instance dedicated to building TenSixtyThree itself, distinct from the per-project Claude sessions you dispatch into your other repos. Worth giving its own identity (this project's author named theirs **Kilroy**) because it has a bird's-eye view across the whole fleet and is the Claude you talk to when working on the platform's internals or your dispatch service. The engineer brain communicates with the Overseer via the engineer channel — a gitignored Markdown file the Overseer reads on load (`app/api/overseer/chat/route.ts` looks for `.claude/engineer-channel.md` first, falling back to `.claude/kilroy-channel.md` for back-compat). When the Overseer emits an `[ENGINEER]` tag in chat output, the route appends it to the channel automatically.
 
 **Backburner** — project status for intentionally parked projects. Suppressed from sprint planning.
 
@@ -234,7 +236,7 @@ sparseVhd=true
 ```
 Reboot.
 
-**"credit balance too low"** — add credits at console.anthropic.com → Plans & Billing. Cascade uses ~$3-5/month in normal use.
+**"credit balance too low"** — add credits at console.anthropic.com → Plans & Billing. TenSixtyThree uses ~$3-5/month in normal use.
 
 **No projects found** — check `PROJECTS_DIR` in `.env` points to your projects folder.
 
@@ -243,6 +245,14 @@ Reboot.
 **SQLite database empty after restart** — the file lives at `./dev.db` (project root, not `prisma/`). Check `DATABASE_URL=file:./dev.db` in `.env`.
 
 **Terminal crashes across the board** — could be Windows host running out of committed memory. See "WSL2 terminals die under load" above; the fix is the same.
+
+---
+
+## Where It's Heading
+
+TenSixtyThree is evolving from a single-operator tool into a **team platform**: teams, invites, and shared work visibility are already in the codebase (User/Team/Membership models plus a unified activity feed that merges human tasks and agent dispatches into one owner-attributed stream).
+
+The direction is the **collision plane**: one board that sees both human assignments and live AI-agent work, so it can flag when two workers (human or agent) are about to touch the same files. Task management tools track people. Agent frameworks run bots. This watches both. See [`docs/cascade-2.0-team-direction.md`](docs/cascade-2.0-team-direction.md) for the full thesis.
 
 ---
 

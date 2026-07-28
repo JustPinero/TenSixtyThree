@@ -318,3 +318,34 @@ on `id = 1`.
 | id | Int | 1 | Single-row enforced |
 | lastSeenClaudeCodeVersion | String? | null | Tracked by `lib/version-watcher.ts` |
 | updatedAt | DateTime | updatedAt | — |
+
+
+## Teams & identity (Phases 43.1 + 45.1) — foundation, not yet wired to UI
+
+### User
+| Field | Type | Notes |
+|-------|------|-------|
+| id | Int @id autoincrement | |
+| email | String @unique | |
+| name | String | |
+| createdAt | DateTime | |
+Relations: memberships, createdTeams, sentInvites, ownedDispatches ("DispatchOwner"), ownedTasks ("HumanTaskOwner").
+
+### Team
+| Field | Type | Notes |
+|-------|------|-------|
+| id | Int @id | |
+| name | String | |
+| slug | String @unique | slugified, disambiguated on collision |
+| createdById | Int → User | |
+| createdAt | DateTime | |
+Relations: memberships, invites, dispatches, humanTasks.
+
+### Membership
+`@@unique([userId, teamId])`, `@@index([teamId])`. role: owner | admin | member | viewer (String, default "member").
+
+### Invite
+`@@unique([teamId, email])`, `@@index([token])`. token: crypto randomBytes(24) base64url. status: pending | accepted | revoked | expired. expiresAt (7-day default TTL). acceptInvite burns the token in a $transaction.
+
+### Dispatch / HumanTask additions (Phase 45.1)
+Both gained nullable `teamId Int?` + `ownerUserId Int?` (+ relations, `@@index([teamId])`). Backward-compatible: single-user rows have null team/owner. Domain services: `lib/teams.ts`, `lib/team-activity.ts` (listTeamActivity = the unified owner-attributed feed; currently no UI consumer).

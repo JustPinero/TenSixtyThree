@@ -1,5 +1,5 @@
 # TenSixtyThree — AI-Powered Multi-Project Orchestration
-Local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. Features: fleet health monitoring, knowledge harvesting, session feedback loop, dispatch outcome tracking, morning briefings, conversation memory.
+Local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. Features: fleet health monitoring, knowledge harvesting + brain-sync, session feedback loop (Stop-hook webhook + spool + quarantine), dispatch outcome tracking with watchdog liveness, morning briefings, conversation memory, publish-safety audits, and a Teams/collision-plane foundation (identity model + unified activity feed, backend-only pending the hosted-vs-local decision).
 
 ## Stack & Commands
 Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + SQLite | Vitest + Playwright

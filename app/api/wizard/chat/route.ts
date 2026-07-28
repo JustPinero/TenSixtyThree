@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolveChatModel } from "@/lib/model-config";
 import { buildWizardSystemPrompt } from "@/lib/wizard-prompt";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 
 export async function POST(request: NextRequest) {
+  const chatModel = await resolveChatModel(prisma);
   const limited = checkRateLimit(
     getRateLimitKey(request, "wizard"),
     20,
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: chatModel,
         max_tokens: 4096,
         system: systemPrompt,
         messages: validation.messages,
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
       if (event.type === "message_delta" && event.usage) {
         logUsage(prisma, {
           callSite: "wizard",
-          model: "claude-sonnet-4-6",
+          model: chatModel,
           usage: event.usage as Parameters<typeof logUsage>[1]["usage"],
           durationMs: Math.round(performance.now() - tapStart),
         });

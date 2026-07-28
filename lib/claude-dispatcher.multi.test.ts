@@ -141,6 +141,8 @@ describe("multi-project dispatch — queue integration", () => {
     await rig.createProject({ slug: "alpha", path: "/p/alpha" });
     await rig.createProject({ slug: "beta", path: "/p/beta" });
     await rig.createProject({ slug: "gamma", path: "/p/gamma" });
+    // Phase 48.2 — team dispatch requires the agentTeamsEnabled opt-in
+    await rig.prisma.project.updateMany({ data: { agentTeamsEnabled: true } });
 
     const spy = vi.spyOn(rig.queue, "enqueue");
     const result = await dispatchTeam(rig.prisma as unknown as DispatcherPrisma, [

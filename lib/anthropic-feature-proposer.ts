@@ -119,11 +119,13 @@ function truncateForPrompt(text: string, maxBytes: number): string {
   );
 }
 
+import { resolveChatModelSync } from "./model-config";
+
 async function defaultCallClaude(system: string, user: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
-  const PROPOSER_MODEL = "claude-sonnet-4-6";
+  const PROPOSER_MODEL = resolveChatModelSync();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {

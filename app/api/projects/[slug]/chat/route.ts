@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolveChatModel } from "@/lib/model-config";
 import { buildProjectSystemPrompt } from "@/lib/project-chat";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
@@ -8,6 +9,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const chatModel = await resolveChatModel(prisma);
   const limited = checkRateLimit(
     getRateLimitKey(request, "project-chat"),
     20,
@@ -59,7 +61,7 @@ export async function POST(
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: chatModel,
         max_tokens: 4096,
         // Phase 23.4 — wrap as cached array. The system prompt is
         // dynamic across projects but stable within a single project
@@ -106,7 +108,7 @@ export async function POST(
       if (event.type === "message_delta" && event.usage) {
         logUsage(prisma, {
           callSite: "project.chat",
-          model: "claude-sonnet-4-6",
+          model: chatModel,
           usage: event.usage as Parameters<typeof logUsage>[1]["usage"],
           durationMs: Math.round(performance.now() - start),
         });

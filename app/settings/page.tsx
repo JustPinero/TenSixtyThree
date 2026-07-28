@@ -316,6 +316,202 @@ function AutomationPanel() {
   );
 }
 
+function ModelPanel() {
+  const [service, setService] = useState("claude");
+  const [model, setModel] = useState("");
+  const [options, setOptions] = useState<
+    { id: string; label: string; note: string }[]
+  >([]);
+  const [services, setServices] = useState<string[]>(["claude"]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings/model")
+      .then((r) => r.json())
+      .then((d) => {
+        setService(d.service);
+        setModel(d.model);
+        setOptions(d.options ?? []);
+        setServices([...(d.services ?? ["claude"])]);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function save(next: { model?: string; service?: string }) {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings/model", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setModel(d.model);
+        setService(d.service);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const note = options.find((o) => o.id === model)?.note;
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
+        AI Service &amp; Model
+      </h2>
+      <div className="p-3 border border-space-600 bg-space-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm font-mono text-text-bright">Service</span>
+            <p className="text-[10px] font-mono text-space-500 mt-0.5">
+              The AI provider behind the Overseer, wizard, and project chat
+            </p>
+          </div>
+          <select
+            value={service}
+            onChange={(e) => save({ service: e.target.value })}
+            disabled={saving}
+            className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1"
+          >
+            {services.map((sv) => (
+              <option key={sv} value={sv}>
+                {sv}
+              </option>
+            ))}
+          </select>
+        </div>
+        {service === "claude" && (
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-mono text-text-bright">Model</span>
+              <p className="text-[10px] font-mono text-space-500 mt-0.5">
+                {note ?? "Chat model for all conversational surfaces"}
+              </p>
+            </div>
+            <select
+              value={model}
+              onChange={(e) => save({ model: e.target.value })}
+              disabled={saving || options.length === 0}
+              className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1"
+            >
+              {options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <p className="text-[10px] font-mono text-space-500">
+          Also settable via CASCADE_AI_SERVICE / CASCADE_CHAT_MODEL env vars;
+          this setting overrides both.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BrainsPanel() {
+  const [brains, setBrains] = useState<
+    { id: number; name: string; path: string; valid: boolean; lastSyncedAt: string | null }[]
+  >([]);
+  const [name, setName] = useState("");
+  const [path, setPath] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetch("/api/brains")
+      .then((r) => r.json())
+      .then((d) => setBrains(d.brains ?? []))
+      .catch(() => {});
+  }, []);
+  useEffect(load, [load]);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch("/api/brains", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, path }),
+    });
+    if (res.ok) {
+      setName("");
+      setPath("");
+      load();
+    } else setError((await res.json()).error ?? "Failed");
+  }
+
+  async function remove(id: number) {
+    await fetch(`/api/brains?id=${id}`, { method: "DELETE" });
+    load();
+  }
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
+        Brains
+      </h2>
+      <p className="text-[10px] font-mono text-space-500 mb-3">
+        Repos that hold the personal layer: memory, playbook, lessons. The
+        Playbook page write-throughs to the first connected brain.
+      </p>
+      <div className="space-y-2 mb-3">
+        {brains.map((b) => (
+          <div
+            key={b.id}
+            className="flex items-center justify-between p-2 border border-space-600 bg-space-800"
+          >
+            <div>
+              <span className="text-sm font-mono text-text-bright">
+                {b.name}{" "}
+                <span className={b.valid ? "text-cyan" : "text-red-400"}>
+                  {b.valid ? "● connected" : "● missing"}
+                </span>
+              </span>
+              <p className="text-[10px] font-mono text-space-500">{b.path}</p>
+            </div>
+            <button
+              onClick={() => remove(b.id)}
+              className="text-xs font-mono text-space-500 hover:text-red-400"
+            >
+              disconnect
+            </button>
+          </div>
+        ))}
+        {brains.length === 0 && (
+          <p className="text-xs font-mono text-space-500">No brains connected.</p>
+        )}
+      </div>
+      <form onSubmit={add} className="flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 w-32"
+        />
+        <input
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="/absolute/path/to/repo"
+          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 flex-1"
+        />
+        <button
+          type="submit"
+          disabled={!name || !path}
+          className="px-3 py-1 border border-cyan text-cyan text-sm font-mono uppercase disabled:opacity-50"
+        >
+          Connect
+        </button>
+      </form>
+      {error && <p className="text-xs font-mono text-red-400 mt-2">{error}</p>}
+    </div>
+  );
+}
+
 function OverseerPanel() {
   const [name, setName] = useState(() => getOverseerSettings().name);
   const [portraitIdle, setPortraitIdle] = useState(
@@ -748,6 +944,8 @@ export default function SettingsPage() {
       <div className="divider-h mb-8" />
 
       <AutomationPanel />
+      <ModelPanel />
+      <BrainsPanel />
 
       <div className="divider-h mb-8" />
 

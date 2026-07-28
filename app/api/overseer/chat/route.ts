@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolveChatModel, DEFAULT_CHAT_MODEL } from "@/lib/model-config";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 import {
@@ -173,7 +174,7 @@ function sseFromText(
   text: string,
   options: { model?: string; messageId?: string } = {}
 ): ReadableStream<Uint8Array> {
-  const model = options.model ?? "claude-sonnet-4-6";
+  const model = options.model ?? DEFAULT_CHAT_MODEL;
   const messageId = options.messageId ?? `msg-${Date.now().toString(36)}`;
   const enc = new TextEncoder();
   return new ReadableStream({
@@ -336,7 +337,7 @@ export async function POST(request: NextRequest) {
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
     const writer = writable.getWriter();
     const enc = new TextEncoder();
-    const aggregateModel = "claude-sonnet-4-6";
+    const aggregateModel = await resolveChatModel(prisma);
 
     function writeFrame(name: string, data: unknown): void {
       writer

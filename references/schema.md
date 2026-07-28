@@ -349,3 +349,14 @@ Relations: memberships, invites, dispatches, humanTasks.
 
 ### Dispatch / HumanTask additions (Phase 45.1)
 Both gained nullable `teamId Int?` + `ownerUserId Int?` (+ relations, `@@index([teamId])`). Backward-compatible: single-user rows have null team/owner. Domain services: `lib/teams.ts`, `lib/team-activity.ts` (listTeamActivity = the unified owner-attributed feed; currently no UI consumer).
+
+## Brain (Phase 48.4)
+Repos designated as knowledge/persona stores (e.g. ~/kilroy-brain).
+| Field | Type | Notes |
+|-------|------|-------|
+| id | Int @id | |
+| name | String | |
+| path | String @unique | must exist + contain .git (validated at register) |
+| createdAt | DateTime | |
+| lastSyncedAt | DateTime? | bumped by the Playbook write-through |
+Resolution for consumers: first Brain row → KILROY_BRAIN_PATH env → null (lib/brain-registry.ts).

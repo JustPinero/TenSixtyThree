@@ -215,6 +215,8 @@ describe("Windows dispatcher — agent team", () => {
     await rig.createProject({ slug: "alpha", path: "/p/alpha" });
     await rig.createProject({ slug: "beta", path: "/p/beta" });
 
+    await rig.prisma.project.updateMany({ data: { agentTeamsEnabled: true } });
+
     const result = await dispatchTeam(
       rig.prisma as unknown as DispatcherPrisma,
       [

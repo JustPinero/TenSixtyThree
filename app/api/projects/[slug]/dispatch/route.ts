@@ -38,7 +38,8 @@ export async function POST(
     const generatedPrompt = await generatePrompt(
       project.path,
       mode as DispatchMode,
-      customPrompt
+      customPrompt,
+      { prWorkflowEnabled: project.prWorkflowEnabled }
     );
 
     const result = await dispatchClaude(prisma, project, generatedPrompt, {

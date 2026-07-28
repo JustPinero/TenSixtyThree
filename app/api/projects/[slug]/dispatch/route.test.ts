@@ -222,7 +222,8 @@ describe("POST /api/projects/[slug]/dispatch", () => {
     expect(generatePromptMock).toHaveBeenCalledWith(
       fakeProject.path,
       "custom",
-      "do the thing"
+      "do the thing",
+      expect.objectContaining({})
     );
 
     expect(dispatchClaudeMock).toHaveBeenCalledTimes(1);

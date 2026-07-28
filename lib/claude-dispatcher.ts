@@ -24,6 +24,20 @@ export type DispatchMode = "continue" | "audit" | "investigate" | "custom";
 const SKIP_PERMISSIONS_ENV = "CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=true";
 
 /**
+ * Phase 48.1 — Project.autonomyMode is now ENFORCED. Maps the stored mode to
+ * the Claude Code invocation's permission posture:
+ *   full   → permissions skipped entirely (legacy behavior, the old default)
+ *   semi   → edits auto-accepted, riskier actions prompt in the tmux pane
+ *   manual → default interactive permission prompts
+ * Unknown/missing modes fall back to full for backward compatibility.
+ */
+export function claudeInvocationFor(mode?: string): string {
+  if (mode === "semi") return "claude --permission-mode acceptEdits";
+  if (mode === "manual") return "claude";
+  return `${SKIP_PERMISSIONS_ENV} claude`;
+}
+
+/**
  * Single-quote a value for POSIX shells (Git Bash on Windows too):
  * close the quote, emit an escaped literal quote, reopen.
  */
@@ -115,12 +129,19 @@ async function loadPlaybook(): Promise<string> {
 export async function generatePrompt(
   projectPath: string,
   mode: DispatchMode,
-  customPrompt?: string
+  customPrompt?: string,
+  opts?: { prWorkflowEnabled?: boolean }
 ): Promise<string> {
   const playbook = await loadPlaybook();
-  const playbookBlock = playbook
+  let playbookBlock = playbook
     ? `\n\nOVERSEER RULES (follow these always):\n${playbook}`
     : "";
+  // Phase 48.2 — prWorkflowEnabled is now honored: dispatched sessions are
+  // told to work branch-per-phase and open a pull request per request.
+  if (opts?.prWorkflowEnabled) {
+    playbookBlock +=
+      "\n\nPR WORKFLOW: enabled. Work on a branch per phase and open a pull request per completed request instead of committing directly to main.";
+  }
 
   if (mode === "custom" && customPrompt) {
     return customPrompt + playbookBlock;
@@ -392,7 +413,7 @@ export interface DispatchClaudeOptions {
 
 export async function dispatchClaude(
   prisma: PrismaClient,
-  project: { id: number; slug: string; path: string },
+  project: { id: number; slug: string; path: string; autonomyMode?: string },
   prompt: string,
   opts: DispatchClaudeOptions = {}
 ): Promise<DispatchClaudeResult> {
@@ -404,7 +425,7 @@ export async function dispatchClaude(
     const tmpFile = path.join(os.tmpdir(), `cascade-prompt-${Date.now()}.txt`);
     fsSync.writeFileSync(tmpFile, prompt, "utf-8");
 
-    const cmd = `cd ${singleQuote(project.path)} && ${SKIP_PERMISSIONS_ENV} claude "$(cat '${tmpFile}')" ; rm -f '${tmpFile}'`;
+    const cmd = `cd ${singleQuote(project.path)} && ${claudeInvocationFor(project.autonomyMode)} "$(cat '${tmpFile}')" ; rm -f '${tmpFile}'`;
 
     const result = await enqueueWithDispatchRow(prisma, {
       project,
@@ -475,13 +496,13 @@ function configureTmuxSession(): void {
  * Writes the prompt to a temp file and returns a cd + claude invocation
  * that cleans up after itself.
  */
-function buildProjectCmd(projectPath: string, prompt: string, index: number): string {
+function buildProjectCmd(projectPath: string, prompt: string, index: number, autonomyMode?: string): string {
   const tmpFile = path.join(
     os.tmpdir(),
     `cascade-prompt-${Date.now()}-${index}.txt`
   );
   fsSync.writeFileSync(tmpFile, prompt, "utf-8");
-  return `cd ${singleQuote(projectPath)} && ${SKIP_PERMISSIONS_ENV} claude "$(cat '${tmpFile}')" ; rm -f '${tmpFile}'`;
+  return `cd ${singleQuote(projectPath)} && ${claudeInvocationFor(autonomyMode)} "$(cat '${tmpFile}')" ; rm -f '${tmpFile}'`;
 }
 
 /**
@@ -718,7 +739,7 @@ export async function dispatchAll(
     }
 
     const prompt = await generatePrompt(project.path, mode);
-    const cmd = buildProjectCmd(project.path, prompt, i);
+    const cmd = buildProjectCmd(project.path, prompt, i, (project as { autonomyMode?: string }).autonomyMode);
     readyJobs.push({ project, cmd, prompt });
   }
 
@@ -861,7 +882,7 @@ export async function dispatchBatch(
     }
 
     const prompt = await generatePrompt(project.path, item.mode, item.prompt);
-    const cmd = buildProjectCmd(project.path, prompt, i);
+    const cmd = buildProjectCmd(project.path, prompt, i, (project as { autonomyMode?: string }).autonomyMode);
     readyJobs.push({ project, cmd, prompt, mode: item.mode });
   }
 
@@ -958,6 +979,22 @@ export async function dispatchTeam(
 ): Promise<DispatchTeamResult> {
   if (items.length === 0) {
     return { success: false, error: "No projects to dispatch" };
+  }
+
+  // Phase 48.2 — agentTeamsEnabled is now honored: every target project must
+  // have opted in before a team dispatch can launch.
+  const gateProjects = await prisma.project.findMany({
+    where: { slug: { in: items.map((i) => i.slug) } },
+    select: { slug: true, agentTeamsEnabled: true },
+  });
+  const teamsDisabled = gateProjects
+    .filter((p) => !p.agentTeamsEnabled)
+    .map((p) => p.slug);
+  if (teamsDisabled.length > 0) {
+    return {
+      success: false,
+      error: `Agent teams are disabled for: ${teamsDisabled.join(", ")}. Enable the toggle in project settings before team dispatch.`,
+    };
   }
 
   // Phase 26 — Claude Code's --teammate-mode is tmux-only, and the

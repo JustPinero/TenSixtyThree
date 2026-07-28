@@ -367,6 +367,9 @@ model AnthropicUsageEvent {
 model CascadeConfig {
   id                         Int       @id @default(1) // single-row enforced by always upserting id=1
   lastSeenClaudeCodeVersion  String?
+  // Phase 47.1 — AI service + chat model override (null = env/default resolution)
+  aiService                  String?
+  chatModel                  String?
   updatedAt                  DateTime  @updatedAt
 }
 

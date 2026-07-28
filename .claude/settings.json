@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_USE_FILE\" | grep -qE '\\.(tsx?|jsx?)$'; then npx prettier --write \"$CLAUDE_TOOL_USE_FILE\" 2>/dev/null; fi",
+            "command": "f=$(jq -r \".tool_input.file_path // empty\"); if echo \"$f\" | grep -qE '\\.(tsx?|jsx?)$'; then npx prettier --write \"$f\" 2>/dev/null; fi",
             "description": "Auto-format TypeScript/JavaScript files after edit"
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_USE_FILE\" | grep -qE '\\.(tsx|jsx)$'; then npx eslint --fix \"$CLAUDE_TOOL_USE_FILE\" 2>/dev/null || true; fi",
+            "command": "f=$(jq -r \".tool_input.file_path // empty\"); if echo \"$f\" | grep -qE '\\.(tsx|jsx)$'; then npx eslint --fix \"$f\" 2>/dev/null || true; fi",
             "description": "Auto-lint JSX/TSX files after edit"
           }
         ]

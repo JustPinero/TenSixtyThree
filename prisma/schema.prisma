@@ -437,3 +437,14 @@ model Invite {
   @@unique([teamId, email])
   @@index([token])
 }
+
+// Phase 48.4 — "Brains": repos designated as knowledge/persona stores
+// (e.g. ~/kilroy-brain). Registered from Settings; consumers resolve the
+// primary brain via lib/brain-registry.ts (DB -> KILROY_BRAIN_PATH env).
+model Brain {
+  id           Int       @id @default(autoincrement())
+  name         String
+  path         String    @unique
+  createdAt    DateTime  @default(now())
+  lastSyncedAt DateTime?
+}

@@ -414,6 +414,104 @@ function ModelPanel() {
   );
 }
 
+function BrainsPanel() {
+  const [brains, setBrains] = useState<
+    { id: number; name: string; path: string; valid: boolean; lastSyncedAt: string | null }[]
+  >([]);
+  const [name, setName] = useState("");
+  const [path, setPath] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetch("/api/brains")
+      .then((r) => r.json())
+      .then((d) => setBrains(d.brains ?? []))
+      .catch(() => {});
+  }, []);
+  useEffect(load, [load]);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch("/api/brains", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, path }),
+    });
+    if (res.ok) {
+      setName("");
+      setPath("");
+      load();
+    } else setError((await res.json()).error ?? "Failed");
+  }
+
+  async function remove(id: number) {
+    await fetch(`/api/brains?id=${id}`, { method: "DELETE" });
+    load();
+  }
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
+        Brains
+      </h2>
+      <p className="text-[10px] font-mono text-space-500 mb-3">
+        Repos that hold the personal layer: memory, playbook, lessons. The
+        Playbook page write-throughs to the first connected brain.
+      </p>
+      <div className="space-y-2 mb-3">
+        {brains.map((b) => (
+          <div
+            key={b.id}
+            className="flex items-center justify-between p-2 border border-space-600 bg-space-800"
+          >
+            <div>
+              <span className="text-sm font-mono text-text-bright">
+                {b.name}{" "}
+                <span className={b.valid ? "text-cyan" : "text-red-400"}>
+                  {b.valid ? "● connected" : "● missing"}
+                </span>
+              </span>
+              <p className="text-[10px] font-mono text-space-500">{b.path}</p>
+            </div>
+            <button
+              onClick={() => remove(b.id)}
+              className="text-xs font-mono text-space-500 hover:text-red-400"
+            >
+              disconnect
+            </button>
+          </div>
+        ))}
+        {brains.length === 0 && (
+          <p className="text-xs font-mono text-space-500">No brains connected.</p>
+        )}
+      </div>
+      <form onSubmit={add} className="flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 w-32"
+        />
+        <input
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="/absolute/path/to/repo"
+          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 flex-1"
+        />
+        <button
+          type="submit"
+          disabled={!name || !path}
+          className="px-3 py-1 border border-cyan text-cyan text-sm font-mono uppercase disabled:opacity-50"
+        >
+          Connect
+        </button>
+      </form>
+      {error && <p className="text-xs font-mono text-red-400 mt-2">{error}</p>}
+    </div>
+  );
+}
+
 function OverseerPanel() {
   const [name, setName] = useState(() => getOverseerSettings().name);
   const [portraitIdle, setPortraitIdle] = useState(
@@ -847,6 +945,7 @@ export default function SettingsPage() {
 
       <AutomationPanel />
       <ModelPanel />
+      <BrainsPanel />
 
       <div className="divider-h mb-8" />
 

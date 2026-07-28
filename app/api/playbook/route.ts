@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { prisma } from "@/lib/db";
+import { resolveBrainPath } from "@/lib/brain-registry";
 
 const PLAYBOOK_PATH = path.resolve(
   process.cwd(),
@@ -29,6 +31,22 @@ export async function PUT(request: NextRequest) {
     }
 
     await fs.writeFile(PLAYBOOK_PATH, content, "utf-8");
+
+    // Phase 48.4 — write-through to the connected brain, so the canonical
+    // copy of the Overseer playbook lives in the personal brain repo
+    // (kilroy-brain) and survives/syncs with it. Best-effort: a missing or
+    // invalid brain never blocks a local save.
+    try {
+      const brainPath = await resolveBrainPath(prisma);
+      if (brainPath) {
+        const target = path.join(brainPath, "playbook", "overseer-playbook.md");
+        await fs.mkdir(path.dirname(target), { recursive: true });
+        await fs.writeFile(target, content, "utf-8");
+        await prisma.brain.updateMany({ data: { lastSyncedAt: new Date() } });
+      }
+    } catch {
+      // brain mirror is best-effort
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     const message =

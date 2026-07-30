@@ -217,7 +217,7 @@ describe("POST /api/webhook/session-complete — goal ingestion (41.2)", () => {
     expect(row!.goalReason).toBeNull();
   });
 
-  it("AC5: legacy (no idempotencyKey) path still parses goal achievement", async () => {
+  it("AC5 [23.D6 updated]: key-less ping ingests signals but writes no outcome row", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const project = await rig.createProject({
       slug: "legacy-goal",
@@ -236,12 +236,12 @@ describe("POST /api/webhook/session-complete — goal ingestion (41.2)", () => {
     const result = await rig.fireWebhook({ projectPath: "/p/legacy-goal" });
     expect(result.status).toBe(200);
 
+    // [23.D6] 2026-07-30 — outcome rows are exclusively Dispatch-row-
+    // correlated now; a manual (key-less) session no longer fabricates one
+    // attributed to a stale session-launched event.
     const row = await rig.prisma.dispatchOutcome.findFirst({
       where: { projectSlug: "legacy-goal" },
     });
-    expect(row).not.toBeNull();
-    expect(row!.goalAchieved).toBe(true);
-    // No Dispatch row → no composed prompt → no recoverable condition.
-    expect(row!.goalCondition).toBeNull();
+    expect(row).toBeNull();
   });
 });

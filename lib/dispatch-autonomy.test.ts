@@ -75,3 +75,21 @@ describe("agentTeamsEnabled gates team dispatch", () => {
     expect(String(result.error)).toMatch(/agent teams/i);
   });
 });
+
+describe("[36.A7] single dispatch readiness gate", () => {
+  it("refuses to dispatch a project that is not dispatch-ready", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const project = await rig.prisma.project.create({
+      data: { name: "ghost", slug: "ghost", path: "/p/ghost-does-not-exist" },
+    });
+    const { dispatchClaude } = await import("./claude-dispatcher");
+    const result = await dispatchClaude(
+      rig.prisma as never,
+      { id: project.id, slug: project.slug, path: project.path },
+      "do work",
+      {}
+    );
+    expect(result.success).toBe(false);
+    expect(String(result.error)).toMatch(/not dispatch-ready/i);
+  });
+});

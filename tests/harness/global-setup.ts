@@ -23,6 +23,20 @@ const TEMPLATE_DB_PATH = path.join(PRISMA_DIR, "test-rig-template.db");
 export const TEMPLATE_DB_PATH_EXPORT = TEMPLATE_DB_PATH;
 
 export async function setup() {
+  // [41.1-residual] — sweep leftover per-rig scratch DBs from prior runs so
+  // back-to-back runs start clean. Safe here: globalSetup runs before any
+  // worker spawns, so nothing can be mid-use. (~6 files leak per green run
+  // from a non-disposing rig path; the sweep caps accumulation at zero.)
+  for (const f of fs.readdirSync(PRISMA_DIR)) {
+    if (/^test-rig-(?!template).*\.db(-journal|-wal|-shm)?$/.test(f)) {
+      try {
+        fs.unlinkSync(path.join(PRISMA_DIR, f));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   // Wipe stale template so schema is always fresh.
   for (const suffix of ["", "-journal", "-wal", "-shm"]) {
     const file = `${TEMPLATE_DB_PATH}${suffix}`;

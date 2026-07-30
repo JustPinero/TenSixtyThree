@@ -26,6 +26,23 @@ vi.mock("./validators", () => ({
   sanitizeForShell: vi.fn((s: string) => s),
 }));
 
+// [36.A7] — dispatchClaude now enforces the readiness gate (CLAUDE.md + git +
+// manifest). Mock fs like the batch tests so /p test paths register as ready.
+vi.mock("fs/promises", () => {
+  const api = {
+    access: vi.fn(async () => undefined),
+    readFile: vi.fn(async () => ""),
+    readdir: vi.fn(async () => []),
+    rm: vi.fn(async () => undefined),
+    mkdir: vi.fn(async () => undefined),
+    writeFile: vi.fn(async () => undefined),
+  };
+  return { default: api, ...api };
+});
+vi.mock("./file-utils", () => ({
+  readIfExists: vi.fn(async () => "content"),
+}));
+
 import { dispatchClaude } from "./claude-dispatcher";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";

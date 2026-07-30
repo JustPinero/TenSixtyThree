@@ -120,7 +120,7 @@ describe("webhook idempotency-key path", () => {
     expect(outcomes).toHaveLength(1);
   });
 
-  it("falls back to legacy lookup when idempotencyKey is unknown", async () => {
+  it("[23.D6] writes NO outcome for an unknown idempotencyKey (legacy fallback removed)", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const project = await rig.createProject({
       slug: "gamma",
@@ -143,11 +143,10 @@ describe("webhook idempotency-key path", () => {
     });
 
     expect(result.status).toBe(200);
+    // [23.D6] 2026-07-30 — the legacy "find latest session-launched event"
+    // fallback is removed: outcome data is exclusively Dispatch-row-correlated.
     const outcomes = await rig.getDispatchOutcomes("gamma");
-    expect(outcomes).toHaveLength(1);
-    // Legacy fallback writes outcome without a dispatchId.
-    expect(outcomes[0].dispatchId).toBeNull();
-    expect(outcomes[0].mode).toBe("continue");
+    expect(outcomes).toHaveLength(0);
   });
 
   it("logs orphaned-webhook activity event when project does not exist", async () => {

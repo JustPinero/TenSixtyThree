@@ -1,3 +1,6 @@
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs/promises";
 import path from "path";
@@ -148,5 +151,24 @@ describe("syncLessonToBrain", () => {
     expect(vi.mocked(childProcess.exec)).not.toHaveBeenCalled();
     expect(vi.mocked(childProcess.execFile)).not.toHaveBeenCalled();
     expect(vi.mocked(childProcess.spawn)).not.toHaveBeenCalled();
+  });
+
+  it("[41.D5] disambiguates when a different title slugifies to the same file", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "brain-"));
+    try {
+      await syncLessonToBrain(
+        { title: "Fix the bug", content: "first", tags: [], severity: "important" } as never,
+        { brainPath: dir } as never
+      );
+      const second = await syncLessonToBrain(
+        { title: "Fix: the bug!", content: "second", tags: [], severity: "important" } as never,
+        { brainPath: dir } as never
+      );
+      expect(second.written).toBe(true);
+      const files = readdirSync(join(dir, "playbook", "lessons"));
+      expect(files.length).toBe(2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import { createHash } from "node:crypto";
 import path from "path";
 import os from "os";
 
@@ -117,8 +118,26 @@ export async function syncLessonToBrain(
     await fs.mkdir(lessonsDir, { recursive: true });
 
     const slug = slugify(lesson.title);
-    const filePath = path.join(lessonsDir, `${slug}.md`);
-    await fs.writeFile(filePath, renderMarkdown(lesson), "utf-8");
+    let filePath = path.join(lessonsDir, `${slug}.md`);
+    // [41.D5] — distinct titles can slugify identically ("Fix: the bug!" vs
+    // "Fix the bug"). If the existing file belongs to a DIFFERENT title,
+    // disambiguate with a short title hash; same-title re-harvests still
+    // overwrite in place.
+    const markdown = renderMarkdown(lesson);
+    try {
+      const existing = await fs.readFile(filePath, "utf-8");
+      // renderMarkdown writes YAML frontmatter: title: "<escaped>". Compare
+      // against the incoming title escaped the same way.
+      const existingTitle = existing.match(/^title:\s*"(.*)"$/m)?.[1];
+      const incomingTitle = lesson.title.replace(/"/g, "'");
+      if (existingTitle !== undefined && existingTitle !== incomingTitle) {
+        const hash = createHash("sha256").update(lesson.title).digest("hex").slice(0, 8);
+        filePath = path.join(lessonsDir, `${slug}-${hash}.md`);
+      }
+    } catch {
+      // no existing file — plain slug is fine
+    }
+    await fs.writeFile(filePath, markdown, "utf-8");
 
     return { written: true, filePath };
   } catch (err) {

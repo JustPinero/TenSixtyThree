@@ -10,15 +10,6 @@ Surfaced during the 41.5 fleet webhook rollout (2026-07-07). CON-CORE, medipal, 
 ### [41.D1] webhook-spool rename-aside atomicity is narrower than the docstring claims
 `lib/webhook-spool.ts:14-20,91-96` — a microsecond TOCTOU race: if a Stop-hook shell has opened its `>>` fd on the spool inode but not yet written when the drain renames→reads→unlinks that inode, the hook's line lands on the unlinked inode and is lost. Never realistically hits on a single dev box, but the "never lost" docstring overstates the guarantee. Fix when it matters: O_APPEND to a path re-resolved per write, or a lockfile around drain. Low.
 
-### [41.D4] webhook-ingest signal-loop creates are unguarded
-`lib/webhook-ingest.ts:186-221` — the HumanTask/ActivityEvent `prisma.*.create` calls in the signal loop aren't wrapped, unlike the DispatchOutcome/feature-audit writes. A transient DB error there throws AFTER the dispatch row is flipped to `completed`, so the retried spool entry dedups and that DispatchOutcome is permanently skipped. Loses an analytics row, not lifecycle state. Fix: wrap the signal-loop writes so they can't abort post-completion. Low.
-
-### [41.D5] brain-sync slug collisions silently overwrite
-`lib/brain-sync.ts:119` — two distinct lesson titles that slugify identically ("Fix: the bug!" vs "Fix the bug") write the same `<slug>.md`; the second overwrites the first in the brain mirror (canonical KnowledgeLesson DB row unaffected). Fix: disambiguate with a short content hash suffix on collision. Low.
-
-### [41.D6] publish-safety reports one match per pattern per file
-`lib/publish-safety.ts:126-128` — `pattern.regex.exec(text)` returns only the first hit, so a file with two different secrets matching the same pattern reports one. Detection completeness gap, not a leak. Fix: global-flag exec loop, dedup by redacted value. Low.
-
 ### [23.D1] Overseer eval fixtures need live-API recordings
 Phase 23.7 shipped the overseer-tool-sequence kind executor + scratch SQLite seeding, but **no Overseer fixture files** because authoring requires `pnpm eval:refresh` against the live Anthropic API to capture deterministic recordings. Knowledge-matcher (3) and escalation-detector (35) fixtures pass without API access.
 - **Unblocks:** Phase 24's outcome-conditioned-dispatch eval scenarios; full PR-time AI regression coverage.
@@ -55,6 +46,12 @@ Two fire-and-forget POSTs from the component; route persists nothing; closing th
 Blocked on dispatch-rig support for real temp project dirs (rig uses synthetic `/p/alpha` paths that would fail an fs readiness check). See design-review [36.A7].
 
 ## Resolved
+
+### RESOLVED 2026-07-30 (phase-47 continuation)
+- **[41.D4]** signal-loop writes guarded (try/catch, non-fatal log) — a transient DB error can no longer abort ingest post-completion.
+- **[41.D5]** brain-sync collisions disambiguated by frontmatter-title hash suffix; same-title re-harvests still overwrite in place (regression-tested both ways).
+- **[41.D6]** publish-safety now reports every distinct match per pattern (global exec loop, dedup by redacted value).
+- **(47.3)** Structured outputs on harvester + feature-check — regex-JSON fallbacks retired; schema-enforced {lessons}/{candidates}.
 
 ### RESOLVED 2026-07-30 (phase-46 hardening)
 - **[42.D1]** Webhook shared-secret auth SHIPPED: `lib/webhook-auth.ts` (constant-time compare), route requires `x-cascade-webhook-secret` whenever `~/.cascade/webhook-secret` exists; canonical hook script sends it; `install-hooks.ts` generates it (0600). Backward compatible (no file = open). No fleet re-roll needed — all projects call the canonical `$HOME/.cascade` script.

@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import { postAnthropicWithRetry } from "./anthropic-fetch";
 import path from "path";
 import { execSync } from "child_process";
 import { PrismaClient } from "@/app/generated/prisma/client";
@@ -202,20 +203,11 @@ async function extractLessonsWithClaude(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+  const response = await postAnthropicWithRetry({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
-    }),
-    signal: controller.signal,
-  });
+    }, { apiKey, signal: controller.signal });
 
   clearTimeout(timeout);
 

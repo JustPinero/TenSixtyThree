@@ -179,3 +179,29 @@ function quarantine(quarantinePath: string, line: string): void {
     // best-effort — a quarantine write failure must not stop the drain
   }
 }
+
+/**
+ * Phase 46.1 — quarantine surfacing. Reports how many malformed webhook lines
+ * are sitting in `<spool>.quarantine` so silent ping loss becomes visible.
+ */
+export function readQuarantineStatus(spoolPath?: string): {
+  count: number;
+  lastLine: string | null;
+  path: string;
+} {
+  const base = spoolPath ?? resolveSpoolPath();
+  const qPath = `${base}.quarantine`;
+  try {
+    const lines = fs
+      .readFileSync(qPath, "utf-8")
+      .split("\n")
+      .filter((l) => l.trim().length > 0);
+    return {
+      count: lines.length,
+      lastLine: lines.length ? lines[lines.length - 1] : null,
+      path: qPath,
+    };
+  } catch {
+    return { count: 0, lastLine: null, path: qPath };
+  }
+}

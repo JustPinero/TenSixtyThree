@@ -21,6 +21,7 @@
  * result to a response.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { checkWebhookSecret, WEBHOOK_SECRET_HEADER } from "@/lib/webhook-auth";
 import { prisma } from "@/lib/db";
 import { ingestSessionComplete } from "@/lib/webhook-ingest";
 
@@ -34,6 +35,12 @@ import { ingestSessionComplete } from "@/lib/webhook-ingest";
  * Body: { projectPath: string, idempotencyKey?: string }
  */
 export async function POST(request: NextRequest) {
+  // [42.D1] — shared-secret auth (open when no secret file is configured).
+  const auth = checkWebhookSecret(request.headers?.get?.(WEBHOOK_SECRET_HEADER) ?? null);
+  if (!auth.ok) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   try {
     const body: unknown = await request.json();
     if (typeof body !== "object" || body === null) {

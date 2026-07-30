@@ -279,17 +279,50 @@ async function detectMigrationState(
 // Signal 3 — workspace trust.
 // ---------------------------------------------------------------------------
 
-async function readWorkspaceTrust(
+// [41.D3] — cache the parsed trust map per (path, mtime). computeHealth calls
+// this once per project on the scan path, the briefing route once per project,
+// and the webhook path once per session-complete; without the cache the same
+// (potentially large) ~/.claude.json was fully re-parsed every time.
+let trustCache: { path: string; mtimeMs: number; config: unknown } | null = null;
+let trustParseCount = 0;
+
+export function __resetTrustCacheForTests(): void {
+  trustCache = null;
+  trustParseCount = 0;
+}
+export function __trustParseCountForTests(): number {
+  return trustParseCount;
+}
+
+export async function readWorkspaceTrustCached(
   claudeConfigPath: string,
   projectPath: string
 ): Promise<WorkspaceTrust> {
-  let config: unknown;
+  let mtimeMs = -1;
   try {
-    config = JSON.parse(await fs.readFile(claudeConfigPath, "utf-8"));
+    mtimeMs = (await fs.stat(claudeConfigPath)).mtimeMs;
   } catch {
     return "unknown";
   }
+  if (!trustCache || trustCache.path !== claudeConfigPath || trustCache.mtimeMs !== mtimeMs) {
+    try {
+      trustParseCount += 1;
+      trustCache = {
+        path: claudeConfigPath,
+        mtimeMs,
+        config: JSON.parse(await fs.readFile(claudeConfigPath, "utf-8")),
+      };
+    } catch {
+      trustCache = { path: claudeConfigPath, mtimeMs, config: null };
+    }
+  }
+  return trustFromConfig(trustCache.config, projectPath);
+}
 
+function trustFromConfig(
+  config: unknown,
+  projectPath: string
+): WorkspaceTrust {
   if (!config || typeof config !== "object" || !("projects" in config)) {
     return "unknown";
   }
@@ -335,7 +368,7 @@ export async function computeInfraVersion(
   const [plugin, migration, workspaceTrust] = await Promise.all([
     readPluginVersion(resolvePluginJsonPath(options)),
     detectMigrationState(projectPath),
-    readWorkspaceTrust(resolveClaudeConfigPath(options), projectPath),
+    readWorkspaceTrustCached(resolveClaudeConfigPath(options), projectPath),
   ]);
 
   return {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { postAnthropicWithRetry } from "@/lib/anthropic-fetch";
 import { prisma } from "@/lib/db";
 import { getSessionLogs } from "@/lib/session-reader";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
@@ -195,21 +196,12 @@ ${infraSection ?? "None — all projects clean of v3.5 remnants."}`;
     const timeout = setTimeout(() => controller.abort(), 30_000);
     const start = performance.now();
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
+    const response = await postAnthropicWithRetry({
         model: BRIEFING_MODEL,
         max_tokens: 512,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],
-      }),
-      signal: controller.signal,
-    });
+      }, { apiKey, signal: controller.signal });
 
     clearTimeout(timeout);
 

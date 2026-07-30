@@ -39,16 +39,16 @@ spool drain live; no placeholder pages; playbook plugin v4.0.1 current; install-
 - [x] schema.md: Teams models documented
 - [x] architecture.md: Auth row honest + decisions #18 (Phase 42) + #19 (Teams foundation)
 - [x] CLAUDE.md feature list current
-- [ ] 46.1 Quarantine surfacing: count + latest-error chip on dashboard (or /observability), test-first
-- [ ] 46.2 Debt quick-kills: [41.D3] cache trust-map parse (3 call paths), [41.D2] jq-built hook
+- [x] 46.1 Quarantine surfacing (DONE 07-30): count + latest-error chip on dashboard (or /observability), test-first
+- [x] 46.2 Debt quick-kills (DONE 07-30: 41.D2/D3/D7/D8 + 40.D1 stale-closed + 42.D1 shipped): [41.D3] cache trust-map parse (3 call paths), [41.D2] jq-built hook
       payload, [40.D1] flaky countdown test, [41.D7]+[41.D8] missing tests
-- [ ] 46.3 Overseer prompt: add Teams-awareness sentence + refresh snapshot test
+- [x] 46.3 Overseer prompt (DONE 07-30): add Teams-awareness sentence + refresh snapshot test
 
 ### Phase 47 — API modernization (test-first per site)
-- 47.1 Model bump: sonnet-4-6 → claude-sonnet-5 at 4 sites (overseer loop, streaming, wizard,
+- [x] 47.1 Model bump (DONE 07-28): sonnet-4-6 → claude-sonnet-5 at 4 sites (overseer loop, streaming, wizard,
       projects-chat, proposer) + MODEL_PRICING row w/ intro pricing + verify cache-min comments
       (Sonnet 5 min prefix differs; confirm cache_read>0 in telemetry after)
-- 47.2 Adopt @anthropic-ai/sdk for `defaultAnthropicCaller`/streaming caller (keeps injectable
+- [~] 47.2 PARTIAL (07-30): retry/backoff shipped for all 5 non-streaming callers via lib/anthropic-fetch.ts; SDK adoption + streaming retry still open for `defaultAnthropicCaller`/streaming caller (keeps injectable
       AnthropicCaller seam; SDK gives 429/5xx retries). Leave Haiku utility sites on fetch or
       migrate opportunistically
 - 47.3 Structured outputs: harvester + feature-check (delete regex fallbacks; schema-validated)

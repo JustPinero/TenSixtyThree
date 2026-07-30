@@ -2,9 +2,6 @@
 
 ## Open
 
-### [42.D1] Webhook has no shared-secret auth (loopback bind + containment are the current mitigations)
-Phase 42 (P0.1) closed the remote vector (`-H 127.0.0.1` on dev/dev:ci) and the hostile-path vector (containment guard in `ingestSessionComplete`), but any LOCAL process can still POST a valid in-tree projectPath to /api/webhook/session-complete and cause a targeted re-import / legacy slot release. Full fix is a shared-secret header: generate per-machine secret at install-hooks time, hook script sends it, route requires it. Needs a fleet hook re-roll (22 projects), so deferred to its own request. Also consider re-adding the rate limiter to this route.
-
 ### [41.D10] Pre-existing absolute-path formatter/lint hooks in 3 projects (cross-machine bug)
 Surfaced during the 41.5 fleet webhook rollout (2026-07-07). CON-CORE, medipal, and romereno each have a PostToolUse formatter/lint hook in `.claude/settings.json` that hardcodes an absolute path, e.g. `cd /Users/justinpinero/Desktop/projects/CON-CORE && npx prettier --write …` (also medipal prettier, romereno eslint jsx-a11y). settings.json is tracked and synced, so these break on the Windows machine after a pull (path doesn't exist → formatter hook fails). NOT introduced by the webhook rollout (that hook is now portable `$HOME`-relative) — pre-existing in each project's own stack hooks.
 - **Fix:** replace the absolute `cd` with `$PWD` (or drop the `cd` — the hook already runs in the project dir), per project. Verify the formatter still resolves its config from `$PWD` first. One tiny commit each.
@@ -12,14 +9,6 @@ Surfaced during the 41.5 fleet webhook rollout (2026-07-07). CON-CORE, medipal, 
 
 ### [41.D1] webhook-spool rename-aside atomicity is narrower than the docstring claims
 `lib/webhook-spool.ts:14-20,91-96` — a microsecond TOCTOU race: if a Stop-hook shell has opened its `>>` fd on the spool inode but not yet written when the drain renames→reads→unlinks that inode, the hook's line lands on the unlinked inode and is lost. Never realistically hits on a single dev box, but the "never lost" docstring overstates the guarantee. Fix when it matters: O_APPEND to a path re-resolved per write, or a lockfile around drain. Low.
-
-### [41.D2] session-complete-hook.sh builds JSON by raw shell interpolation
-`scripts/session-complete-hook.sh:37-39` — `payload="{\"projectPath\":\"${project_path}\",…}"`. A path containing `"` or `\` yields malformed JSON → webhook 400 → spooled → quarantined → ping silently dropped. Not reachable on Justin's forward-slash macOS/Linux/WSL paths, but unescaped. Fix: build the payload with `jq -n --arg`. Low.
-
-### [41.D3] briefing re-parses ~/.claude.json once per project (perf) — SCOPE AMENDED (Phase 42 review)
-Amendment: the per-project re-parse is not briefing-only — `computeHealth` calls `computeInfraVersion` unconditionally (lib/health-engine.ts), so the same full `~/.claude.json` parse also runs per project on the **scan path** and per session-complete on the **webhook path**. Fix should cache the parsed trust map for all three callers, not just the briefing route.
-Original entry:
-`app/api/briefing/route.ts` calls `computeInfraVersion(p.path)` per project, and `readWorkspaceTrust` (lib/infra-version.ts) reads + `JSON.parse`s the entire (potentially large) `~/.claude.json` each time. N projects = N full parses of the same file on the briefing happy path. Fix: read/parse once and pass the trust map in. Low/perf.
 
 ### [41.D4] webhook-ingest signal-loop creates are unguarded
 `lib/webhook-ingest.ts:186-221` — the HumanTask/ActivityEvent `prisma.*.create` calls in the signal loop aren't wrapped, unlike the DispatchOutcome/feature-audit writes. A transient DB error there throws AFTER the dispatch row is flipped to `completed`, so the retried spool entry dedups and that DispatchOutcome is permanently skipped. Loses an analytics row, not lifecycle state. Fix: wrap the signal-loop writes so they can't abort post-completion. Low.
@@ -29,15 +18,6 @@ Original entry:
 
 ### [41.D6] publish-safety reports one match per pattern per file
 `lib/publish-safety.ts:126-128` — `pattern.regex.exec(text)` returns only the first hit, so a file with two different secrets matching the same pattern reports one. Detection completeness gap, not a leak. Fix: global-flag exec loop, dedup by redacted value. Low.
-
-### [41.D7] webhook-ingest has no isolated unit test
-The shared `ingestSessionComplete` module (the heart of 41.5) is exercised only indirectly — via the HTTP route test and the drain-path test. Every branch is reached, but there's no dedicated `lib/webhook-ingest.test.ts`. Add one so future refactors of the shared ingestion path have a direct contract. Low (coverage).
-
-### [41.D8] webhook-spool missing/empty-spool branch untested
-`lib/webhook-spool.ts:85` — the `if (!fs.existsSync(spoolPath)) return {...}` no-op path has no test, the one "nothing to drain" resilience edge left unexercised in a resilience module. Add the empty/missing-spool case. Low (coverage).
-
-### [40.D1] `formatCountdown` floor race makes one deadline-utils test flaky
-`lib/deadline-utils.test.ts:8` builds `new Date(Date.now() + 3*86400000)` then asserts `formatCountdown(...) === "3d left"`. `formatCountdown` reads `Date.now()` again, so `diffMs` is `3 days − ε`; `Math.floor` drops it to `2` whenever ≥1ms elapses between the two reads → intermittent "2d left" failure (observed once during Phase 40; passes on re-run). Timing race, not time-of-day. Fix options: (a) make the test pin a reference instant (`vi.useFakeTimers()` / inject `now`), or (b) have `formatCountdown` round toward the deadline. Natural to fold into P7 (deadline/staleness triage), which will touch this module anyway.
 
 ### [23.D1] Overseer eval fixtures need live-API recordings
 Phase 23.7 shipped the overseer-tool-sequence kind executor + scratch SQLite seeding, but **no Overseer fixture files** because authoring requires `pnpm eval:refresh` against the live Anthropic API to capture deterministic recordings. Knowledge-matcher (3) and escalation-detector (35) fixtures pass without API access.
@@ -75,6 +55,16 @@ Two fire-and-forget POSTs from the component; route persists nothing; closing th
 Blocked on dispatch-rig support for real temp project dirs (rig uses synthetic `/p/alpha` paths that would fail an fs readiness check). See design-review [36.A7].
 
 ## Resolved
+
+### RESOLVED 2026-07-30 (phase-46 hardening)
+- **[42.D1]** Webhook shared-secret auth SHIPPED: `lib/webhook-auth.ts` (constant-time compare), route requires `x-cascade-webhook-secret` whenever `~/.cascade/webhook-secret` exists; canonical hook script sends it; `install-hooks.ts` generates it (0600). Backward compatible (no file = open). No fleet re-roll needed — all projects call the canonical `$HOME/.cascade` script.
+- **[41.D2]** Hook payload now built with `jq -n --arg` when jq is present (raw-interpolation fallback otherwise).
+- **[41.D3]** Trust-map parse cached per (path, mtime) in `readWorkspaceTrustCached` — scan/briefing/webhook paths share one parse.
+- **[41.D7]** `lib/webhook-ingest.test.ts` added (direct contract: containment rejection + in-tree resolution).
+- **[41.D8]** Missing-spool drain no-op covered in `lib/webhook-quarantine.test.ts`.
+- **[40.D1]** Stale entry: already fixed in phase 41.3 (fake timers in deadline-utils.test.ts). Closed on audit.
+- **(46.1)** Quarantine surfaced: `readQuarantineStatus` + `/api/observability/quarantine` + dashboard banner.
+
 
 ### [41.D9] Fleet webhook-hook rollout cross-machine path portability — RESOLVED 2026-07-07 (fix-41.D9)
 Option (a) landed. `buildWebhookCommand` now emits a `$HOME`-relative script reference (`bash "$HOME/.cascade/session-complete-hook.sh" "$PWD" <port> > /dev/null 2>&1 &`) — no absolute `/Users/...` path — so a committed, cross-machine-synced `settings.json` hook resolves on every machine (`$HOME` expands per-machine inside the double-quoted command). New `copyCanonicalScript({home?, sourcePath?})` (home/source injectable for tests) installs `scripts/session-complete-hook.sh` → `<home>/.cascade/session-complete-hook.sh`, overwriting so updates propagate, `chmod 0755`. `processProject` copies before writing project settings; `instrumentation.ts` copies on server boot (next to the spool-drain wiring), wrapped so a copy failure never throws into startup — a freshly-cloned machine self-heals. `isCascadeStopHook` still matches the new command (contains `session-complete`) so an old absolute/inline Cascade Stop hook is replaced in place, no duplicate entry. 6 acceptance tests in `scripts/install-hooks.test.ts`; suite 179 files / 1222 tests green; validate.sh passes. Fleet rollout (`install-hooks.ts` across all 22 projects) is now SAFE to run — NOT run in this fix.

@@ -1,4 +1,5 @@
 import path from "path";
+import { postAnthropicWithRetry } from "./anthropic-fetch";
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import {
   DETECTOR_REGISTRY,
@@ -299,21 +300,12 @@ async function defaultClaudeConversion(rawText: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
+    const response = await postAnthropicWithRetry({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 2048,
         system: CONVERSION_SYSTEM_PROMPT,
         messages: [{ role: "user", content: rawText.slice(0, 30_000) }],
-      }),
-      signal: controller.signal,
-    });
+      }, { apiKey, signal: controller.signal });
     if (!response.ok) {
       throw new Error(`Claude API error: ${response.status}`);
     }

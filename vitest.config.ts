@@ -20,6 +20,8 @@ export default defineConfig({
     // Files needing a different root set process.env themselves.
     env: {
       PROJECTS_DIR: "/p",
+      // [42.D1] keep webhook tests in open mode regardless of the real machine secret
+      CASCADE_WEBHOOK_SECRET_PATH: "/p/nonexistent-webhook-secret",
     },
   },
   resolve: {

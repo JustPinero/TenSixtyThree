@@ -124,9 +124,20 @@ function matchSecretsRedacted(
 ): { label: string; redacted: string }[] {
   const hits: { label: string; redacted: string }[] = [];
   for (const pattern of SECRET_PATTERNS) {
-    const match = pattern.regex.exec(text);
-    if (match) {
-      hits.push({ label: pattern.label, redacted: match[0].slice(0, 10) + "…" });
+    // [41.D6] — report EVERY distinct match per pattern, not just the first.
+    const global = new RegExp(
+      pattern.regex.source,
+      pattern.regex.flags.includes("g") ? pattern.regex.flags : pattern.regex.flags + "g"
+    );
+    const seen = new Set<string>();
+    let match: RegExpExecArray | null;
+    while ((match = global.exec(text)) !== null) {
+      const redacted = match[0].slice(0, 10) + "…";
+      if (!seen.has(redacted)) {
+        seen.add(redacted);
+        hits.push({ label: pattern.label, redacted });
+      }
+      if (match.index === global.lastIndex) global.lastIndex++;
     }
   }
   return hits;

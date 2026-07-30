@@ -182,12 +182,8 @@ Extract 3-10 specific, actionable lessons from this project's history. Focus on:
 
 Do NOT include generic best practices everyone knows (like "write tests" or "use version control").
 
-Return ONLY a JSON array of objects with this format:
-[
-  { "title": "Short lesson title", "content": "Detailed explanation of the lesson and why it matters", "severity": "critical|important|nice-to-know" }
-]
-
-Return raw JSON, no markdown fences.`;
+Return a JSON object of the form:
+{ "lessons": [ { "title": "Short lesson title", "content": "Detailed explanation of the lesson and why it matters", "severity": "critical|important|nice-to-know" } ] }`;
 }
 
 /**
@@ -203,10 +199,41 @@ async function extractLessonsWithClaude(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
+  // 47.3 — structured outputs: the API guarantees schema-valid JSON, so the
+  // old regex-extraction fallback is gone. Root must be an object, hence the
+  // { lessons: [...] } wrapper.
   const response = await postAnthropicWithRetry({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              lessons: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    content: { type: "string" },
+                    severity: {
+                      type: "string",
+                      enum: ["critical", "important", "nice-to-know"],
+                    },
+                  },
+                  required: ["title", "content", "severity"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["lessons"],
+            additionalProperties: false,
+          },
+        },
+      },
     }, { apiKey, signal: controller.signal });
 
   clearTimeout(timeout);
@@ -216,21 +243,17 @@ async function extractLessonsWithClaude(
   }
 
   const data = await response.json();
-  const text = data.content?.[0]?.text || "[]";
+  const text = data.content?.[0]?.text || "{}";
 
   try {
     const parsed = JSON.parse(text);
+    if (parsed && Array.isArray((parsed as { lessons?: unknown }).lessons)) {
+      return (parsed as { lessons: Array<{ title: string; content: string; severity: string }> }).lessons;
+    }
+    // Back-compat: a bare array (pre-structured-outputs response shape)
     if (Array.isArray(parsed)) return parsed;
   } catch {
-    // Try to extract JSON from the response
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch {
-        // Give up
-      }
-    }
+    // schema-enforced output should always parse; treat failure as no lessons
   }
 
   return [];

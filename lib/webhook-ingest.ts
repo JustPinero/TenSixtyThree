@@ -195,6 +195,11 @@ export async function ingestSessionComplete(
       const signals = detectEscalations(logs[0].content);
       for (const signal of signals) {
         signalTypes.push(signal.type);
+        // [41.D4] — per-signal writes are guarded: by this point the dispatch
+        // row may already be flipped to completed, and a retried spool entry
+        // would dedup and permanently skip this outcome. Losing one analytics
+        // row beats aborting the whole ingest.
+        try {
 
         // Auto-create human tasks from [HUMAN TODO] signals.
         // Phase 23.2 — dedup on (projectSlug, title) when a Dispatch
@@ -235,6 +240,9 @@ export async function ingestSessionComplete(
             summary: `[${signal.type}] ${signal.message}`,
           },
         });
+        } catch (err) {
+          console.error("[webhook-ingest] signal write failed (non-fatal):", err);
+        }
       }
     }
 

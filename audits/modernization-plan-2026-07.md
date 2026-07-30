@@ -51,8 +51,8 @@ spool drain live; no placeholder pages; playbook plugin v4.0.1 current; install-
 - [~] 47.2 PARTIAL (07-30): retry/backoff shipped for all 5 non-streaming callers via lib/anthropic-fetch.ts; SDK adoption + streaming retry still open for `defaultAnthropicCaller`/streaming caller (keeps injectable
       AnthropicCaller seam; SDK gives 429/5xx retries). Leave Haiku utility sites on fetch or
       migrate opportunistically
-- 47.3 Structured outputs: harvester + feature-check (delete regex fallbacks; schema-validated)
-- 47.4 Server-side compaction spike: replace/fallback chat-history-compressor. Ship behind env flag
+- [x] 47.3 Structured outputs (DONE 07-30)
+- [ ] 47.4 Server-side compaction spike (deferred: deep ChatSession integration; not drive-day work): replace/fallback chat-history-compressor. Ship behind env flag
 - 47.5 (optional) cache-diagnostics beta in telemetry page
 
 ### Phase 48 — Finish or kill the half-built (DECISIONS NEEDED — see questions)

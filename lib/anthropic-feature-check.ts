@@ -300,11 +300,46 @@ async function defaultClaudeConversion(rawText: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
+    // 47.3 — structured outputs guarantee the {candidates:[...]} shape;
+    // parseCandidatesJson still validates as defense in depth.
     const response = await postAnthropicWithRetry({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 2048,
         system: CONVERSION_SYSTEM_PROMPT,
         messages: [{ role: "user", content: rawText.slice(0, 30_000) }],
+        output_config: {
+          format: {
+            type: "json_schema",
+            schema: {
+              type: "object",
+              properties: {
+                candidates: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      category: { type: "string", enum: [...VALID_CATEGORIES] },
+                      description: { type: "string" },
+                      integrationRecipe: { type: "string" },
+                      confidence: { type: "number" },
+                    },
+                    required: [
+                      "name",
+                      "category",
+                      "description",
+                      "integrationRecipe",
+                      "confidence",
+                    ],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["candidates"],
+              additionalProperties: false,
+            },
+          },
+        },
       }, { apiKey, signal: controller.signal });
     if (!response.ok) {
       throw new Error(`Claude API error: ${response.status}`);

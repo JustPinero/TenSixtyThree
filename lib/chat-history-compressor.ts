@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/app/generated/prisma/client";
+import { postAnthropicWithRetry } from "./anthropic-fetch";
 import type { AnthropicMessage } from "@/lib/overseer-tools";
 
 /**
@@ -188,14 +189,8 @@ export function defaultSummarizer(apiKey: string): MessageSummarizer {
       .join("\n\n");
 
     const start = performance.now();
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
+    const response = await postAnthropicWithRetry(
+      {
         model: SUMMARIZER_MODEL,
         max_tokens: 800,
         system:
@@ -203,9 +198,9 @@ export function defaultSummarizer(apiKey: string): MessageSummarizer {
         messages: [
           { role: "user", content: `Conversation to summarize:\n\n${transcript}` },
         ],
-      }),
-      signal: options?.signal,
-    });
+      },
+      { apiKey, signal: options?.signal }
+    );
 
     if (!response.ok) {
       throw new Error(`Summarizer API error: ${response.status}`);

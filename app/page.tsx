@@ -7,6 +7,7 @@ import { ScanButton } from "./components/scan-button";
 import { MorningBriefing } from "./components/morning-briefing";
 import { PlatformBadge } from "./components/platform-badge";
 import { FleetStatusStrip } from "./components/fleet-status-strip";
+import { QuarantineBanner } from "./components/quarantine-banner";
 import { FleetDriftPanel } from "./components/fleet-drift-panel";
 import { DispatchRecommendations } from "./components/dispatch-recommendations";
 import { CostWidget } from "./components/cost-widget";
@@ -260,6 +261,7 @@ function DashboardContent() {
         </div>
         <div className="flex items-center gap-3">
           <CostWidget />
+          <QuarantineBanner />
           <FleetStatusStrip />
           <PlatformBadge />
           <ScanButton

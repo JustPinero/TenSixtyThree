@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import { postAnthropicWithRetry } from "./anthropic-fetch";
 import path from "path";
 import type { PrismaClient } from "@/app/generated/prisma/client";
 
@@ -130,14 +131,7 @@ async function defaultCallClaude(system: string, user: string): Promise<string> 
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
     const start = performance.now();
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
+    const response = await postAnthropicWithRetry({
         model: PROPOSER_MODEL,
         max_tokens: 2048,
         // Phase 23.4 — proposeForAll calls in bursts when several
@@ -153,9 +147,7 @@ async function defaultCallClaude(system: string, user: string): Promise<string> 
           },
         ],
         messages: [{ role: "user", content: user }],
-      }),
-      signal: controller.signal,
-    });
+      }, { apiKey, signal: controller.signal });
     if (!response.ok) {
       throw new Error(`Claude API error: ${response.status}`);
     }

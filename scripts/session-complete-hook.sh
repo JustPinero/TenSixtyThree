@@ -33,16 +33,35 @@ spool="${CASCADE_WEBHOOK_SPOOL:-$HOME/.cascade/webhook-spool.jsonl}"
 # Build the JSON payload. idempotencyKey is included only when
 # CASCADE_DISPATCH_ID is set (pre-23.2 sessions carry no key and the
 # webhook falls back to its legacy correlation path).
-if [ -n "${CASCADE_DISPATCH_ID:-}" ]; then
-  payload="{\"projectPath\":\"${project_path}\",\"idempotencyKey\":\"${CASCADE_DISPATCH_ID}\"}"
+# [41.D2] — build the payload with jq when available so paths containing
+# quotes/backslashes can't produce malformed JSON (which would 400 -> spool
+# -> quarantine -> silently dropped ping). Raw interpolation remains as the
+# no-jq fallback (safe for the plain absolute paths this fleet uses).
+if command -v jq >/dev/null 2>&1; then
+  if [ -n "${CASCADE_DISPATCH_ID:-}" ]; then
+    payload=$(jq -cn --arg p "$project_path" --arg k "$CASCADE_DISPATCH_ID" '{projectPath: $p, idempotencyKey: $k}')
+  else
+    payload=$(jq -cn --arg p "$project_path" '{projectPath: $p}')
+  fi
 else
-  payload="{\"projectPath\":\"${project_path}\"}"
+  if [ -n "${CASCADE_DISPATCH_ID:-}" ]; then
+    payload="{\"projectPath\":\"${project_path}\",\"idempotencyKey\":\"${CASCADE_DISPATCH_ID}\"}"
+  else
+    payload="{\"projectPath\":\"${project_path}\"}"
+  fi
 fi
 
 # Attempt the POST. `-f` makes curl exit non-zero on an HTTP error
 # response; a refused/timed-out connection also exits non-zero. Short
 # timeouts keep a Stop hook from hanging on a black-holed port.
-if curl -s -f --connect-timeout 3 --max-time 10 \
+# [42.D1] — send the shared secret when configured (matches the route's check)
+secret_file="$HOME/.cascade/webhook-secret"
+secret_header=()
+if [ -r "$secret_file" ]; then
+  secret_header=(-H "x-cascade-webhook-secret: $(tr -d '\n' < "$secret_file")")
+fi
+
+if curl -s -f --connect-timeout 3 --max-time 10 ${secret_header[@]+"${secret_header[@]}"} \
   -X POST "http://localhost:${port}/api/webhook/session-complete" \
   -H 'Content-Type: application/json' \
   -d "${payload}" >/dev/null 2>&1; then

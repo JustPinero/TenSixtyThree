@@ -12,6 +12,7 @@
  */
 
 import fs from "fs";
+import crypto from "node:crypto";
 import os from "os";
 import path from "path";
 
@@ -108,6 +109,17 @@ export interface CopyCanonicalScriptOptions {
  * stays executable. Consistent with the spool default under ~/.cascade.
  * Returns the absolute target path.
  */
+export function ensureWebhookSecret(): void {
+  // [42.D1] — generate the per-machine shared secret once; the canonical
+  // hook script sends it and the webhook route requires it when present.
+  const secretPath = path.join(os.homedir(), ".cascade", "webhook-secret");
+  if (!fs.existsSync(secretPath)) {
+    fs.mkdirSync(path.dirname(secretPath), { recursive: true });
+    fs.writeFileSync(secretPath, crypto.randomBytes(32).toString("hex") + "\n", { mode: 0o600 });
+    console.log(`Generated webhook secret at ${secretPath}`);
+  }
+}
+
 export function copyCanonicalScript(
   opts: CopyCanonicalScriptOptions = {}
 ): string {
@@ -249,6 +261,7 @@ export function processProject(
   // BEFORE writing settings, so the portable `$HOME/.cascade/...` path we
   // are about to commit actually resolves on this machine. Idempotent.
   copyCanonicalScript(copyOpts);
+  ensureWebhookSecret();
 
   // Ensure .claude directory exists
   if (!fs.existsSync(settingsDir)) {

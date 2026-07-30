@@ -287,51 +287,12 @@ export async function ingestSessionComplete(
       }
     }
 
-    if (!outcomeWritten) {
-      // Legacy fallback — find the most recent session-launched
-      // activity event for this project.
-      const lastDispatch = await prisma.activityEvent.findFirst({
-        where: { projectId: project.id, eventType: "session-launched" },
-        orderBy: { createdAt: "desc" },
-      });
-      if (lastDispatch) {
-        let dispatchMode = "continue";
-        try {
-          const details = JSON.parse(lastDispatch.details || "{}");
-          dispatchMode = details.mode || "continue";
-        } catch {
-          // ignore parse error
-        }
-        const outcome = deriveOutcome(signalTypes);
-
-        try {
-          await prisma.dispatchOutcome.create({
-            data: {
-              projectId: project.id,
-              projectSlug: slug,
-              mode: dispatchMode,
-              healthAtDispatch: project.health,
-              outcome,
-              signals: JSON.stringify(signalTypes),
-              dispatchedAt: lastDispatch.createdAt,
-              // Phase 41.2 — no Dispatch row means no composed-prompt
-              // snapshot to recover a condition from, but the log's
-              // verdict is still worth recording.
-              goalAchieved,
-              goalReason,
-            },
-          });
-        } catch (err) {
-          console.error(
-            JSON.stringify({
-              event: "dispatch_outcome_legacy_write_failed",
-              projectId: project.id,
-              error: err instanceof Error ? err.message : String(err),
-            })
-          );
-        }
-      }
-    }
+    // [23.D6] — legacy "find latest session-launched event" fallback REMOVED
+    // (2026-07-30). Telemetry criterion met: zero orphaned-webhook events
+    // since 2026-04-14. Key-less pings (manual sessions) still release queue
+    // slots and produce signals/lessons/tasks above; they no longer fabricate
+    // DispatchOutcome rows attributed to stale dispatch events — outcome data
+    // is now exclusively Dispatch-row-correlated.
 
     // Phase 11.1 — refresh per-project feature usage ledger.
     // Best-effort: a failure here MUST NOT fail the webhook.

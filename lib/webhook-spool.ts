@@ -12,7 +12,11 @@
  * at any moment, including mid-drain. The drain RENAMES the spool aside
  * before reading it — rename is atomic on POSIX, and the hook's `>>`
  * recreates a fresh spool for any append that lands after the rename.
- * So a concurrent append is never lost and never double-ingested.
+ * A concurrent append is therefore never double-ingested, and loss is
+ * bounded to a microsecond TOCTOU window: a shell that opened its `>>`
+ * fd on the old inode but hadn't written when the drain renamed it can
+ * land one line on the unlinked inode ([41.D1] — never observed on a
+ * single dev box; accept until a lockfile is warranted).
  *
  * Malformed lines are quarantined (appended to `<spool>.quarantine`)
  * and logged, never fatal. Ingestion is idempotent — the dispatcher

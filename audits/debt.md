@@ -2,50 +2,22 @@
 
 ## Open
 
-### [41.D10] Pre-existing absolute-path formatter/lint hooks in 3 projects (cross-machine bug)
-Surfaced during the 41.5 fleet webhook rollout (2026-07-07). CON-CORE, medipal, and romereno each have a PostToolUse formatter/lint hook in `.claude/settings.json` that hardcodes an absolute path, e.g. `cd /Users/justinpinero/Desktop/projects/CON-CORE && npx prettier --write …` (also medipal prettier, romereno eslint jsx-a11y). settings.json is tracked and synced, so these break on the Windows machine after a pull (path doesn't exist → formatter hook fails). NOT introduced by the webhook rollout (that hook is now portable `$HOME`-relative) — pre-existing in each project's own stack hooks.
-- **Fix:** replace the absolute `cd` with `$PWD` (or drop the `cd` — the hook already runs in the project dir), per project. Verify the formatter still resolves its config from `$PWD` first. One tiny commit each.
-- **Note:** likely more projects have similar hardcoded stack-hook paths; a sweep of all tracked settings.json for `/Users/` would find them. Low, but it's silent formatter loss on the second machine.
-
-### [41.D1] webhook-spool rename-aside atomicity is narrower than the docstring claims
-`lib/webhook-spool.ts:14-20,91-96` — a microsecond TOCTOU race: if a Stop-hook shell has opened its `>>` fd on the spool inode but not yet written when the drain renames→reads→unlinks that inode, the hook's line lands on the unlinked inode and is lost. Never realistically hits on a single dev box, but the "never lost" docstring overstates the guarantee. Fix when it matters: O_APPEND to a path re-resolved per write, or a lockfile around drain. Low.
-
-### [23.D1] Overseer eval fixtures need live-API recordings
-Phase 23.7 shipped the overseer-tool-sequence kind executor + scratch SQLite seeding, but **no Overseer fixture files** because authoring requires `pnpm eval:refresh` against the live Anthropic API to capture deterministic recordings. Knowledge-matcher (3) and escalation-detector (35) fixtures pass without API access.
-- **Unblocks:** Phase 24's outcome-conditioned-dispatch eval scenarios; full PR-time AI regression coverage.
-- **Action:** run `pnpm eval:refresh` with `ANTHROPIC_API_KEY` set, hand-curate Overseer fixture files for the 5 scenarios listed in the original 23.7 plan (inventory-walk-medipal, dispatch-after-stall, blocker-triage, knowledge-query, fleet-status-quick), tune asserters until live model behavior agrees, commit recordings + fixtures.
-
-### [23.D2] dispatchTeam still on legacy queue path
-Phase 23.2's lifecycle migration intentionally skipped `dispatchTeam`. The lead/teammate spawn model can't cleanly thread a single CASCADE_DISPATCH_ID through to N teammate sessions (env propagation creates webhook dedup collisions across projects). Per-project teammate Stop hooks still fire and produce DispatchOutcome rows via the legacy fallback, but team dispatches don't get watchdog protection or per-project Dispatch row tracking.
-- **Action when needed:** dedicated slice. Likely involves generating per-project idempotency keys server-side after the lead spawns and reconciling teammate Stop hooks back to the lead's batch.
-
-### [23.D4] Real-world session logs in escalation corpus
-23.7's escalation-detector corpus is 35 synthetic logs. A future slice can sanitize 5-10 real session logs from Justin's fleet to catch patterns the synthetic corpus misses (regex over-matches, novel phrasing).
-- **Action when desirable:** copy real logs from `~/projects/*/.claude/sessions/`, sanitize project names + paths, add to `evals/scenarios/escalation-signals/<subdir>/` with hand-labeled `expected.json`.
-
-### [23.D6] Legacy webhook fallback removal
-The webhook still falls back to "find latest session-launched activity event" when an idempotencyKey is unknown. Once production telemetry shows zero `orphaned-webhook` activity events for a sustained window, remove the fallback path from `app/api/webhook/session-complete/route.ts`.
-
-### [Theme Pack] — relocated from Phase 23
-Phase 22's plan called the Theme Pack registry "Phase 23." Phase 23 was redirected to the regression spine + caching work after the audit. Theme Pack moves to a later phase (TBD by user — likely 26 or after).
-
-### [30.D2-residual] Remaining HTTP-boundary test gaps (defer to a future phase)
-Phase 33 closed the top-5 priority routes from the original [30.D2] finding. Phase 34 added the OverseerChat smoke. The largest remaining gaps:
-- **`app/api/overseer/chat/route.ts`** — TURNS OUT this has substantial coverage already in `route.feature-check.test.ts` / `route.feature-propose.test.ts` / `route.tools.test.ts` (24 tests across the three files). Audit overstated the gap. Deeper streaming-format tests would still be valuable but lower priority than originally rated.
-- **`app/components/overseer-chat.tsx`** — Phase 34 covered the mount + history rehydration + input + settings smokes (5 tests). Streaming render, conversation mode, voice flow, dispatch-tag actions still uncovered — each is its own slice if Justin asks.
-- 32 remaining routes are lower blast-radius (reads, simple CRUD). Tackle opportunistically when touching them for other reasons.
-
-
-### [41.1-residual] Some rig test file(s) leak scratch DBs even on green runs
-A fully passing `pnpm test` still leaves ~6 `test-rig-*.db` files in `prisma/` (2 worker pids, rigs #1-4 and #1-2 — some rig-using test path never reaches `dispose()`, or the worker is torn down first). The 41.1 startup sweep in `tests/harness/dispatch-rig.ts` removes them on the next run (mtime > 60s before process start), so accumulation is capped at one run's leakage. Follow-up if desired: bisect the 24 rig-using test files to find the non-disposing path, or add a globalSetup-time sweep so even back-to-back runs start clean.
-
-### [36.A5] Overseer chat history persisted client-side, droppable mid-stream
-Two fire-and-forget POSTs from the component; route persists nothing; closing the tab loses the assistant turn after server-side effects already fired. See design-review [36.A5]. Fix: persist server-side in the chat route.
-
-### [36.A7] dispatchClaude lacks the readiness gate batch dispatch enforces
-Blocked on dispatch-rig support for real temp project dirs (rig uses synthetic `/p/alpha` paths that would fail an fs readiness check). See design-review [36.A7].
+*(empty — ledger zeroed 2026-07-30. Five former entries were promoted to the
+roadmap in `audits/modernization-plan-2026-07.md` § Promoted-from-debt because
+they are feature slices, not defects: [23.D1] eval recordings, [23.D2] team-
+dispatch lifecycle rearchitecture, [23.D4] real-log escalation corpus,
+[Theme Pack], [36.A5] server-side chat persistence, [30.D2-residual]
+opportunistic route tests.)*
 
 ## Resolved
+### RESOLVED 2026-07-30 (debt-zero pass)
+- **[41.D10]** Absolute-path `cd` prefixes removed from CON-CORE / medipal / romereno formatter hooks (committed + pushed in each repo); fleet-wide sweep found no others.
+- **[41.D1]** Docstring corrected to state the true guarantee (loss bounded to a microsecond TOCTOU window; lockfile deferred until multi-writer reality).
+- **[41.1-residual]** globalSetup now sweeps leftover `test-rig-*.db` before workers spawn — back-to-back runs start clean.
+- **[36.A7]** dispatchClaude enforces the same readiness gate as batch (RED→GREEN; the "blocked on rig" premise was false — batch tests already solve it with fs mocks, now shared).
+- **[23.D6]** Legacy "latest session-launched event" outcome fallback REMOVED — its own telemetry criterion was met (zero orphaned-webhook events since 2026-04-14). Outcome data is now exclusively Dispatch-row-correlated; key-less manual sessions still release slots and produce signals/lessons, but no longer fabricate misattributed outcome rows. Two tests flipped to the new contract.
+
+
 
 ### RESOLVED 2026-07-30 (phase-47 continuation)
 - **[41.D4]** signal-loop writes guarded (try/catch, non-fatal log) — a transient DB error can no longer abort ingest post-completion.

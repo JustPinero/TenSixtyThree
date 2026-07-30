@@ -421,6 +421,17 @@ export async function dispatchClaude(
     return { success: false, error: "Invalid project path" };
   }
 
+  // [36.A7] — single dispatch now enforces the same readiness gate batch
+  // dispatch always had (CLAUDE.md + git + a project manifest). Previously a
+  // direct dispatch into an unready dir spawned a session doomed to flail.
+  const readiness = await checkDispatchReadiness(project.path);
+  if (!readiness.ready) {
+    return {
+      success: false,
+      error: `Not dispatch-ready: ${readiness.issues.join(", ")}`,
+    };
+  }
+
   try {
     const tmpFile = path.join(os.tmpdir(), `cascade-prompt-${Date.now()}.txt`);
     fsSync.writeFileSync(tmpFile, prompt, "utf-8");

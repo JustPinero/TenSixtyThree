@@ -1,4 +1,5 @@
 # TenSixtyThree — AI-Powered Multi-Project Orchestration
+> Also answers to **1063** / **10-63** — same product, radio shorthand. Use interchangeably in requests and docs.
 Local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. Features: fleet health monitoring, knowledge harvesting + brain-sync, session feedback loop (Stop-hook webhook + spool + quarantine), dispatch outcome tracking with watchdog liveness, morning briefings, conversation memory, publish-safety audits, and a Teams/collision-plane foundation (identity model + unified activity feed, backend-only pending the hosted-vs-local decision).
 
 ## Stack & Commands

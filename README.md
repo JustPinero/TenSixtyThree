@@ -7,7 +7,7 @@
 
 A nerve center for orchestrating multi-project Claude Code workflows. The **Overseer**, your customizable AI fleet dispatcher, manages your projects, learns from every session, and tells you when it needs you.
 
-**The name:** *10-63* is the radio code a unit calls when it's en route. Dispatched, rolling, and reporting back. That's what this platform does with AI engineering sessions. (Formerly known as Cascade.)
+**The name:** *10-63* is the radio code a unit calls when it's en route. (**1063**, **10-63**, and **TenSixtyThree** all refer to this project.) Dispatched, rolling, and reporting back. That's what this platform does with AI engineering sessions. (Formerly known as Cascade.)
 
 ---
 

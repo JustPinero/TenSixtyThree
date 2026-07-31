@@ -86,3 +86,16 @@ spool drain live; no placeholder pages; playbook plugin v4.0.1 current; install-
 - **[Theme Pack]** — product feature, user-scheduled.
 - **[36.A5] Server-side chat persistence** — real slice (schema + route + rehydration); protects against mid-stream tab closes. Good candidate alongside the compaction phase (both touch ChatSession).
 - **[30.D2-residual] route tests** — opportunistic; add when touching a route.
+
+
+## Phase 50 (proposed 2026-07-31) — Deployment Registry & Decommission Flow
+Justin ran a manual Vercel+Railway cleanup (7 projects scrapped) and wants it productized.
+- 50.1 Deployment registry: per fleet project, track deploy targets (vercel/railway ids, URLs,
+  last-deploy age) — populated via `vercel project ls --json` + `railway list --json` scans.
+- 50.2 Staleness surfacing: dashboard chip when a deployment is >30/60/90d stale or a Railway
+  project has services but its fleet project is backburnered (= idle spend).
+- 50.3 Decommission flow (checklist, human-gated like deploys): confirm dependencies (front→back
+  bundle scan — the site-unseen lesson), dump any DBs to local backup, delete deployment(s),
+  KEEP repo, log an ActivityEvent. Deletes always require explicit confirmation; DB-bearing
+  projects require the backup step to complete first.
+- 50.4 Cost visibility: Railway is the money side — surface running-service counts per project.

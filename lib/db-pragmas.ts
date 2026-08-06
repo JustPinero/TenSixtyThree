@@ -21,6 +21,11 @@ type PragmaClient = {
 };
 
 export async function applySqlitePragmas(client: PragmaClient): Promise<void> {
+  // Phase 51.1 — Postgres migration: pragmas are SQLite-only. On a
+  // postgres:// DATABASE_URL this is a silent no-op (WAL-equivalent
+  // durability is Postgres's default behavior).
+  const url = process.env.DATABASE_URL || "";
+  if (url.startsWith("postgres")) return;
   try {
     await client.$queryRawUnsafe("PRAGMA journal_mode=WAL;");
     await client.$queryRawUnsafe("PRAGMA synchronous=NORMAL;");

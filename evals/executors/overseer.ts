@@ -15,7 +15,7 @@ import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
 import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import {
   runToolUseLoop,
   type ToolContext,
@@ -48,7 +48,7 @@ function buildScratchPrisma(): {
     stdio: "pipe",
     env: { ...process.env, DATABASE_URL: dbUrl },
   });
-  const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+  const adapter = new PrismaPg({ connectionString: dbUrl });
   const prisma = new PrismaClient({ adapter });
   return {
     prisma,

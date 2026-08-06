@@ -81,6 +81,11 @@ export async function getOrCreateSession(
   const { start, end } = dayBounds(date);
 
   return prisma.$transaction(async (tx) => {
+    // Phase 51.1 — Postgres has real concurrency (SQLite's single writer
+    // used to serialize this implicitly). A transaction-scoped advisory
+    // lock keyed on the day makes find-or-create atomic across callers;
+    // it auto-releases at commit/rollback.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"chat-session-" + date}))`;
     const existing = await tx.chatSession.findFirst({
       where: {
         startedAt: { gte: start, lt: end },
@@ -191,7 +196,14 @@ export async function appendToWorkingMemoryList(
   item: unknown
 ): Promise<{ list: unknown[]; total: number }> {
   return prisma.$transaction(async (tx) => {
-    const session = await tx.chatSession.findUnique({ where: { id: sessionId } });
+    // Phase 51.1 — SELECT ... FOR UPDATE serializes concurrent appenders on
+    // the row so the read-modify-write of the JSON column can't lose items
+    // (it silently could under Postgres READ COMMITTED; SQLite's single
+    // writer used to mask this).
+    const rows = await tx.$queryRaw<
+      { id: string; workingMemory: string; closedAt: Date | null }[]
+    >`SELECT "id", "workingMemory", "closedAt" FROM "ChatSession" WHERE "id" = ${sessionId} FOR UPDATE`;
+    const session = rows[0];
     if (!session) {
       throw new Error(`ChatSession ${sessionId} not found`);
     }

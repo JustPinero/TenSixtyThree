@@ -19,7 +19,8 @@ import path from "path";
 import fs from "fs";
 import { vi } from "vitest";
 import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Client as PgClient } from "pg";
 import {
   __resetDispatchQueueForTests,
   getDispatchQueue,
@@ -62,7 +63,20 @@ const FIXTURE_PROJECT_PATH = path.resolve(
 // schema-push the same way relative-to-cwd paths do.
 const PRISMA_DIR = path.resolve(__dirname, "..", "..", "prisma");
 
-const TEMPLATE_DB_PATH = path.join(PRISMA_DIR, "test-rig-template.db");
+const TEST_PG_BASE =
+  process.env.TEST_PG_BASE_URL ||
+  "postgresql://tensixtythree:tensixtythree@localhost:51063";
+const TEMPLATE_DB = "test_rig_template";
+
+async function pgAdmin<T>(fn: (c: PgClient) => Promise<T>): Promise<T> {
+  const c = new PgClient({ connectionString: `${TEST_PG_BASE}/postgres` });
+  await c.connect();
+  try {
+    return await fn(c);
+  } finally {
+    await c.end();
+  }
+}
 
 /**
  * Phase 41.1 — stale scratch DB sweep.
@@ -109,23 +123,29 @@ async function sweepStaleRigDbs(): Promise<void> {
   }
 }
 
-async function preparePerRigDb(dbPath: string): Promise<void> {
-  // Test files often vi.mock("fs", ...) for the dispatcher's spawn
-  // path, which breaks `fs.copyFileSync` here. Use vi.importActual
-  // to get the real fs binding for template copy + existsSync.
-  const realFs = (await vi.importActual<typeof import("fs")>("fs")) as
-    typeof import("fs");
-  if (realFs.existsSync(TEMPLATE_DB_PATH)) {
-    realFs.copyFileSync(TEMPLATE_DB_PATH, dbPath);
+async function preparePerRigDb(dbName: string): Promise<void> {
+  // Phase 51.1 — CREATE DATABASE ... TEMPLATE is the Postgres analog of the
+  // old SQLite file copy. Falls back to a direct schema push when the rig is
+  // used outside vitest (no globalSetup ran, template missing).
+  // Serialize template clones across parallel vitest workers: Postgres
+  // refuses CREATE DATABASE ... TEMPLATE while another session is cloning
+  // the same template. The advisory lock (session-scoped, auto-released on
+  // disconnect) turns the race into a short queue.
+  try {
+    await pgAdmin(async (c) => {
+      await c.query(`SELECT pg_advisory_lock(1063)`);
+      await c.query(`CREATE DATABASE "${dbName}" TEMPLATE "${TEMPLATE_DB}"`);
+    });
     return;
+  } catch {
+    // template genuinely missing — create empty and push schema
   }
-  const cp = await vi.importActual<typeof import("child_process")>(
-    "child_process"
-  );
+  await pgAdmin((c) => c.query(`CREATE DATABASE "${dbName}"`));
+  const cp = await vi.importActual<typeof import("child_process")>("child_process");
   cp.execSync("pnpm exec prisma db push", {
     cwd: CASCADE_ROOT,
     stdio: "pipe",
-    env: { ...process.env, DATABASE_URL: `file:${dbPath}` },
+    env: { ...process.env, DATABASE_URL: `${TEST_PG_BASE}/${dbName}` },
   });
 }
 
@@ -137,17 +157,16 @@ export async function createDispatchRig(
   const concurrency = opts.concurrency ?? 1;
   const useFakeTimers = opts.fakeTimers !== false;
 
-  // 0. Hygiene — sweep scratch DBs leaked by interrupted prior runs
-  //    (Phase 41.1). Runs before fake timers are installed.
+  // 0. Hygiene — sweep legacy SQLite scratch files leaked by pre-51 runs
+  //    (Phase 41.1; keeps the old guarantee while any .db strays remain).
   await sweepStaleRigDbs();
 
-  // 1. Scratch SQLite. Copy from the schema-applied template (Phase
-  //    23.7); fall back to inline push if the template is missing.
-  const dbId = `${process.pid}-${++rigCounter}-${Date.now()}`;
-  const dbPath = path.join(PRISMA_DIR, `test-rig-${dbId}.db`);
-  const dbUrl = `file:${dbPath}`;
-  await preparePerRigDb(dbPath);
-  const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+  // 1. Scratch Postgres database, cloned from the schema-applied template
+  //    (Phase 51.1). Leaked DBs from crashed runs are swept by globalSetup.
+  const dbName = `test_rig_${process.pid}_${++rigCounter}_${Date.now().toString(36)}`;
+  const dbUrl = `${TEST_PG_BASE}/${dbName}`;
+  await preparePerRigDb(dbName);
+  const adapter = new PrismaPg({ connectionString: dbUrl });
   const prisma = new PrismaClient({ adapter });
 
   // 2. Queue reset + bind rig.queue to the production singleton so
@@ -414,14 +433,11 @@ export async function createDispatchRig(
         process.env.CASCADE_MAX_CONCURRENT_SUBAGENTS = previousConcurrencyEnv;
       }
       try {
-        if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-        // better-sqlite3 may also create -journal/-wal sidecars
-        for (const suffix of ["-journal", "-wal", "-shm"]) {
-          const sidecar = `${dbPath}${suffix}`;
-          if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
-        }
+        await pgAdmin((c) =>
+          c.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`)
+        );
       } catch {
-        // ignore — temp dir cleanup is best-effort
+        // best-effort — globalSetup sweeps leftovers on the next run
       }
     },
   };

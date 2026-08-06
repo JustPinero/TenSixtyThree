@@ -1,0 +1,16 @@
+# Phase 51.1 — local dev infrastructure. `docker compose -f docker-compose.dev.yml up -d`
+# (Equivalent container may already exist as `tensixtythree-pg` from initial setup.)
+services:
+  postgres:
+    image: postgres:16
+    container_name: tensixtythree-pg
+    environment:
+      POSTGRES_USER: tensixtythree
+      POSTGRES_PASSWORD: tensixtythree
+      POSTGRES_DB: tensixtythree
+    ports:
+      - "127.0.0.1:51063:5432"
+    volumes:
+      - tensixtythree-pgdata:/var/lib/postgresql/data
+volumes:
+  tensixtythree-pgdata:

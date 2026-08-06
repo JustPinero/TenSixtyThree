@@ -1,66 +1,63 @@
 /**
- * Phase 23.7 — Vitest globalSetup.
+ * Phase 51.1 — Vitest globalSetup (Postgres edition).
  *
- * Pushes the Prisma schema to a single template SQLite DB once per
- * test run. Per-rig DBs (created by createDispatchRig) copy this
- * template instead of running `prisma db push` themselves.
+ * Creates a schema-applied TEMPLATE DATABASE once per test run; per-rig
+ * databases are created via `CREATE DATABASE ... TEMPLATE ...` (Postgres's
+ * native equivalent of the old copy-the-SQLite-file trick — fast and
+ * worker-safe because template reads take no exclusive locks as long as
+ * nothing holds a connection to the template).
  *
- * Why this exists: parallel vitest workers were racing on the
- * Prisma client regeneration that `prisma db push` triggers (writes
- * to app/generated/prisma/). Concurrent generates corrupted each
- * other and produced flaky test failures across rig-using files.
- * Pushing once globally and copying the resulting file is fast,
- * deterministic, and worker-safe.
+ * Admin connection: TEST_PG_ADMIN_URL (defaults to the local dev container's
+ * `postgres` maintenance DB). All rig DBs are named test_rig_* so setup can
+ * sweep leftovers from crashed runs before workers spawn.
  */
 import { execSync } from "child_process";
-import fs from "fs";
 import path from "path";
+import { Client } from "pg";
 
 const CASCADE_ROOT = path.resolve(__dirname, "..", "..");
-const PRISMA_DIR = path.join(CASCADE_ROOT, "prisma");
-const TEMPLATE_DB_PATH = path.join(PRISMA_DIR, "test-rig-template.db");
 
-export const TEMPLATE_DB_PATH_EXPORT = TEMPLATE_DB_PATH;
+export const TEST_PG_BASE =
+  process.env.TEST_PG_BASE_URL ||
+  "postgresql://tensixtythree:tensixtythree@localhost:51063";
+const ADMIN_URL = `${TEST_PG_BASE}/postgres`;
+export const TEMPLATE_DB = "test_rig_template";
 
 export async function setup() {
-  // [41.1-residual] — sweep leftover per-rig scratch DBs from prior runs so
-  // back-to-back runs start clean. Safe here: globalSetup runs before any
-  // worker spawns, so nothing can be mid-use. (~6 files leak per green run
-  // from a non-disposing rig path; the sweep caps accumulation at zero.)
-  for (const f of fs.readdirSync(PRISMA_DIR)) {
-    if (/^test-rig-(?!template).*\.db(-journal|-wal|-shm)?$/.test(f)) {
-      try {
-        fs.unlinkSync(path.join(PRISMA_DIR, f));
-      } catch {
-        /* ignore */
-      }
+  const admin = new Client({ connectionString: ADMIN_URL });
+  await admin.connect();
+  try {
+    // Sweep rig DBs leaked by crashed prior runs (globalSetup runs before
+    // any worker, so nothing can be mid-use). [41.1-residual] preserved.
+    const leftovers = await admin.query(
+      `SELECT datname FROM pg_database WHERE datname LIKE 'test_rig_%'`
+    );
+    for (const row of leftovers.rows) {
+      await admin.query(`DROP DATABASE IF EXISTS "${row.datname}" WITH (FORCE)`);
     }
+    await admin.query(`CREATE DATABASE "${TEMPLATE_DB}"`);
+  } finally {
+    await admin.end();
   }
 
-  // Wipe stale template so schema is always fresh.
-  for (const suffix of ["", "-journal", "-wal", "-shm"]) {
-    const file = `${TEMPLATE_DB_PATH}${suffix}`;
-    if (fs.existsSync(file)) fs.unlinkSync(file);
-  }
   execSync("pnpm exec prisma db push", {
     cwd: CASCADE_ROOT,
     stdio: "pipe",
-    env: {
-      ...process.env,
-      DATABASE_URL: `file:${TEMPLATE_DB_PATH}`,
-    },
+    env: { ...process.env, DATABASE_URL: `${TEST_PG_BASE}/${TEMPLATE_DB}` },
   });
 }
 
 export async function teardown() {
-  for (const suffix of ["", "-journal", "-wal", "-shm"]) {
-    const file = `${TEMPLATE_DB_PATH}${suffix}`;
-    if (fs.existsSync(file)) {
-      try {
-        fs.unlinkSync(file);
-      } catch {
-        /* ignore */
-      }
+  const admin = new Client({ connectionString: ADMIN_URL });
+  await admin.connect();
+  try {
+    const all = await admin.query(
+      `SELECT datname FROM pg_database WHERE datname LIKE 'test_rig_%'`
+    );
+    for (const row of all.rows) {
+      await admin.query(`DROP DATABASE IF EXISTS "${row.datname}" WITH (FORCE)`);
     }
+  } finally {
+    await admin.end();
   }
 }

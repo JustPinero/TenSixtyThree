@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: tensixtythree
     ports:
       - "127.0.0.1:51063:5432"
+    command: postgres -c max_connections=300
     volumes:
       - tensixtythree-pgdata:/var/lib/postgresql/data
 volumes:

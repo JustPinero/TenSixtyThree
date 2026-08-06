@@ -166,7 +166,9 @@ export async function createDispatchRig(
   const dbName = `test_rig_${process.pid}_${++rigCounter}_${Date.now().toString(36)}`;
   const dbUrl = `${TEST_PG_BASE}/${dbName}`;
   await preparePerRigDb(dbName);
-  const adapter = new PrismaPg({ connectionString: dbUrl });
+  // Small pool per rig — the full suite runs many rigs concurrently and
+  // Postgres connections are a shared, finite resource.
+  const adapter = new PrismaPg({ connectionString: dbUrl, max: 3 });
   const prisma = new PrismaClient({ adapter });
 
   // 2. Queue reset + bind rig.queue to the production singleton so

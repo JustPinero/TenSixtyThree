@@ -9,6 +9,7 @@
     "dev:ci": "next dev --turbopack -H 127.0.0.1",
     "build": "next build",
     "start": "op run --env-file=.env -- next start",
+    "start:hosted": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -19,11 +19,11 @@ export async function POST(req: Request): Promise<Response> {
   if (!email)
     return Response.json({ error: "email required" }, { status: 400 });
 
-  const team = await prisma.team.findFirst({ orderBy: { id: "asc" } });
+  const team = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
   if (!team)
     return Response.json({ error: "No team exists yet" }, { status: 400 });
-  const ownerMembership = await prisma.membership.findFirst({
-    where: { teamId: team.id, role: "owner" },
+  const ownerMembership = await prisma.member.findFirst({
+    where: { organizationId: team.id, role: "owner" },
     include: { user: true },
   });
   if (!ownerMembership) {
@@ -38,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
     });
     return Response.json({
       invite: {
-        token: invite.token,
+        token: invite.id,
         email: invite.email,
         expiresAt: invite.expiresAt,
       },
@@ -62,7 +62,7 @@ export async function PUT(req: Request): Promise<Response> {
   if (!token)
     return Response.json({ error: "token required" }, { status: 400 });
 
-  const invite = await prisma.invite.findUnique({ where: { token } });
+  const invite = await prisma.invitation.findUnique({ where: { id: token } });
   if (!invite)
     return Response.json({ error: "Invalid invite token" }, { status: 400 });
 

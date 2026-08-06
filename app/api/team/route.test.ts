@@ -62,9 +62,9 @@ describe("/api/team", () => {
     const { createTeam: _ct, ...teams } = await import("@/lib/teams");
     void _ct;
     void teams;
-    const team = await rig.prisma.team.findFirstOrThrow();
+    const team = await rig.prisma.organization.findFirstOrThrow();
     const t = await rig.prisma.humanTask.create({
-      data: { title: "review PR", status: "pending", teamId: team.id },
+      data: { title: "review PR", status: "pending", organizationId: team.id },
     });
     void t;
     const body = await (await GET()).json();

@@ -9,7 +9,7 @@ import { listTeamActivity } from "@/lib/team-activity";
  * POST → create the team + local operator user in one step.
  */
 export async function GET(): Promise<Response> {
-  const team = await prisma.team.findFirst({ orderBy: { id: "asc" } });
+  const team = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
   if (!team) return Response.json({ team: null, members: [], activity: [] });
   const [members, activity] = await Promise.all([
     listMembers(prisma, team),
@@ -34,7 +34,7 @@ export async function POST(req: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const existing = await prisma.team.findFirst();
+  const existing = await prisma.organization.findFirst();
   if (existing) {
     return Response.json(
       { error: `A team already exists: ${existing.name}` },

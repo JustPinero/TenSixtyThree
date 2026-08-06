@@ -33,7 +33,8 @@ describe("teams domain model", () => {
     const team = await createTeam(rig.prisma, { name: "DeepFinLabs", owner: jp });
 
     expect(team.slug).toBe("deepfinlabs");
-    expect(team.createdById).toBe(jp.id);
+    const owner = await rig.prisma.member.findFirst({ where: { organizationId: team.id, userId: jp.id } });
+    expect(owner?.role).toBe("owner");
     expect(await roleOf(rig.prisma, jp, team)).toBe("owner");
     expect(await isMember(rig.prisma, jp, team)).toBe(true);
   });
@@ -58,7 +59,7 @@ describe("teams domain model", () => {
       invitedBy: jp,
     });
     expect(inv.status).toBe("pending");
-    expect(inv.token.length).toBeGreaterThan(20);
+    expect(inv.id.length).toBeGreaterThan(20);
     expect(inv.email).toBe("maya@coquilabs.ai");
   });
 
@@ -68,9 +69,9 @@ describe("teams domain model", () => {
     const team = await createTeam(rig.prisma, { name: "DeepFinLabs", owner: jp });
     const first = await inviteMember(rig.prisma, { team, email: "maya@x.com", role: "member", invitedBy: jp });
     const second = await inviteMember(rig.prisma, { team, email: "maya@x.com", role: "admin", invitedBy: jp });
-    const count = await rig.prisma.invite.count({ where: { teamId: team.id, email: "maya@x.com" } });
+    const count = await rig.prisma.invitation.count({ where: { organizationId: team.id, email: "maya@x.com" } });
     expect(count).toBe(1);
-    expect(second.token).not.toBe(first.token); // refreshed
+    expect(second.id).not.toBe(first.id); // refreshed
     expect(second.role).toBe("admin");
   });
 
@@ -81,12 +82,12 @@ describe("teams domain model", () => {
     const team = await createTeam(rig.prisma, { name: "DeepFinLabs", owner: jp });
     const inv = await inviteMember(rig.prisma, { team, email: "maya@x.com", role: "member", invitedBy: jp });
 
-    const m = await acceptInvite(rig.prisma, { token: inv.token, user: maya });
+    const m = await acceptInvite(rig.prisma, { token: inv.id, user: maya });
     expect(m.role).toBe("member");
     expect(await isMember(rig.prisma, maya, team)).toBe(true);
 
     await expect(
-      acceptInvite(rig.prisma, { token: inv.token, user: maya })
+      acceptInvite(rig.prisma, { token: inv.id, user: maya })
     ).rejects.toThrow(/already|invalid|accepted/i);
   });
 
@@ -102,14 +103,14 @@ describe("teams domain model", () => {
     });
     const later = new Date(t0.getTime() + 5000);
     await expect(
-      acceptInvite(rig.prisma, { token: inv.token, user: maya, now: later })
+      acceptInvite(rig.prisma, { token: inv.id, user: maya, now: later })
     ).rejects.toThrow(/expired/i);
 
     const inv2 = await inviteMember(rig.prisma, { team, email: "dev@x.com", role: "member", invitedBy: jp });
-    await rig.prisma.invite.update({ where: { id: inv2.id }, data: { status: "revoked" } });
+    await rig.prisma.invitation.update({ where: { id: inv2.id }, data: { status: "revoked" } });
     const dev = await mkUser(rig, "dev@x.com", "Dev K.");
     await expect(
-      acceptInvite(rig.prisma, { token: inv2.token, user: dev })
+      acceptInvite(rig.prisma, { token: inv2.id, user: dev })
     ).rejects.toThrow(/revoked|invalid/i);
   });
 

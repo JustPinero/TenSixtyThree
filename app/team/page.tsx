@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * human tasks and agent dispatches in one owner-attributed stream).
  */
 export default async function TeamPage() {
-  const team = await prisma.team.findFirst({ orderBy: { id: "asc" } });
+  const team = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
 
   if (!team) {
     return (

@@ -55,8 +55,8 @@ describe("/api/team/invite", () => {
       }),
     );
     expect(res.status).toBe(200);
-    const memberships = await rig.prisma.membership.findMany({
-      where: { teamId: team.id },
+    const memberships = await rig.prisma.member.findMany({
+      where: { organizationId: team.id },
     });
     expect(memberships.length).toBe(2); // owner + maya
   });

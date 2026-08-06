@@ -9,7 +9,7 @@
  * Additive: assignment sets the nullable teamId/ownerUserId; unassigned work is
  * simply absent from every team feed (backward-compatible with single-user use).
  */
-import type { PrismaClient, Team, User } from "@/app/generated/prisma/client";
+import type { PrismaClient, Organization, User } from "@/app/generated/prisma/client";
 
 export type ActivityKind = "dispatch" | "task";
 
@@ -25,21 +25,21 @@ export interface ActivityItem {
 
 export async function assignDispatchToTeam(
   prisma: PrismaClient,
-  args: { dispatchId: string; team: Team; owner?: User }
+  args: { dispatchId: string; team: Organization; owner?: User }
 ) {
   return prisma.dispatch.update({
     where: { id: args.dispatchId },
-    data: { teamId: args.team.id, ownerUserId: args.owner?.id ?? null },
+    data: { organizationId: args.team.id, ownerUserId: args.owner?.id ?? null },
   });
 }
 
 export async function assignTaskToTeam(
   prisma: PrismaClient,
-  args: { taskId: number; team: Team; owner?: User }
+  args: { taskId: number; team: Organization; owner?: User }
 ) {
   return prisma.humanTask.update({
     where: { id: args.taskId },
-    data: { teamId: args.team.id, ownerUserId: args.owner?.id ?? null },
+    data: { organizationId: args.team.id, ownerUserId: args.owner?.id ?? null },
   });
 }
 
@@ -53,15 +53,15 @@ function ownerOf(o: { id: string; name: string } | null): ActivityItem["owner"] 
  */
 export async function listTeamActivity(
   prisma: PrismaClient,
-  team: Team
+  team: Organization
 ): Promise<ActivityItem[]> {
   const [dispatches, tasks] = await Promise.all([
     prisma.dispatch.findMany({
-      where: { teamId: team.id },
+      where: { organizationId: team.id },
       include: { owner: true },
     }),
     prisma.humanTask.findMany({
-      where: { teamId: team.id },
+      where: { organizationId: team.id },
       include: { owner: true },
     }),
   ]);
@@ -93,7 +93,7 @@ export async function listTeamActivity(
 /** The team feed filtered to one member's owned work. */
 export async function listMemberWork(
   prisma: PrismaClient,
-  args: { team: Team; user: User }
+  args: { team: Organization; user: User }
 ): Promise<ActivityItem[]> {
   const feed = await listTeamActivity(prisma, args.team);
   return feed.filter((i) => i.owner?.id === args.user.id);

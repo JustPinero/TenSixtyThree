@@ -36,7 +36,7 @@ describe("/team page", () => {
     const { createTeam } = await import("@/lib/teams");
     const team = await createTeam(rig.prisma, { name: "Fleet", owner });
     await rig.prisma.humanTask.create({
-      data: { title: "ship it", status: "pending", teamId: team.id },
+      data: { title: "ship it", status: "pending", organizationId: team.id },
     });
     const { default: TeamPage } = await import("./page");
     render(await TeamPage());

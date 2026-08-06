@@ -320,7 +320,15 @@ on `id = 1`.
 | updatedAt | DateTime | updatedAt | — |
 
 
-## Teams & identity (Phases 43.1 + 45.1) — foundation, not yet wired to UI
+## Teams & identity — REWRITTEN in 51.2/51.3 (Better Auth owns identity)
+Legacy Team/Membership/Invite models are DELETED. Identity: Better Auth's
+User (String cuid ids) + Session/Account/Verification. Teams: the org
+plugin's Organization/Member/Invitation tables; lib/teams.ts keeps the old
+seam (createTeam/inviteMember/acceptInvite; invite "token" = Invitation.id,
+rotated on re-invite). Attribution: Dispatch.organizationId/ownerUserId +
+HumanTask.organizationId/ownerUserId (String FKs).
+
+## (historical) Teams & identity (Phases 43.1 + 45.1)
 
 ### User
 | Field | Type | Notes |

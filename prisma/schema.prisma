@@ -164,18 +164,18 @@ model Dispatch {
   errorMessage     String?
   // Phase 45 — team visibility. Nullable + backward-compatible: existing
   // single-user dispatches have no team and are unaffected.
-  teamId           Int?
+  organizationId   String?
   ownerUserId      String?
 
   outcome          DispatchOutcome?
   project          Project          @relation(fields: [projectId], references: [id])
-  team             Team?            @relation(fields: [teamId], references: [id])
+  organization     Organization?    @relation(fields: [organizationId], references: [id])
   owner            User?            @relation("DispatchOwner", fields: [ownerUserId], references: [id])
 
   @@index([projectId, status])
   @@index([expectedBy])
   @@index([status])
-  @@index([teamId])
+  @@index([organizationId])
 }
 
 // Phase 12A.1 — ChatSession owns conversation state.
@@ -228,17 +228,17 @@ model HumanTask {
   createdAt   DateTime  @default(now())
   completedAt DateTime?
   // Phase 45 — team visibility. Nullable + backward-compatible.
-  teamId      Int?
-  ownerUserId String?
+  organizationId String?
+  ownerUserId    String?
 
   project Project? @relation(fields: [projectId], references: [id])
-  team    Team?    @relation(fields: [teamId], references: [id])
-  owner   User?    @relation("HumanTaskOwner", fields: [ownerUserId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  owner        User?         @relation("HumanTaskOwner", fields: [ownerUserId], references: [id])
 
   // Phase 31 — audit finding [30.D4]. /api/tasks and /api/briefing
   // both filter on status; the list endpoint orders by (priority, createdAt).
   @@index([status, priority, createdAt])
-  @@index([teamId])
+  @@index([organizationId])
 }
 
 model Reminder {
@@ -394,62 +394,16 @@ model User {
   members     Member[]
   invitations Invitation[]
 
-  // Legacy Phase 43 relations (51.3 moves these onto the org plugin)
-  memberships     Membership[]
-  createdTeams    Team[]       @relation("TeamCreatedBy")
-  sentInvites     Invite[]     @relation("InviteInvitedBy")
-  ownedDispatches Dispatch[]   @relation("DispatchOwner")
-  ownedTasks      HumanTask[]  @relation("HumanTaskOwner")
+  // Work attribution (51.3 — teams live on the org plugin now)
+  ownedDispatches Dispatch[] @relation("DispatchOwner")
+  ownedTasks      HumanTask[] @relation("HumanTaskOwner")
 
   @@unique([email])
   @@map("user")
 }
 
-model Team {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  createdById String
-  createdAt   DateTime @default(now())
 
-  createdBy   User         @relation("TeamCreatedBy", fields: [createdById], references: [id])
-  memberships Membership[]
-  invites     Invite[]
-  dispatches  Dispatch[]
-  humanTasks  HumanTask[]
-}
 
-model Membership {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  teamId    Int
-  role      String   @default("member") // owner | admin | member | viewer
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-  team Team @relation(fields: [teamId], references: [id])
-
-  @@unique([userId, teamId])
-  @@index([teamId])
-}
-
-model Invite {
-  id          Int       @id @default(autoincrement())
-  teamId      Int
-  email       String
-  role        String    @default("member") // owner | admin | member | viewer
-  token       String    @unique
-  invitedById String
-  status      String    @default("pending") // pending | accepted | revoked | expired
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
-
-  team      Team @relation(fields: [teamId], references: [id])
-  invitedBy User @relation("InviteInvitedBy", fields: [invitedById], references: [id])
-
-  @@unique([teamId, email])
-  @@index([token])
-}
 
 // Phase 48.4 — "Brains": repos designated as knowledge/persona stores
 // (e.g. ~/kilroy-brain). Registered from Settings; consumers resolve the
@@ -524,6 +478,8 @@ model Organization {
   metadata    String?
   members     Member[]
   invitations Invitation[]
+  dispatches  Dispatch[]
+  humanTasks  HumanTask[]
 
   @@unique([slug])
   @@map("organization")

@@ -19,7 +19,7 @@ export interface ActivityItem {
   title: string;
   status: string;
   projectSlug: string | null;
-  owner: { id: number; name: string } | null;
+  owner: { id: string; name: string } | null;
   at: Date;
 }
 
@@ -43,7 +43,7 @@ export async function assignTaskToTeam(
   });
 }
 
-function ownerOf(o: { id: number; name: string } | null): ActivityItem["owner"] {
+function ownerOf(o: { id: string; name: string } | null): ActivityItem["owner"] {
   return o ? { id: o.id, name: o.name } : null;
 }
 

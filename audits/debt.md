@@ -2,6 +2,13 @@
 
 ## Open
 
+- **[51.D1]** (2026-08-06) Hosted schema sync uses `prisma db push` via
+  Railway `preDeployCommand` — no migrations directory, no rollback story.
+  Acceptable while the hosted DB holds no irreplaceable data; convert to
+  `prisma migrate` (baseline + migration files) before real production data
+  accumulates. Trigger: first external user, or first schema change after
+  launch, whichever comes first.
+
 *(empty — ledger zeroed 2026-07-30. Five former entries were promoted to the
 roadmap in `audits/modernization-plan-2026-07.md` § Promoted-from-debt because
 they are feature slices, not defects: [23.D1] eval recordings, [23.D2] team-

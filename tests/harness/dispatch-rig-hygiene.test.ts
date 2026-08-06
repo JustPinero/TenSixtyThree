@@ -83,7 +83,14 @@ describe("dispatch rig — stale scratch DB sweep", () => {
 
     expect(fs.existsSync(freshDb)).toBe(true);
     expect(fs.existsSync(unrelated)).toBe(true);
-    // Template is created by vitest globalSetup and must never be swept.
-    expect(fs.existsSync(TEMPLATE_DB_PATH)).toBe(true);
+  });
+
+  it("never sweeps a legacy template file even when stale (Phase 51: template is a PG database, but the filename guard stays)", async () => {
+    const legacyTemplate = createStaleFile("test-rig-template.db");
+    cleanupPaths.push(legacyTemplate);
+
+    rig = await createDispatchRig({ fakeTimers: false });
+
+    expect(fs.existsSync(legacyTemplate)).toBe(true);
   });
 });

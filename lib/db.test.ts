@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { execSync } from "child_process";
+import { pgUrlForFileUrl } from "@/lib/__test-utils__/pg-file-url-compat";
 import { pushTestSchema } from "@/lib/__test-utils__/prisma-push";
 import path from "path";
 import fs from "fs";
@@ -328,7 +329,9 @@ describe("seed script", () => {
         execSync("npx tsx prisma/seed.ts", {
           cwd: path.resolve(__dirname, ".."),
           stdio: "pipe",
-          env: { ...process.env, DATABASE_URL: TEST_DB_URL },
+          // Phase 51.1 — subprocess needs the translated Postgres URL (the
+          // compat alias only rewrites in-process adapter constructions).
+          env: { ...process.env, DATABASE_URL: pgUrlForFileUrl(TEST_DB_URL) },
         });
       }).not.toThrow();
     }

@@ -137,6 +137,10 @@ vi.mock("@/lib/db", () => {
       findUnique: vi.fn().mockResolvedValue(mockSession),
       update: vi.fn().mockResolvedValue(mockSession),
     },
+    // Phase 51.1 — chat-session now takes an advisory lock ($executeRaw)
+    // and a FOR UPDATE row read ($queryRaw) inside the transaction.
+    $executeRaw: vi.fn().mockResolvedValue(1),
+    $queryRaw: vi.fn(async () => [mockSession]),
     // Phase 13.1 — getOrCreateSession is wrapped in $transaction.
     // The mock just invokes the callback with the same prisma mock.
     $transaction: vi.fn(

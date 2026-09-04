@@ -80,7 +80,9 @@ knowledge/overseer-playbook.md
 !knowledge/deployment-playbook/
 
 # Templates and prompts — proprietary methodology
-templates/
+# (root-anchored: an unanchored templates/ also matches app/templates/ and
+# app/api/templates/, which railway up excludes from the upload -> prod 404)
+/templates/
 references/cascade-kickoff.md
 knowledge/deployment-playbook/COLLECTION-PROMPT.md
 

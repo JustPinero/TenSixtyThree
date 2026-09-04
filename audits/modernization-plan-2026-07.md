@@ -83,7 +83,7 @@ spool drain live; no placeholder pages; playbook plugin v4.0.1 current; install-
 - **[23.D1] Overseer eval recordings** — needs a live-API `pnpm eval:refresh` session + hand-curation of 5 scenario fixtures. Do as its own sitting with API budget.
 - **[23.D2] Team-dispatch lifecycle** — don't invest in tmux teammate-mode plumbing: the 07-28 research shows native agent teams + Agent SDK obsolete this path. Fold into Phase 49's dispatch rearchitecture.
 - **[23.D4] Real-log escalation corpus** — sanitize 5-10 real session logs into eval fixtures; a curation session.
-- **[Theme Pack]** — product feature, user-scheduled.
+- **[Theme Pack]** — SHIPPED 2026-09-04 (Phase 53): 12-pack registry (lib/theme-registry.ts), pack-apply with persona-pristine guard, 10 new CSS themes, registry-driven settings grid. Remaining: Leonardo portraits (Justin; <Portrait/> fallback covers absence).
 - **[36.A5] Server-side chat persistence** — real slice (schema + route + rehydration); protects against mid-stream tab closes. Good candidate alongside the compaction phase (both touch ChatSession).
 - **[30.D2-residual] route tests** — opportunistic; add when touching a route.
 

@@ -12,12 +12,12 @@ import {
   getOverseerSettings,
   setOverseerSettings,
 } from "@/lib/overseer-settings";
-import {
-  getSoundPreference,
-  setSoundPreference,
-} from "@/lib/sounds";
+import { getSoundPreference, setSoundPreference } from "@/lib/sounds";
 import { speak, listVoices } from "@/lib/speak";
 import { Portrait } from "@/app/components/portrait";
+// Phase 53 — theme cards come from the pack registry.
+import { THEME_PACKS } from "@/lib/theme-registry";
+import { applyThemePack } from "@/lib/theme-pack-apply";
 
 interface AuthStatus {
   service: string;
@@ -27,21 +27,6 @@ interface AuthStatus {
   user: string | null;
   error: string | null;
 }
-
-const themes = [
-  {
-    id: "dark" as const,
-    name: "Dark",
-    description: "Cyberpunk dark — the original TenSixtyThree aesthetic",
-    preview: ["#060910", "#111620", "#41a6b5", "#e0af68"],
-  },
-  {
-    id: "light" as const,
-    name: "Light",
-    description: "Capsule Corp clean — bright with cyan accents",
-    preview: ["#f0f2f5", "#ffffff", "#1a8a99", "#c49030"],
-  },
-];
 
 function IntegrationsPanel() {
   const [statuses, setStatuses] = useState<AuthStatus[]>([]);
@@ -60,7 +45,7 @@ function IntegrationsPanel() {
 
   useEffect(() => {
     fetchStatuses();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleLogin(service: string) {
@@ -99,7 +84,9 @@ function IntegrationsPanel() {
       </div>
 
       {loading ? (
-        <p className="text-xs font-mono text-space-500">Checking CLI auth status...</p>
+        <p className="text-xs font-mono text-space-500">
+          Checking CLI auth status...
+        </p>
       ) : (
         <div className="space-y-2">
           {statuses.map((s) => (
@@ -219,9 +206,7 @@ function NotificationsPanel() {
           onClick={handleToggle}
           disabled={permission === "denied"}
           className={`w-10 h-5 rounded-full transition-colors relative ${
-            enabled && permission === "granted"
-              ? "bg-cyan"
-              : "bg-space-600"
+            enabled && permission === "granted" ? "bg-cyan" : "bg-space-600"
           } ${permission === "denied" ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           <div
@@ -253,7 +238,8 @@ function SoundsPanel() {
           Delamain Sound Effects
         </span>
         <p className="text-[10px] font-mono text-space-500 mt-0.5">
-          Chimes when Delamain starts and finishes responding, alerts on blockers
+          Chimes when Delamain starts and finishes responding, alerts on
+          blockers
         </p>
       </div>
       <button
@@ -416,7 +402,13 @@ function ModelPanel() {
 
 function BrainsPanel() {
   const [brains, setBrains] = useState<
-    { id: number; name: string; path: string; valid: boolean; lastSyncedAt: string | null }[]
+    {
+      id: number;
+      name: string;
+      path: string;
+      valid: boolean;
+      lastSyncedAt: string | null;
+    }[]
   >([]);
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
@@ -483,7 +475,9 @@ function BrainsPanel() {
           </div>
         ))}
         {brains.length === 0 && (
-          <p className="text-xs font-mono text-space-500">No brains connected.</p>
+          <p className="text-xs font-mono text-space-500">
+            No brains connected.
+          </p>
         )}
       </div>
       <form onSubmit={add} className="flex gap-2">
@@ -515,13 +509,13 @@ function BrainsPanel() {
 function OverseerPanel() {
   const [name, setName] = useState(() => getOverseerSettings().name);
   const [portraitIdle, setPortraitIdle] = useState(
-    () => getOverseerSettings().portraitIdle
+    () => getOverseerSettings().portraitIdle,
   );
   const [portraitTalking, setPortraitTalking] = useState(
-    () => getOverseerSettings().portraitTalking ?? ""
+    () => getOverseerSettings().portraitTalking ?? "",
   );
   const [usesTalkingFace, setUsesTalkingFace] = useState(
-    () => getOverseerSettings().usesTalkingFace
+    () => getOverseerSettings().usesTalkingFace,
   );
   const [saved, setSaved] = useState(false);
 
@@ -557,7 +551,8 @@ function OverseerPanel() {
             className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
           />
           <p className="text-[10px] font-mono text-space-500 mt-1">
-            Your AI dispatcher&apos;s name. Appears in chat, sidebar, and briefings.
+            Your AI dispatcher&apos;s name. Appears in chat, sidebar, and
+            briefings.
           </p>
         </div>
 
@@ -646,18 +641,18 @@ function OverseerPanel() {
 
 function VoicePanel() {
   const [enabled, setEnabled] = useState(
-    () => getOverseerSettings().voiceEnabled
+    () => getOverseerSettings().voiceEnabled,
   );
   const [voiceURI, setVoiceURI] = useState<string | null>(
-    () => getOverseerSettings().voiceURI
+    () => getOverseerSettings().voiceURI,
   );
   const [rate, setRate] = useState(() => getOverseerSettings().voiceRate);
   const [pitch, setPitch] = useState(() => getOverseerSettings().voicePitch);
   const [silenceThresholdMs, setSilenceThresholdMs] = useState(
-    () => getOverseerSettings().silenceThresholdMs
+    () => getOverseerSettings().silenceThresholdMs,
   );
   const [micMode, setMicMode] = useState<"toggle" | "push-to-talk">(
-    () => getOverseerSettings().micMode
+    () => getOverseerSettings().micMode,
   );
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [saved, setSaved] = useState(false);
@@ -689,15 +684,12 @@ function VoicePanel() {
   }
 
   function handleTest() {
-    speak(
-      "Delamain reporting in. Voice output is configured and ready.",
-      {
-        voiceEnabled: true,
-        voiceURI,
-        voiceRate: rate,
-        voicePitch: pitch,
-      }
-    );
+    speak("Delamain reporting in. Voice output is configured and ready.", {
+      voiceEnabled: true,
+      voiceURI,
+      voiceRate: rate,
+      voicePitch: pitch,
+    });
   }
 
   return (
@@ -719,8 +711,8 @@ function VoicePanel() {
             </span>
           </label>
           <p className="text-[10px] font-mono text-space-500 mt-1 ml-6">
-            Delamain speaks responses aloud after streaming completes.
-            Uses your browser&apos;s built-in voices — no network call.
+            Delamain speaks responses aloud after streaming completes. Uses your
+            browser&apos;s built-in voices — no network call.
           </p>
         </div>
 
@@ -738,14 +730,13 @@ function VoicePanel() {
             <option value="">Browser default</option>
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
-                {v.name} ({v.lang})
-                {v.localService ? " · local" : ""}
+                {v.name} ({v.lang}){v.localService ? " · local" : ""}
               </option>
             ))}
           </select>
           <p className="text-[10px] font-mono text-space-500 mt-1">
-            Available voices come from your OS / browser. Quality and
-            count vary by platform.
+            Available voices come from your OS / browser. Quality and count vary
+            by platform.
           </p>
         </div>
 
@@ -800,7 +791,8 @@ function VoicePanel() {
                 className="accent-cyan"
               />
               <span className="text-xs font-mono text-text-bright">
-                <span className="font-bold">Click to toggle</span> — click mic on, speak, click off, then Send
+                <span className="font-bold">Click to toggle</span> — click mic
+                on, speak, click off, then Send
               </span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer">
@@ -813,12 +805,14 @@ function VoicePanel() {
                 className="accent-cyan"
               />
               <span className="text-xs font-mono text-text-bright">
-                <span className="font-bold">Hold to talk</span> — hold the mic button, release to auto-submit
+                <span className="font-bold">Hold to talk</span> — hold the mic
+                button, release to auto-submit
               </span>
             </label>
           </div>
           <p className="text-[10px] font-mono text-space-500 mt-2">
-            How the mic button behaves. Conversation Mode (chat-screen toggle) overrides this when active.
+            How the mic button behaves. Conversation Mode (chat-screen toggle)
+            overrides this when active.
           </p>
         </div>
 
@@ -841,7 +835,8 @@ function VoicePanel() {
             className="w-full accent-cyan"
           />
           <p className="text-[10px] font-mono text-space-500 mt-1">
-            How long to wait after you stop speaking before Conversation Mode auto-submits. Shorter = snappier; longer = more pause-tolerant.
+            How long to wait after you stop speaking before Conversation Mode
+            auto-submits. Shorter = snappier; longer = more pause-tolerant.
           </p>
         </div>
 
@@ -865,7 +860,7 @@ function VoicePanel() {
 }
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <div className="animate-fade-in">
@@ -883,16 +878,20 @@ export default function SettingsPage() {
       <div className="divider-h mb-8" />
 
       <div className="mb-8">
-        <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
-          Theme
+        <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
+          Theme Packs
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {themes.map((t) => (
+        <p className="text-xs font-mono text-text-dim mb-4">
+          Each pack bundles a look and a matching assistant. Switching packs
+          keeps a hand-customized assistant untouched.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {THEME_PACKS.map((t) => (
             <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
+              key={t.key}
+              onClick={() => applyThemePack(t.key)}
               className={`text-left p-4 border transition-all tile-3d ${
-                theme === t.id
+                theme === t.key
                   ? "border-cyan glow-border"
                   : "border-space-600 hover:border-space-500"
               }`}
@@ -907,25 +906,26 @@ export default function SettingsPage() {
                     style={{
                       background: color,
                       boxShadow:
-                        theme === t.id
-                          ? `0 0 8px ${color}40`
-                          : "none",
+                        theme === t.key ? `0 0 8px ${color}40` : "none",
                     }}
                   />
                 ))}
               </div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-mono font-bold text-text-bright">
-                  {t.name}
+                  {t.label}
                 </span>
-                {theme === t.id && (
+                {theme === t.key && (
                   <span className="text-[10px] font-mono text-cyan border border-cyan/40 px-1.5 py-0.5">
                     ACTIVE
                   </span>
                 )}
               </div>
-              <p className="text-xs font-mono text-text-dim">
+              <p className="text-xs font-mono text-text-dim mb-1.5">
                 {t.description}
+              </p>
+              <p className="text-[10px] font-mono text-text-dim uppercase tracking-wider">
+                with {t.persona.name}
               </p>
             </button>
           ))}
@@ -959,12 +959,11 @@ export default function SettingsPage() {
             <span className="text-text-bright">Delamain v1</span>
           </p>
           <p>
-            <span className="text-text-dim">Engine:</span>{" "}
-            Next.js + Prisma + SQLite
+            <span className="text-text-dim">Engine:</span> Next.js + Prisma +
+            SQLite
           </p>
           <p>
-            <span className="text-text-dim">AI:</span>{" "}
-            Anthropic Claude API
+            <span className="text-text-dim">AI:</span> Anthropic Claude API
           </p>
         </div>
       </div>

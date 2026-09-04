@@ -1,14 +1,20 @@
 "use client";
 
-import { createContext, useContext, useSyncExternalStore, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useSyncExternalStore,
+  useCallback,
+} from "react";
+import { resolveThemeKey, type ThemeKey } from "@/lib/theme-registry";
 
-type Theme = "dark" | "light";
+type Theme = ThemeKey;
 
 const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }>({
-  theme: "dark",
+  theme: "cyberpunk",
   setTheme: () => {},
 });
 
@@ -17,8 +23,9 @@ export function useTheme() {
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  return (localStorage.getItem("cascade-theme") as Theme) || "dark";
+  if (typeof window === "undefined") return "cyberpunk";
+  // Phase 53 — resolveThemeKey migrates pre-pack values ("dark"/"light").
+  return resolveThemeKey(localStorage.getItem("cascade-theme"));
 }
 
 function subscribeToTheme(callback: () => void) {
@@ -27,7 +34,11 @@ function subscribeToTheme(callback: () => void) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = useSyncExternalStore(subscribeToTheme, getStoredTheme, () => "dark" as Theme);
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getStoredTheme,
+    () => "cyberpunk" as Theme,
+  );
 
   // Apply data-theme attribute
   if (typeof document !== "undefined") {

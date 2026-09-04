@@ -79,3 +79,21 @@ describe("globals.css theme coverage", () => {
     expect(blockFor("light")).toBe(blockFor("sunny"));
   });
 });
+
+describe("theme-aware talking pulse (53.2)", () => {
+  it("delamain-talk keyframes glow with var(--cyan-glow), not hardcoded cyan", () => {
+    const start = css.indexOf("@keyframes delamain-talk");
+    expect(start).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf("}\n}", start) + 3);
+    expect(block).toContain("var(--cyan-glow)");
+    expect(block).not.toContain("65, 166, 181");
+  });
+
+  it("overseer-chat has no hardcoded cyan talking shadow", () => {
+    const chat = readFileSync(
+      path.resolve(__dirname, "../app/components/overseer-chat.tsx"),
+      "utf-8"
+    );
+    expect(chat).not.toContain("rgba(65,166,181");
+  });
+});

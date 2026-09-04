@@ -117,3 +117,16 @@ describe("resolveThemeKey", () => {
     expect(THEME_KEYS).toContain(resolved);
   });
 });
+
+describe("pack voices (53.2)", () => {
+  it("every pack has voice defaults with rate/pitch in (0, 2]", () => {
+    for (const pack of THEME_PACKS) {
+      expect(pack.persona.voice, `${pack.key} missing voice`).toBeDefined();
+      expect(pack.persona.voice.rate).toBeGreaterThan(0);
+      expect(pack.persona.voice.rate).toBeLessThanOrEqual(2);
+      expect(pack.persona.voice.pitch).toBeGreaterThan(0);
+      expect(pack.persona.voice.pitch).toBeLessThanOrEqual(2);
+      expect(Array.isArray(pack.persona.voice.preferredVoices)).toBe(true);
+    }
+  });
+});

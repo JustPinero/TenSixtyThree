@@ -95,7 +95,11 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#1c1410", "#2a1f17", "#c98a3d", "#b5764a"],
     persona: {
       name: "Cog",
-      ...portraits("cog"),
+      // Single-portrait mode: 2026-09-04 Leonardo runs couldn't hold the
+      // one-eyed gear's identity in a talking variant (4 rounds); the chat
+      // uses the idle for both states until a talking asset lands.
+      portraitIdle: "/portraits/cog/idle.jpg",
+      portraitTalking: null,
       personality:
         "Gruff-but-kind workshop foreman. Practical, hands-on, fond of mechanical metaphors.",
     },

@@ -28,6 +28,88 @@ interface AuthStatus {
   error: string | null;
 }
 
+/** 54.2 — BYOK: run chats on your own Anthropic key. Write-only. */
+function AnthropicKeyPanel() {
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [draft, setDraft] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "error">("idle");
+
+  const refresh = useCallback(async () => {
+    const res = await fetch("/api/account/anthropic-key");
+    if (res.ok) setHasKey((await res.json()).hasKey);
+    // 401 (signed out / local mode) — hide the panel entirely
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (hasKey === null) return null;
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
+        Your Anthropic API Key
+      </h2>
+      <p className="text-xs font-mono text-text-dim mb-3">
+        {hasKey
+          ? "A key is stored (encrypted). Your chats bill your own account."
+          : "Optional: add your own key and your chats bill your account instead of the app's."}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="anthropic-key" className="sr-only">
+          Anthropic API key
+        </label>
+        <input
+          id="anthropic-key"
+          type="password"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="sk-ant-..."
+          autoComplete="off"
+          className="w-72 bg-space-900 border border-space-600 px-3 py-2 text-sm font-mono text-text-bright"
+        />
+        <button
+          onClick={async () => {
+            setState("saving");
+            const res = await fetch("/api/account/anthropic-key", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ key: draft }),
+            });
+            setState(res.ok ? "idle" : "error");
+            if (res.ok) {
+              setDraft("");
+              refresh();
+            }
+          }}
+          disabled={state === "saving" || !draft.startsWith("sk-ant-")}
+          className="border border-cyan px-3 py-2 text-sm font-mono uppercase text-cyan disabled:opacity-50"
+        >
+          {hasKey ? "Replace" : "Save"}
+        </button>
+        {hasKey && (
+          <button
+            onClick={async () => {
+              await fetch("/api/account/anthropic-key", { method: "DELETE" });
+              refresh();
+            }}
+            className="border border-space-600 px-3 py-2 text-sm font-mono uppercase text-text-dim hover:text-danger hover:border-danger"
+          >
+            Remove
+          </button>
+        )}
+        {state === "error" && (
+          <span role="alert" className="text-xs font-mono text-danger">
+            Couldn&apos;t save that key.
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function IntegrationsPanel() {
   const [statuses, setStatuses] = useState<AuthStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -878,7 +960,10 @@ export default function SettingsPage() {
       <div className="divider-h mb-8" />
 
       <div className="mb-8">
-        <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
+        <h2
+          id="tour-themes"
+          className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1"
+        >
           Theme Packs
         </h2>
         <p className="text-xs font-mono text-text-dim mb-4">
@@ -941,6 +1026,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="divider-h mb-8" />
+
+      <AnthropicKeyPanel />
 
       <IntegrationsPanel />
 

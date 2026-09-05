@@ -33,6 +33,7 @@ model Project {
   completionCriteria String?           // persisted done.md content — what "done" means for this project
   badges             String            @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
   themeKey           String?           // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
+  isDemo             Boolean           @default(false) // 54.5 — demo-seeded project (tenancy debt: real project multi-tenancy is post-54)
   deadline           DateTime?
   lastSessionEndedAt DateTime?
   kickoffTemplateId  Int?
@@ -49,6 +50,8 @@ model Project {
   dispatches       Dispatch[]
   featureUsages    ProjectFeatureUsage[]
   featureProposals FeatureProposal[]
+  orgPosts         OrgPost[]
+  orgShares        OrgProjectShare[]
   kickoffTemplate  KickoffTemplate?  @relation(fields: [kickoffTemplateId], references: [id])
 
   // Phase 31 — audit finding [30.D4]. Dashboard, briefing, and
@@ -389,6 +392,17 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // 54.1 — Better Auth admin plugin
+  role       String?   @default("user")
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
+  // 54.2 — BYOK: user's own Anthropic key, sealed by lib/crypto-box
+  anthropicKeyEnc String?
+  // 54.5 — ephemeral demo identity (swept by cleanupDemo)
+  isDemo Boolean @default(false)
+
   // Better Auth relations
   sessions    Session[]
   accounts    Account[]
@@ -397,6 +411,7 @@ model User {
 
   // Work attribution (51.3 — teams live on the org plugin now)
   ownedDispatches Dispatch[] @relation("DispatchOwner")
+  orgPosts        OrgPost[] @relation("OrgPostAuthor")
   ownedTasks      HumanTask[] @relation("HumanTaskOwner")
 
   @@unique([email])
@@ -432,6 +447,8 @@ model Session {
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeOrganizationId String?
+  // 54.1 — Better Auth admin plugin
+  impersonatedBy       String?
 
   @@unique([token])
   @@index([userId])
@@ -481,6 +498,12 @@ model Organization {
   invitations Invitation[]
   dispatches  Dispatch[]
   humanTasks  HumanTask[]
+  posts       OrgPost[]
+  projectShares OrgProjectShare[]
+  // 54.4b — org's Linear API key, sealed by lib/crypto-box
+  linearKeyEnc String?
+  // 54.5 — ephemeral demo org
+  isDemo Boolean @default(false)
 
   @@unique([slug])
   @@map("organization")
@@ -515,4 +538,130 @@ model Invitation {
   @@index([organizationId])
   @@index([email])
   @@map("invitation")
+}
+
+// 54.1 — invites for INDEPENDENT users (org members come in through the
+// organization plugin's Invitation). Consumed by the user.create.before
+// invite gate; acceptedAt stamps consumption.
+model UserInvite {
+  id          String    @id @default(cuid())
+  email       String
+  token       String    @unique @default(cuid())
+  invitedById String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+  @@map("user_invite")
+}
+
+// 54.3 — org typed feed: goals, objectives, bug findings, test-hardening
+// requests, notes; optionally attached to a shared project.
+model OrgPost {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      Int?
+  authorUserId   String
+  type           String // goal | objective | bug | test-request | note
+  title          String
+  body           String   @default("")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id])
+  author       User         @relation("OrgPostAuthor", fields: [authorUserId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("org_post")
+}
+
+// 54.3 — a project shared into an org (progress visible to members).
+model OrgProjectShare {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      Int
+  sharedById     String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, projectId])
+  @@map("org_project_share")
+}
+
+// ── 54.4 — roadmaps + kanban ─────────────────────────────────────────
+// Boards and milestones are org-scoped (organizationId, members) or
+// personal (ownerUserId). Exactly one owner field set — enforced in
+// lib/boards.ts, not the DB (SQLite-era convention: app-level checks).
+
+model Milestone {
+  id             String    @id @default(cuid())
+  organizationId String?
+  ownerUserId    String?
+  title          String
+  description    String    @default("")
+  status         String    @default("planned") // planned | in_progress | shipped
+  targetDate     DateTime?
+  position       Float
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tickets Ticket[]
+
+  @@index([organizationId, position])
+  @@index([ownerUserId, position])
+  @@map("milestone")
+}
+
+model Board {
+  id             String   @id @default(cuid())
+  organizationId String?
+  ownerUserId    String?
+  name           String
+  createdAt      DateTime @default(now())
+
+  columns BoardColumn[]
+  tickets Ticket[]
+
+  @@index([organizationId])
+  @@index([ownerUserId])
+  @@map("board")
+}
+
+model BoardColumn {
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  position Float
+
+  board   Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@index([boardId, position])
+  @@map("board_column")
+}
+
+model Ticket {
+  id             String   @id @default(cuid())
+  boardId        String
+  columnId       String
+  title          String
+  description    String   @default("")
+  position       Float
+  priority       String   @default("normal") // low | normal | high | urgent
+  assigneeUserId String?
+  milestoneId    String?
+  linearIssueId  String?  @unique // 54.4b Linear sync idempotency
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column    BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  milestone Milestone?  @relation(fields: [milestoneId], references: [id])
+
+  @@index([columnId, position])
+  @@map("ticket")
 }

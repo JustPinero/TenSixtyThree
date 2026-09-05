@@ -54,6 +54,30 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
       'Set "true" on hosted instances to enforce sessions; unset/false is local single-user mode.',
   },
   {
+    name: "ENCRYPTION_KEY",
+    scope: "hosted-required",
+    description:
+      "54.2 — 32-byte base64 secret sealing BYOK Anthropic keys at rest (openssl rand -base64 32). Rotating it orphans stored keys (users re-enter).",
+  },
+  {
+    name: "RESEND_API_KEY",
+    scope: "hosted-optional",
+    description:
+      "54.2 — Resend API key for invite/OTP email. Unset: emails are logged to the server console instead (dev/local mode).",
+  },
+  {
+    name: "EMAIL_FROM",
+    scope: "hosted-optional",
+    description:
+      '54.2 — From header for auth email. Default "TenSixtyThree <auth@mail.tensixtythree.com>".',
+  },
+  {
+    name: "ADMIN_EMAILS",
+    scope: "hosted-required",
+    description:
+      "54.1 — comma-separated bootstrap allowlist: these emails may create accounts without an invite and land with the admin role. Without it, an invite-only instance has no way in.",
+  },
+  {
     name: "GITHUB_CLIENT_ID",
     scope: "hosted-required",
     description: "GitHub OAuth App client id (primary sign-in provider).",

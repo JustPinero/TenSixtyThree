@@ -369,3 +369,39 @@ Repos designated as knowledge/persona stores (e.g. ~/kilroy-brain).
 | createdAt | DateTime | |
 | lastSyncedAt | DateTime? | bumped by the Playbook write-through |
 Resolution for consumers: first Brain row → KILROY_BRAIN_PATH env → null (lib/brain-registry.ts).
+
+## UserInvite (54.1 — invite-only auth)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| email | String | — | invitee (indexed, matched case-insensitively by the gate) |
+| token | String cuid | — | unique; emailed link token |
+| invitedById | String? | null | admin user id |
+| expiresAt | DateTime | — | 7 days from creation |
+| acceptedAt | DateTime? | null | stamped when consumed by user.create.before |
+| createdAt | DateTime | now() | — |
+
+User (54.1 admin plugin): + role String? ("user"/"admin"), banned Boolean?, banReason String?, banExpires DateTime?. Session: + impersonatedBy String?.
+
+## OrgPost (54.3 — org typed feed)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| organizationId | String | — | FK Organization (cascade) |
+| projectId | Int? | null | optional attachment; must be OrgProjectShare'd |
+| authorUserId | String | — | FK User |
+| type | String | — | goal, objective, bug, test-request, note |
+| title | String | — | 1-200 chars |
+| body | String | "" | ≤5000 chars |
+| createdAt | DateTime | now() | index (organizationId, createdAt) |
+
+## OrgProjectShare (54.3 — project shared into an org)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| organizationId | String | — | FK Organization (cascade) |
+| projectId | Int | — | FK Project (cascade); unique (org, project) |
+| sharedById | String | — | user id |
+| createdAt | DateTime | now() | — |
+
+User (54.2): + anthropicKeyEnc String? (BYOK, sealed by lib/crypto-box).

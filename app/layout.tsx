@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Sidebar } from "./components/sidebar";
 import { SetPasswordPrompt } from "./components/set-password-prompt";
+import { DemoBanner } from "./components/demo-banner";
 import { ThemeProvider } from "./components/theme-provider";
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Sidebar />
           <div className="flex-1 min-h-full flex flex-col">
+            <DemoBanner />
             <SetPasswordPrompt />
             <main className="flex-1 overflow-auto lg:ml-0 p-6 pt-14 lg:pt-6">
               {children}

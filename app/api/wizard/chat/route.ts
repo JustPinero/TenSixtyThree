@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
 import { resolveAnthropicKey } from "@/lib/anthropic-key";
+import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildWizardSystemPrompt } from "@/lib/wizard-prompt";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
@@ -19,6 +20,13 @@ export async function POST(request: NextRequest) {
   try {
     // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
     const byokSession = await getServerSession(prisma, request.headers);
+    // 54.5 — no Anthropic spend from demo sessions.
+    if (isDemoSession(byokSession)) {
+      return NextResponse.json(
+        { error: "Demo mode: this chat is disabled in the sandbox. Try the Overseer on the dashboard for a scripted reply." },
+        { status: 403 },
+      );
+    }
     const { key: apiKey } = await resolveAnthropicKey(
       prisma,
       byokSession?.user.id ?? null,

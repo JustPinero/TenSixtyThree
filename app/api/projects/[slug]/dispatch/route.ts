@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getServerSession } from "@/lib/auth-helpers";
+import { isDemoSession } from "@/lib/demo";
 import {
   generatePrompt,
   dispatchClaude,
@@ -13,6 +15,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  // 54.5 — the sandbox never spawns real Claude Code sessions.
+  {
+    const demoSession = await getServerSession(prisma, request.headers);
+    if (isDemoSession(demoSession)) {
+      return NextResponse.json(
+        { error: "Demo mode: dispatching is disabled in the sandbox." },
+        { status: 403 },
+      );
+    }
+  }
   const limited = checkRateLimit(getRateLimitKey(request, "dispatch"), 10, 60_000);
   if (limited) return limited;
 

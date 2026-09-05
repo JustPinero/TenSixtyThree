@@ -26,6 +26,13 @@ async function requireAdmin(request: NextRequest) {
     where: { id: session.user.id },
     select: { role: true },
   });
+  const full = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isDemo: true },
+  });
+  if (full?.isDemo) {
+    return { ok: false as const, status: 403, error: "Not available in demo mode" };
+  }
   if (user?.role !== "admin") {
     return { ok: false as const, status: 403, error: "Admin only" };
   }

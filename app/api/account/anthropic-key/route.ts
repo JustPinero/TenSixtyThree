@@ -8,9 +8,13 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
 import { seal } from "@/lib/crypto-box";
 
+import { isDemoSession } from "@/lib/demo";
+
 async function requireUser(request: NextRequest) {
   const session = await getServerSession(prisma, request.headers);
   if (!session) return null;
+  // 54.5 — demo sessions must not write (or read) key material.
+  if (isDemoSession(session)) return null;
   return session.user;
 }
 

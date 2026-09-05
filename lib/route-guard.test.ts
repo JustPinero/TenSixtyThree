@@ -21,6 +21,11 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/webhook/session-complete")).toBe(true);
   });
 
+  it("demo entry is public (54.5)", () => {
+    expect(isPublicPath("/api/demo")).toBe(true);
+    expect(isPublicPath("/api/demo/status")).toBe(true);
+  });
+
   it("app pages and APIs are guarded", () => {
     for (const p of [
       "/",

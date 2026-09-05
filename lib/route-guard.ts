@@ -12,6 +12,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth/", // Better Auth mount — its own flows handle security
   "/api/health", // deploy healthcheck must stay unauthenticated (51.4)
   "/api/webhook/session-complete", // shared-secret auth of its own (42.x)
+  "/api/demo", // 54.5 — demo entry + status (rate-limited, mints its own session)
   "/_next/",
 ];
 

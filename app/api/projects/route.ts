@@ -1,13 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { getServerSession } from "@/lib/auth-helpers";
+import { isDemoSession } from "@/lib/demo";
 import { getAllUnreadCounts } from "@/lib/unread";
 import { getAdvisoryStatuses } from "@/lib/advisory-tracker";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const [projects, unreadCounts, advisoryStatuses, humanTaskCounts] =
       await Promise.all([
         prisma.project.findMany({
+          // 54.5 — demo-seeded projects are visible only to demo sessions
+          where: (await getServerSession(prisma, request.headers).then(
+            (s) => isDemoSession(s),
+          ))
+            ? {}
+            : { isDemo: false },
           orderBy: { lastActivityAt: "desc" },
         }),
         getAllUnreadCounts(prisma),

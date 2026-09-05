@@ -12,7 +12,7 @@
     "dev": "op run --env-file=.env -- next dev --turbopack -H 127.0.0.1",
     "dev:ci": "next dev --turbopack -H 127.0.0.1",
     "build": "next build",
-    "start": "op run --env-file=.env -- next start",
+    "start": "sh -c 'if [ \"$RUNNER_MODE\" = \"1\" ]; then tsx scripts/runner.ts; else op run --env-file=.env -- next start; fi'",
     "start:hosted": "sh -c 'if [ \"$RUNNER_MODE\" = \"1\" ]; then tsx scripts/runner.ts; else next start; fi'",
     "lint": "eslint",
     "test": "vitest run",

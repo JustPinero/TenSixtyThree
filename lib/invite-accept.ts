@@ -14,9 +14,20 @@ export async function acceptPendingInvitations(
   userId: string,
   email: string,
 ): Promise<number> {
+  // Security review 55: match on the account's CANONICAL email and only
+  // when verified — an unverified (or caller-supplied) address must not
+  // harvest someone else's invitations. OTP/OAuth sign-ins verify by
+  // construction; anything else waits.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, emailVerified: true },
+  });
+  if (!user?.emailVerified) return 0;
+  void email; // kept for call-site compatibility; canonical wins
+
   const pending = await prisma.invitation.findMany({
     where: {
-      email: { equals: email.trim().toLowerCase(), mode: "insensitive" },
+      email: { equals: user.email.trim().toLowerCase(), mode: "insensitive" },
       status: "pending",
       expiresAt: { gt: new Date() },
     },

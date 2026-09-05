@@ -71,3 +71,33 @@ describe("POST /api/orgs/invite", () => {
     expect((await route.POST(req("tok", { email: "a@b.dev" }))).status).toBe(400);
   });
 });
+
+describe("security review 55: role escalation", () => {
+  it("a plain member cannot invite with the admin role", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const route = await load(rig);
+    const owner = await makeSession(rig, "tokowner");
+    const org = await createOrg(rig.prisma, { name: "O", ownerId: owner.id });
+    const plain = await makeSession(rig, "tokplain");
+    await rig.prisma.member.create({
+      data: { userId: plain.id, organizationId: org.id, role: "member" },
+    });
+    await rig.prisma.session.update({
+      where: { token: "tokplain" },
+      data: { activeOrganizationId: org.id },
+    });
+    const res = await route.POST(
+      req("tokplain", { email: "new@p.dev", role: "admin" })
+    );
+    expect(res.status).toBe(403);
+
+    await rig.prisma.session.update({
+      where: { token: "tokowner" },
+      data: { activeOrganizationId: org.id },
+    });
+    const ok = await route.POST(
+      req("tokowner", { email: "new@p.dev", role: "admin" })
+    );
+    expect(ok.status).toBe(200);
+  });
+});

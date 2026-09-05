@@ -19,7 +19,12 @@ async function setup(r: DispatchRig) {
     data: { id: "owner", name: "Owner", email: "owner@x.dev" },
   });
   const invitee = await r.prisma.user.create({
-    data: { id: "inv", name: "Invitee", email: "invitee@x.dev" },
+    data: {
+      id: "inv",
+      name: "Invitee",
+      email: "invitee@x.dev",
+      emailVerified: true,
+    },
   });
   const org = await createOrg(r.prisma, { name: "Org", ownerId: owner.id });
   return { owner, invitee, org };
@@ -103,5 +108,46 @@ describe("acceptPendingInvitations", () => {
       where: { userId: invitee.id, organizationId: org.id },
     });
     expect(members).toBe(1);
+  });
+});
+
+describe("security review 55 regressions", () => {
+  it("unverified accounts harvest nothing; canonical email wins over the argument", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { owner, org } = await setup(rig);
+    const unverified = await rig.prisma.user.create({
+      data: {
+        id: "unv",
+        name: "U",
+        email: "victim@x.dev",
+        emailVerified: false,
+      },
+    });
+    await rig.prisma.invitation.create({
+      data: {
+        organizationId: org.id,
+        email: "victim@x.dev",
+        role: "member",
+        expiresAt: FRESH,
+        inviterId: owner.id,
+      },
+    });
+    expect(
+      await acceptPendingInvitations(rig.prisma, unverified.id, "victim@x.dev")
+    ).toBe(0);
+
+    // Verified attacker passing a victim email as the ARGUMENT gets nothing
+    // either — the canonical account email is what matches.
+    const attacker = await rig.prisma.user.create({
+      data: {
+        id: "atk",
+        name: "A2",
+        email: "attacker@x.dev",
+        emailVerified: true,
+      },
+    });
+    expect(
+      await acceptPendingInvitations(rig.prisma, attacker.id, "victim@x.dev")
+    ).toBe(0);
   });
 });

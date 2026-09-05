@@ -37,7 +37,17 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const email =
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const role = ROLES.includes(body.role) ? body.role : "member";
+  // Security review 55: only owners/admins may hand out the admin role.
+  let role = "member";
+  if (typeof body.role === "string" && ROLES.includes(body.role)) {
+    if (body.role === "admin" && member.role !== "admin" && member.role !== "owner") {
+      return NextResponse.json(
+        { error: "Only owners and admins can invite admins" },
+        { status: 403 }
+      );
+    }
+    role = body.role;
+  }
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }

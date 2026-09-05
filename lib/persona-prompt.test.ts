@@ -64,3 +64,18 @@ describe("buildPersonaBlock", () => {
     expect(block.startsWith("\n\n# Persona")).toBe(true);
   });
 });
+
+describe("projectPersonaBlock (53.4)", () => {
+  it("valid key yields that pack's name and personality", async () => {
+    const { projectPersonaBlock } = await import("./persona-prompt");
+    const block = projectPersonaBlock("console");
+    expect(block).toContain("Console");
+    expect(block).toContain("Terse sysop");
+  });
+
+  it("null and unknown keys yield empty string", async () => {
+    const { projectPersonaBlock } = await import("./persona-prompt");
+    expect(projectPersonaBlock(null)).toBe("");
+    expect(projectPersonaBlock("vaporwave")).toBe("");
+  });
+});

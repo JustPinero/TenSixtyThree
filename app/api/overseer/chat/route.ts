@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { resolveChatModel, DEFAULT_CHAT_MODEL } from "@/lib/model-config";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
+import { buildPersonaBlock } from "@/lib/persona-prompt";
 import {
   isFeatureCheckCommand,
   runFeatureCheck,
@@ -22,10 +23,7 @@ import {
   proposeForAll,
   renderProposalReport,
 } from "@/lib/anthropic-feature-proposer";
-import {
-  runToolUseLoop,
-  type ToolContext,
-} from "@/lib/overseer-tools";
+import { runToolUseLoop, type ToolContext } from "@/lib/overseer-tools";
 import { defaultStreamingAnthropicCaller } from "@/lib/overseer-tools-streaming";
 import type { StreamEvent } from "@/lib/streaming-accumulator";
 import { buildDefaultRegistry } from "@/lib/overseer-tools-registry-default";
@@ -58,7 +56,7 @@ export const DISPATCH_TAG_EXAMPLE =
  * developer can see what happened instead of a generic message.
  */
 function formatTruncationSurface(
-  result: Awaited<ReturnType<typeof runToolUseLoop>>
+  result: Awaited<ReturnType<typeof runToolUseLoop>>,
 ): string {
   if (!result.truncated) return "";
   const calls: { name: string; count: number }[] = [];
@@ -172,7 +170,7 @@ This is a UI bridge — the canonical record is the propose_dispatch call. Don't
  */
 function sseFromText(
   text: string,
-  options: { model?: string; messageId?: string } = {}
+  options: { model?: string; messageId?: string } = {},
 ): ReadableStream<Uint8Array> {
   const model = options.model ?? DEFAULT_CHAT_MODEL;
   const messageId = options.messageId ?? `msg-${Date.now().toString(36)}`;
@@ -217,12 +215,11 @@ function sseFromText(
   });
 }
 
-
 export async function POST(request: NextRequest) {
   const limited = checkRateLimit(
     getRateLimitKey(request, "overseer"),
     20,
-    60_000
+    60_000,
   );
   if (limited) return limited;
 
@@ -231,17 +228,19 @@ export async function POST(request: NextRequest) {
     if (!apiKey || !apiKey.startsWith("sk-")) {
       return NextResponse.json(
         { error: "ANTHROPIC_API_KEY not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const body = await request.json();
+    // 53.3 — optional theme-pack persona from the client's overseer
+    // settings; buildPersonaBlock sanitizes and returns "" when absent.
+    const personaBlock = buildPersonaBlock(
+      body.persona && typeof body.persona === "object" ? body.persona : {},
+    );
     const validation = validateMessages(body.messages);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Slash commands take precedence over both the tool path and the
@@ -334,7 +333,10 @@ export async function POST(request: NextRequest) {
       content: typeof m.content === "string" ? m.content : "",
     }));
 
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+    const { readable, writable } = new TransformStream<
+      Uint8Array,
+      Uint8Array
+    >();
     const writer = writable.getWriter();
     const enc = new TextEncoder();
     const aggregateModel = await resolveChatModel(prisma);
@@ -449,7 +451,7 @@ export async function POST(request: NextRequest) {
             keepRecent: 10,
             summarizer: defaultSummarizer(apiKey),
             signal: abort.signal,
-          }
+          },
         );
 
         const result = await runToolUseLoop({
@@ -458,7 +460,7 @@ export async function POST(request: NextRequest) {
             onEvent: onUpstreamEvent,
           }),
           model: aggregateModel,
-          systemPrompt: TOOL_PATH_SYSTEM_PROMPT,
+          systemPrompt: TOOL_PATH_SYSTEM_PROMPT + personaBlock,
           messages,
           registry,
           ctx,
@@ -495,7 +497,7 @@ export async function POST(request: NextRequest) {
                 console.warn(
                   `[engineer-channel-writeback] failed to persist message: ${
                     err instanceof Error ? err.message : String(err)
-                  }`
+                  }`,
                 );
               }
             });
@@ -531,8 +533,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

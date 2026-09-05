@@ -488,6 +488,12 @@ export function OverseerChat({
         body: JSON.stringify({
           messages: newMessages.slice(-10),
           sessionDate: localToday(),
+          // 53.3 — theme-pack persona rides along so the model actually
+          // adopts the active assistant's name + personality.
+          persona: (() => {
+            const s = getOverseerSettings();
+            return { name: s.name, personality: s.personality };
+          })(),
         }),
       });
 

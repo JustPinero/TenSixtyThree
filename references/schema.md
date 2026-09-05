@@ -27,6 +27,8 @@ The central entity. Represents a software project being monitored.
 | completionCriteria | String? | null | Persisted done.md content — what "done" means for this project |
 | badges | String (JSON) | "[]" | Array: deployed, client, testing, awaiting-review, versioned |
 | themeKey | String? | null | 53.4 — per-project assistant persona (theme-pack key from lib/theme-registry.ts); null = inherit global |
+| isDemo | Boolean | false | 54.5 — demo-seeded project |
+| ownerUserId | String? | null | 55.2 — owner; null = operator fleet (visible to admins + local mode); owned = owner + members of orgs it's shared to (lib/project-access.ts) |
 | deadline | DateTime? | null | Optional project deadline |
 | lastSessionEndedAt | DateTime? | null | When last Claude session ended |
 | kickoffTemplateId | Int? | null | FK to KickoffTemplate |

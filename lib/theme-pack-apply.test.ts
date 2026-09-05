@@ -104,10 +104,17 @@ describe("voice apply (53.2)", () => {
   });
 
   it("picks an installed voice matching preferredVoices, case-insensitive", () => {
+    const mkVoice = (name: string, voiceURI: string): SpeechSynthesisVoice => ({
+      name,
+      voiceURI,
+      default: false,
+      lang: "en-US",
+      localService: true,
+    });
     const fake = [
-      { name: "Google US English", voiceURI: "gus" },
-      { name: "Daniel (English UK)", voiceURI: "daniel" },
-    ] as unknown as SpeechSynthesisVoice[];
+      mkVoice("Google US English", "gus"),
+      mkVoice("Daniel (English UK)", "daniel"),
+    ];
     Object.defineProperty(window, "speechSynthesis", {
       configurable: true,
       value: { getVoices: () => fake },

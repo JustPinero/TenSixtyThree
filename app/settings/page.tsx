@@ -890,12 +890,11 @@ export default function SettingsPage() {
             <button
               key={t.key}
               onClick={() => applyThemePack(t.key)}
-              className={`text-left p-4 border transition-all tile-3d ${
+              className={`text-left p-4 border transition-all tile-3d bg-space-800 ${
                 theme === t.key
                   ? "border-cyan glow-border"
                   : "border-space-600 hover:border-space-500"
               }`}
-              style={{ background: "var(--bg-panel)" }}
             >
               {/* Portrait + color preview */}
               <div className="flex items-center gap-3 mb-3">

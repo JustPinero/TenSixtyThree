@@ -395,6 +395,9 @@ model User {
   banReason  String?
   banExpires DateTime?
 
+  // 54.2 — BYOK: user's own Anthropic key, sealed by lib/crypto-box
+  anthropicKeyEnc String?
+
   // Better Auth relations
   sessions    Session[]
   accounts    Account[]

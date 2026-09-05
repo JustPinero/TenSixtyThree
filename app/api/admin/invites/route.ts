@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
+import { sendEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -66,8 +67,13 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // 54.2 wires Resend; until then the invite surfaces in server logs.
-  console.log(`[auth-email] user-invite → ${email}: token ${invite.token}`);
+  const base = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+  await sendEmail({
+    to: email,
+    subject: "You're invited to TenSixtyThree",
+    html: `<p>You've been invited to TenSixtyThree.</p><p><a href="${base}/signin">Sign in with this email</a> using the "Email code" option — your invite is valid for 7 days.</p>`,
+    text: `You're invited to TenSixtyThree. Sign in at ${base}/signin with this email (Email code option). Valid 7 days.`,
+  });
 
   return NextResponse.json({ invite });
 }

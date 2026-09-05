@@ -8,6 +8,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getServerSession } from "@/lib/auth-helpers";
+import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { resolveChatModel, DEFAULT_CHAT_MODEL } from "@/lib/model-config";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
@@ -224,7 +226,12 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
+    const byokSession = await getServerSession(prisma, request.headers);
+    const { key: apiKey } = await resolveAnthropicKey(
+      prisma,
+      byokSession?.user.id ?? null,
+    );
     if (!apiKey || !apiKey.startsWith("sk-")) {
       return NextResponse.json(
         { error: "ANTHROPIC_API_KEY not configured" },

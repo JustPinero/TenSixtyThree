@@ -14,6 +14,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { organization, magicLink, emailOTP, admin } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
+import { sendEmail } from "./email";
 import { decideUserCreation } from "./invite-gate";
 
 function adminEmails(): string[] {
@@ -23,13 +24,7 @@ function adminEmails(): string[] {
     .filter(Boolean);
 }
 
-/**
- * 54.2 wires Resend; until then codes/invites surface in server logs so
- * the flow is fully exercisable.
- */
-function logEmail(kind: string, to: string, payload: string) {
-  console.log(`[auth-email] ${kind} → ${to}: ${payload}`);
-}
+
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
@@ -122,7 +117,13 @@ export const auth = betterAuth({
       invitationExpiresIn: 7 * 24 * 60 * 60,
       cancelPendingInvitationsOnReInvite: true,
       sendInvitationEmail: async (data) => {
-        logEmail("org-invite", data.email, `invitation id ${data.id}`);
+        const base = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+        await sendEmail({
+          to: data.email,
+          subject: `${data.inviter.user.name} invited you to ${data.organization.name} on TenSixtyThree`,
+          html: `<p>You've been invited to the <b>${data.organization.name}</b> organization.</p><p><a href="${base}/signin">Sign in with this email</a> to accept — use the "Email code" option.</p>`,
+          text: `You've been invited to ${data.organization.name} on TenSixtyThree. Sign in at ${base}/signin with this email (Email code option) to accept.`,
+        });
       },
     }),
     emailOTP({
@@ -131,14 +132,24 @@ export const auth = betterAuth({
       disableSignUp: false, // creation is governed by the databaseHook
       otpLength: 6,
       expiresIn: 600,
-      async sendVerificationOTP({ email, otp, type }) {
-        logEmail(`otp:${type}`, email, otp);
+      async sendVerificationOTP({ email, otp }) {
+        await sendEmail({
+          to: email,
+          subject: `${otp} is your TenSixtyThree code`,
+          html: `<p>Your sign-in code:</p><p style="font-size:24px;letter-spacing:6px;font-family:monospace"><b>${otp}</b></p><p>It expires in 10 minutes.</p>`,
+          text: `Your TenSixtyThree sign-in code: ${otp} (expires in 10 minutes)`,
+        });
       },
     }),
     magicLink({
       disableSignUp: true,
       sendMagicLink: async ({ email, url }) => {
-        logEmail("magic-link", email, url);
+        await sendEmail({
+          to: email,
+          subject: "Your TenSixtyThree sign-in link",
+          html: `<p><a href="${url}">Sign in to TenSixtyThree</a></p>`,
+          text: `Sign in: ${url}`,
+        });
       },
     }),
     admin(),

@@ -65,6 +65,9 @@ describe("AC1 — validateHostedEnv", () => {
     const inventory = [
       "ANTHROPIC_API_KEY",
       "ADMIN_EMAILS",
+      "ENCRYPTION_KEY",
+      "RESEND_API_KEY",
+      "EMAIL_FROM",
       "VERCEL_TOKEN",
       "DATABASE_URL",
       "RAILWAY_TOKEN",

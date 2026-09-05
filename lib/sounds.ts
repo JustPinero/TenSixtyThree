@@ -3,7 +3,29 @@
  * No external audio files — generates tones programmatically.
  */
 
+import {
+  getThemePack,
+  resolveThemeKey,
+  type ThemeSound,
+} from "./theme-registry";
+
 let audioCtx: AudioContext | null = null;
+
+/**
+ * 53.5 — the active theme pack's chime character. Falls back to the
+ * cyberpunk profile when unset, SSR, or storage is unreadable.
+ */
+export function getThemeSoundProfile(): ThemeSound {
+  let stored: string | null = null;
+  if (typeof window !== "undefined") {
+    try {
+      stored = localStorage.getItem("cascade-theme");
+    } catch {
+      stored = null;
+    }
+  }
+  return getThemePack(resolveThemeKey(stored))!.sound;
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -50,7 +72,7 @@ function playTone(
   frequency: number,
   duration: number,
   type: OscillatorType = "sine",
-  volume: number = 0.15
+  volume: number = 0.15,
 ): void {
   if (!shouldPlaySound()) return;
 
@@ -84,16 +106,18 @@ function playTone(
  * Delamain starts responding — ascending two-tone chime.
  */
 export function playStartSound(): void {
-  playTone(440, 0.12, "sine", 0.1); // A4
-  setTimeout(() => playTone(660, 0.15, "sine", 0.12), 100); // E5
+  const t = getThemeSoundProfile();
+  playTone(440 * t.freqScale, 0.12, t.waveform, 0.1); // A4-ish
+  setTimeout(() => playTone(660 * t.freqScale, 0.15, t.waveform, 0.12), 100); // E5-ish
 }
 
 /**
  * Delamain finishes responding — descending confirmation tone.
  */
 export function playEndSound(): void {
-  playTone(660, 0.1, "sine", 0.1); // E5
-  setTimeout(() => playTone(523, 0.18, "sine", 0.12), 80); // C5
+  const t = getThemeSoundProfile();
+  playTone(660 * t.freqScale, 0.1, t.waveform, 0.1); // E5-ish
+  setTimeout(() => playTone(523 * t.freqScale, 0.18, t.waveform, 0.12), 80); // C5-ish
 }
 
 /**

@@ -42,6 +42,12 @@ export interface ThemePersona {
   voice: ThemeVoice;
 }
 
+export interface ThemeSound {
+  /** Multiplier applied to the base chime frequencies (0.5-2). */
+  freqScale: number;
+  waveform: OscillatorType;
+}
+
 export interface ThemePack {
   key: ThemeKey;
   label: string;
@@ -49,6 +55,8 @@ export interface ThemePack {
   /** Four swatches for the settings-page preview card. */
   preview: [string, string, string, string];
   persona: ThemePersona;
+  /** Start/end chime character; alerts stay theme-independent. */
+  sound: ThemeSound;
 }
 
 function portraits(
@@ -63,6 +71,7 @@ function portraits(
 export const THEME_PACKS: readonly ThemePack[] = [
   {
     key: "sunny",
+    sound: { freqScale: 1.1, waveform: "sine" },
     label: "Sunny",
     description: "Friendly light default — bright, warm, zero intimidation",
     preview: ["#f0f2f5", "#ffffff", "#1a8a99", "#c49030"],
@@ -76,6 +85,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "cyberpunk",
+    sound: { freqScale: 1.0, waveform: "sine" },
     label: "Cyberpunk",
     description:
       "Tactical AI dispatcher — the original TenSixtyThree aesthetic",
@@ -90,6 +100,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "console",
+    sound: { freqScale: 0.8, waveform: "square" },
     label: "Console",
     description: "Retro terminal — vt100 phosphor, MS-DOS BBS energy",
     preview: ["#050805", "#0a120a", "#4be36b", "#d8c548"],
@@ -103,6 +114,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "cog",
+    sound: { freqScale: 0.7, waveform: "triangle" },
     label: "Cog",
     description: "Soft steampunk — cartoon-noir gears, brass and brown",
     preview: ["#1c1410", "#2a1f17", "#c98a3d", "#b5764a"],
@@ -119,6 +131,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "sprite",
+    sound: { freqScale: 1.4, waveform: "sine" },
     label: "Sprite",
     description: "Y2K aero — frosted glass and bubble-tea pastels",
     preview: ["#eef3fb", "#ffffff", "#5aa5e8", "#e88ac2"],
@@ -132,6 +145,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "margin",
+    sound: { freqScale: 1.0, waveform: "triangle" },
     label: "Margin",
     description: "Notebook sketchpad — cream paper, navy ink doodles",
     preview: ["#f7f3e8", "#fffdf5", "#2c4a7c", "#c0563a"],
@@ -145,6 +159,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "curator",
+    sound: { freqScale: 0.85, waveform: "sine" },
     label: "Curator",
     description: "Library academic — leather-bound cream, burgundy, gold",
     preview: ["#f2ebdd", "#faf6ec", "#7c2d3a", "#a8862e"],
@@ -158,6 +173,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "sage",
+    sound: { freqScale: 0.9, waveform: "sine" },
     label: "Sage",
     description:
       "Forest calm — sage green and terracotta, organic and grounded",
@@ -172,6 +188,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "pilot",
+    sound: { freqScale: 1.2, waveform: "sine" },
     label: "Pilot",
     description:
       "Clean sci-fi — white and electric blue, mission-control crisp",
@@ -186,6 +203,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "pixel",
+    sound: { freqScale: 1.3, waveform: "square" },
     label: "Pixel",
     description: "Saturday-morning cartoon — bright primaries, low stakes",
     preview: ["#fdf6ea", "#ffffff", "#e8483f", "#2f6fd8"],
@@ -199,6 +217,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "quiet",
+    sound: { freqScale: 1.0, waveform: "sine" },
     label: "Quiet",
     description: "Minimalist — neutral, noiseless, nothing but the work",
     preview: ["#fafafa", "#ffffff", "#4a4a52", "#8a8a94"],
@@ -212,6 +231,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
   },
   {
     key: "specter",
+    sound: { freqScale: 0.6, waveform: "sawtooth" },
     label: "Specter",
     description:
       "Playful-spooky — Halloween goth, purple dusk and ember orange",

@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink } from "./nav-link";
 import { ReminderWidget } from "./reminder-widget";
 import { AttentionBadge } from "./attention-badge";
+import { Portrait } from "./portrait";
+import { useTheme } from "./theme-provider";
+import { THEME_PACKS } from "@/lib/theme-registry";
+import { applyThemePack } from "@/lib/theme-pack-apply";
+import { getOverseerSettings } from "@/lib/overseer-settings";
 
 function DashboardIcon() {
   return (
@@ -15,18 +20,18 @@ function DashboardIcon() {
 
 function DelamainIcon() {
   return (
-    <img
-      src="/delamain.jpg"
-      alt="Delamain"
-      className="w-5 h-5 rounded-full"
-    />
+    <img src="/delamain.jpg" alt="Delamain" className="w-5 h-5 rounded-full" />
   );
 }
 
 function TasksIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -42,7 +47,11 @@ function KnowledgeIcon() {
 function CreateIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -50,7 +59,11 @@ function CreateIcon() {
 function ReportsIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -66,7 +79,11 @@ function TemplatesIcon() {
 function MenuIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -74,7 +91,11 @@ function MenuIcon() {
 function CloseIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -82,7 +103,11 @@ function CloseIcon() {
 function RoadmapIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -91,7 +116,11 @@ function PlaybookIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -99,7 +128,11 @@ function PlaybookIcon() {
 function SettingsIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -113,23 +146,117 @@ function ObservabilityIcon() {
 }
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: <DashboardIcon />, tooltip: "Project overview — health, progress, activity" },
-  { href: "/delamain", label: "Overseer", icon: <DelamainIcon />, tooltip: "Talk to your AI dispatcher" },
-  { href: "/tasks", label: "My Tasks", icon: <TasksIcon />, tooltip: "Things only you can do" },
-  { href: "/roadmap", label: "Roadmap", icon: <RoadmapIcon />, tooltip: "All projects with progress bars" },
-  { href: "/team", label: "Team", icon: <TasksIcon />, tooltip: "Members + unified human/agent activity feed" },
-  { href: "/playbook", label: "Playbook", icon: <PlaybookIcon />, tooltip: "Rules for dispatched Claude sessions" },
-  { href: "/knowledge", label: "Knowledge Base", icon: <KnowledgeIcon />, tooltip: "Lessons harvested from your projects" },
-  { href: "/create", label: "Create Project", icon: <CreateIcon />, tooltip: "Launch a new project with the wizard" },
-  { href: "/reports", label: "Reports", icon: <ReportsIcon />, tooltip: "Generate project and fleet reports" },
-  { href: "/templates", label: "Templates", icon: <TemplatesIcon />, tooltip: "Manage kickoff templates" },
-  { href: "/observability/cache", label: "Cache Telemetry", icon: <ObservabilityIcon />, tooltip: "Per-request token usage and cache hit rate" },
-  { href: "/observability/tools", label: "Tool Telemetry", icon: <ObservabilityIcon />, tooltip: "Per-tool-call success rates and latency" },
-  { href: "/settings", label: "Settings", icon: <SettingsIcon />, tooltip: "Theme, notifications, sounds, automation" },
+  {
+    href: "/",
+    label: "Dashboard",
+    icon: <DashboardIcon />,
+    tooltip: "Project overview — health, progress, activity",
+  },
+  {
+    href: "/delamain",
+    label: "Overseer",
+    icon: <DelamainIcon />,
+    tooltip: "Talk to your AI dispatcher",
+  },
+  {
+    href: "/tasks",
+    label: "My Tasks",
+    icon: <TasksIcon />,
+    tooltip: "Things only you can do",
+  },
+  {
+    href: "/roadmap",
+    label: "Roadmap",
+    icon: <RoadmapIcon />,
+    tooltip: "All projects with progress bars",
+  },
+  {
+    href: "/team",
+    label: "Team",
+    icon: <TasksIcon />,
+    tooltip: "Members + unified human/agent activity feed",
+  },
+  {
+    href: "/playbook",
+    label: "Playbook",
+    icon: <PlaybookIcon />,
+    tooltip: "Rules for dispatched Claude sessions",
+  },
+  {
+    href: "/knowledge",
+    label: "Knowledge Base",
+    icon: <KnowledgeIcon />,
+    tooltip: "Lessons harvested from your projects",
+  },
+  {
+    href: "/create",
+    label: "Create Project",
+    icon: <CreateIcon />,
+    tooltip: "Launch a new project with the wizard",
+  },
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: <ReportsIcon />,
+    tooltip: "Generate project and fleet reports",
+  },
+  {
+    href: "/templates",
+    label: "Templates",
+    icon: <TemplatesIcon />,
+    tooltip: "Manage kickoff templates",
+  },
+  {
+    href: "/observability/cache",
+    label: "Cache Telemetry",
+    icon: <ObservabilityIcon />,
+    tooltip: "Per-request token usage and cache hit rate",
+  },
+  {
+    href: "/observability/tools",
+    label: "Tool Telemetry",
+    icon: <ObservabilityIcon />,
+    tooltip: "Per-tool-call success rates and latency",
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: <SettingsIcon />,
+    tooltip: "Theme, notifications, sounds, automation",
+  },
 ];
+
+function subscribeToOverseer(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function overseerRaw(): string {
+  try {
+    return localStorage.getItem("cascade-overseer") ?? "";
+  } catch {
+    return "";
+  }
+}
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme } = useTheme();
+  // Persona lives in localStorage; the storage event (same signal the
+  // theme provider uses) keeps the header avatar live across pack
+  // switches, and the "" server snapshot keeps hydration consistent.
+  const overseerVersion = useSyncExternalStore(
+    subscribeToOverseer,
+    overseerRaw,
+    () => "",
+  );
+  const { portraitSrc, assistantName } = useMemo(() => {
+    if (!overseerVersion) {
+      return { portraitSrc: "/delamain.jpg", assistantName: "Overseer" };
+    }
+    const s = getOverseerSettings();
+    return { portraitSrc: s.portraitIdle, assistantName: s.name };
+  }, [overseerVersion]);
 
   return (
     <>
@@ -158,7 +285,8 @@ export function Sidebar() {
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
         style={{
-          background: "linear-gradient(180deg, #111620 0%, #0c1018 50%, #080b11 100%)",
+          background:
+            "linear-gradient(180deg, #111620 0%, #0c1018 50%, #080b11 100%)",
           borderRight: "1px solid #242a3d",
           boxShadow: "2px 0 12px rgba(0, 0, 0, 0.4)",
         }}
@@ -166,12 +294,13 @@ export function Sidebar() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2.5">
-            <img
-              src="/delamain.jpg"
-              alt="Delamain"
-              className="w-7 h-7 rounded-full ring-1 ring-cyan/40"
-              style={{ boxShadow: "0 0 8px rgba(65, 166, 181, 0.4)" }}
-            />
+            <span className="w-7 h-7 rounded-full ring-1 ring-cyan/40 shadow-[0_0_8px_var(--cyan-glow)] overflow-hidden inline-block">
+              <Portrait
+                src={portraitSrc}
+                alt={`${assistantName} portrait`}
+                className="w-full h-full object-cover"
+              />
+            </span>
             <h1 className="text-lg font-bold font-mono tracking-[0.2em] text-text-bright uppercase">
               TenSixtyThree
             </h1>
@@ -195,11 +324,30 @@ export function Sidebar() {
           ))}
         </nav>
 
+        {/* 53.5 — theme-pack quick-switcher */}
+        <div className="px-4 py-2">
+          <select
+            aria-label="Switch theme pack"
+            value={theme}
+            onChange={(e) => applyThemePack(e.target.value)}
+            className="w-full bg-space-900 border border-space-600 px-2 py-1.5 text-xs font-mono text-text"
+          >
+            {THEME_PACKS.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label} — {p.persona.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Reminders */}
         <ReminderWidget />
 
         {/* Footer */}
-        <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: "1px solid #1a1e2e" }}>
+        <div
+          className="flex items-center gap-2 px-4 py-3"
+          style={{ borderTop: "1px solid #1a1e2e" }}
+        >
           <img
             src="/delamain.jpg"
             alt="Delamain"

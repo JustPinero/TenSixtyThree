@@ -60,10 +60,11 @@ describe("AC1 — validateHostedEnv", () => {
     expect(result.warnings.some((w) => w.includes("AUTH_REQUIRED"))).toBe(true);
   });
 
-  it("covers every env var the app reads (inventory 2026-08-06)", () => {
+  it("covers every env var the app reads (inventory 2026-08-06, +54.1)", () => {
     // From: grep -rhoE 'process\.env\.[A-Z_0-9]+' app lib scripts
     const inventory = [
       "ANTHROPIC_API_KEY",
+      "ADMIN_EMAILS",
       "VERCEL_TOKEN",
       "DATABASE_URL",
       "RAILWAY_TOKEN",

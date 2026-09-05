@@ -80,12 +80,14 @@ describe("decideUserCreation", () => {
   it("reports which gate allowed (org-invite | user-invite | admin)", () => {
     const admin = base();
     admin.email = "justin@ops.dev";
-    expect(decideUserCreation(admin).via).toBe("admin");
+    const adminDecision = decideUserCreation(admin);
+    expect(adminDecision.allowed && adminDecision.via).toBe("admin");
 
     const org = base();
     org.orgInvites = [
       { email: "new@user.dev", status: "pending", expiresAt: FRESH },
     ];
-    expect(decideUserCreation(org).via).toBe("org-invite");
+    const orgDecision = decideUserCreation(org);
+    expect(orgDecision.allowed && orgDecision.via).toBe("org-invite");
   });
 });

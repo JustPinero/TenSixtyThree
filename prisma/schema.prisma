@@ -389,6 +389,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // 54.1 — Better Auth admin plugin
+  role       String?   @default("user")
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
   // Better Auth relations
   sessions    Session[]
   accounts    Account[]
@@ -432,6 +438,8 @@ model Session {
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeOrganizationId String?
+  // 54.1 — Better Auth admin plugin
+  impersonatedBy       String?
 
   @@unique([token])
   @@index([userId])
@@ -515,4 +523,20 @@ model Invitation {
   @@index([organizationId])
   @@index([email])
   @@map("invitation")
+}
+
+// 54.1 — invites for INDEPENDENT users (org members come in through the
+// organization plugin's Invitation). Consumed by the user.create.before
+// invite gate; acceptedAt stamps consumption.
+model UserInvite {
+  id          String    @id @default(cuid())
+  email       String
+  token       String    @unique @default(cuid())
+  invitedById String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+  @@map("user_invite")
 }

@@ -369,3 +369,16 @@ Repos designated as knowledge/persona stores (e.g. ~/kilroy-brain).
 | createdAt | DateTime | |
 | lastSyncedAt | DateTime? | bumped by the Playbook write-through |
 Resolution for consumers: first Brain row → KILROY_BRAIN_PATH env → null (lib/brain-registry.ts).
+
+## UserInvite (54.1 — invite-only auth)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| email | String | — | invitee (indexed, matched case-insensitively by the gate) |
+| token | String cuid | — | unique; emailed link token |
+| invitedById | String? | null | admin user id |
+| expiresAt | DateTime | — | 7 days from creation |
+| acceptedAt | DateTime? | null | stamped when consumed by user.create.before |
+| createdAt | DateTime | now() | — |
+
+User (54.1 admin plugin): + role String? ("user"/"admin"), banned Boolean?, banReason String?, banExpires DateTime?. Session: + impersonatedBy String?.

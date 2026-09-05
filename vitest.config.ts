@@ -7,6 +7,11 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    // Phase 52 — rig setup/teardown (CREATE DATABASE ... TEMPLATE / DROP)
+    // serializes behind advisory lock 1063; with ~20 rig-based files the
+    // default 10s hook/test timeouts flake under full-suite contention.
+    hookTimeout: 30_000,
+    testTimeout: 30_000,
     include: ["**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules", ".next", "e2e"],
     // Phase 23.7 — push schema to a template DB once per test run.

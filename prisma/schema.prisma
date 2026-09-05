@@ -49,6 +49,8 @@ model Project {
   dispatches       Dispatch[]
   featureUsages    ProjectFeatureUsage[]
   featureProposals FeatureProposal[]
+  orgPosts         OrgPost[]
+  orgShares        OrgProjectShare[]
   kickoffTemplate  KickoffTemplate?  @relation(fields: [kickoffTemplateId], references: [id])
 
   // Phase 31 — audit finding [30.D4]. Dashboard, briefing, and
@@ -406,6 +408,7 @@ model User {
 
   // Work attribution (51.3 — teams live on the org plugin now)
   ownedDispatches Dispatch[] @relation("DispatchOwner")
+  orgPosts        OrgPost[] @relation("OrgPostAuthor")
   ownedTasks      HumanTask[] @relation("HumanTaskOwner")
 
   @@unique([email])
@@ -492,6 +495,8 @@ model Organization {
   invitations Invitation[]
   dispatches  Dispatch[]
   humanTasks  HumanTask[]
+  posts       OrgPost[]
+  projectShares OrgProjectShare[]
 
   @@unique([slug])
   @@map("organization")
@@ -542,4 +547,39 @@ model UserInvite {
 
   @@index([email])
   @@map("user_invite")
+}
+
+// 54.3 — org typed feed: goals, objectives, bug findings, test-hardening
+// requests, notes; optionally attached to a shared project.
+model OrgPost {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      Int?
+  authorUserId   String
+  type           String // goal | objective | bug | test-request | note
+  title          String
+  body           String   @default("")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id])
+  author       User         @relation("OrgPostAuthor", fields: [authorUserId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("org_post")
+}
+
+// 54.3 — a project shared into an org (progress visible to members).
+model OrgProjectShare {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      Int
+  sharedById     String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, projectId])
+  @@map("org_project_share")
 }

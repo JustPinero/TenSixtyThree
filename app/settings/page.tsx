@@ -960,7 +960,10 @@ export default function SettingsPage() {
       <div className="divider-h mb-8" />
 
       <div className="mb-8">
-        <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
+        <h2
+          id="tour-themes"
+          className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1"
+        >
           Theme Packs
         </h2>
         <p className="text-xs font-mono text-text-dim mb-4">

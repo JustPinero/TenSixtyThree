@@ -326,7 +326,13 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 py-3 space-y-0.5" aria-label="Main navigation">
           {navItems.map((item) => (
-            <NavLink key={item.href} {...item} />
+            <span
+              key={item.href}
+              id={item.href === "/delamain" ? "tour-overseer-link" : undefined}
+              className="block"
+            >
+              <NavLink {...item} />
+            </span>
           ))}
         </nav>
 

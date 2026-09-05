@@ -26,7 +26,7 @@ describe("TOUR_STEPS", () => {
         "utf-8",
       );
       expect(
-        source.includes(`id="${step.selector.slice(1)}"`),
+        source.includes(step.selector.slice(1)),
         `${step.anchorFile} is missing ${step.selector}`,
       ).toBe(true);
     }

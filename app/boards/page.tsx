@@ -244,7 +244,7 @@ export default function BoardsPage() {
   const board = boards.find((b) => b.id === activeBoard) ?? null;
 
   return (
-    <main className="p-8">
+    <main id="tour-board" className="p-8">
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider">
           Boards

@@ -54,7 +54,7 @@ export function MilestonesPanel() {
   if (hidden || milestones === null) return null;
 
   return (
-    <section className="mb-8">
+    <section id="tour-milestones" className="mb-8">
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-3">
         Milestones
       </h2>

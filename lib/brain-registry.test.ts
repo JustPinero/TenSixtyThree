@@ -11,13 +11,16 @@ import { validateBrainPath, resolveBrainPath } from "./brain-registry";
 
 let rig: DispatchRig | null = null;
 let scratch: string | null = null;
+// Rig disposal (DROP DATABASE behind the advisory lock) can exceed the
+// default 10s hook timeout when the full suite hammers Postgres — this
+// file flaked twice in phase-54 gates. 30s is generous, not masking.
 afterEach(async () => {
   await rig?.dispose();
   rig = null;
   if (scratch) rmSync(scratch, { recursive: true, force: true });
   scratch = null;
   delete process.env.KILROY_BRAIN_PATH;
-});
+}, 30_000);
 
 function makeGitDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "brain-"));

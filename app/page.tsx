@@ -144,6 +144,7 @@ function HarvestAllButton() {
 
 export default function DashboardPage() {
   return (
+    <div id="tour-fleet">
     <Suspense
       fallback={
         <div className="text-sm font-mono text-space-500">Loading...</div>
@@ -151,6 +152,7 @@ export default function DashboardPage() {
     >
       <DashboardContent />
     </Suspense>
+    </div>
   );
 }
 

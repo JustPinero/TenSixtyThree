@@ -95,7 +95,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
   const active = orgs.find((o) => o.id === activeId) ?? null;
 
   return (
-    <main className="p-8 max-w-4xl">
+    <main id="tour-org" className="p-8 max-w-4xl">
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider">
           Organizations

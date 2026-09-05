@@ -171,6 +171,12 @@ model Dispatch {
   // single-user dispatches have no team and are unaffected.
   organizationId   String?
   ownerUserId      String?
+  // 52.1 — where this dispatch executes: local (tmux, operator machine)
+  // or cloud (Agent SDK runner service). Cloud rows carry runnerId while
+  // claimed and costUsd from the SDK result message.
+  runtime          String           @default("local")
+  runnerId         String?
+  costUsd          Float?
 
   outcome          DispatchOutcome?
   project          Project          @relation(fields: [projectId], references: [id])

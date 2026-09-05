@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
 import { createOrg, listUserOrgs } from "@/lib/orgs";
+import { acceptPendingInvitations } from "@/lib/invite-accept";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(prisma, request.headers);
@@ -12,6 +13,8 @@ export async function GET(request: NextRequest) {
       { status: 401 },
     );
   }
+  // 55.1 — first authenticated touch applies any pending org invitations.
+  await acceptPendingInvitations(prisma, session.user.id, session.user.email);
   const orgs = await listUserOrgs(prisma, session.user.id);
   return NextResponse.json({
     orgs,

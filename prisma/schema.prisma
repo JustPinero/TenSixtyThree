@@ -583,3 +583,78 @@ model OrgProjectShare {
   @@unique([organizationId, projectId])
   @@map("org_project_share")
 }
+
+// ── 54.4 — roadmaps + kanban ─────────────────────────────────────────
+// Boards and milestones are org-scoped (organizationId, members) or
+// personal (ownerUserId). Exactly one owner field set — enforced in
+// lib/boards.ts, not the DB (SQLite-era convention: app-level checks).
+
+model Milestone {
+  id             String    @id @default(cuid())
+  organizationId String?
+  ownerUserId    String?
+  title          String
+  description    String    @default("")
+  status         String    @default("planned") // planned | in_progress | shipped
+  targetDate     DateTime?
+  position       Float
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tickets Ticket[]
+
+  @@index([organizationId, position])
+  @@index([ownerUserId, position])
+  @@map("milestone")
+}
+
+model Board {
+  id             String   @id @default(cuid())
+  organizationId String?
+  ownerUserId    String?
+  name           String
+  createdAt      DateTime @default(now())
+
+  columns BoardColumn[]
+  tickets Ticket[]
+
+  @@index([organizationId])
+  @@index([ownerUserId])
+  @@map("board")
+}
+
+model BoardColumn {
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  position Float
+
+  board   Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@index([boardId, position])
+  @@map("board_column")
+}
+
+model Ticket {
+  id             String   @id @default(cuid())
+  boardId        String
+  columnId       String
+  title          String
+  description    String   @default("")
+  position       Float
+  priority       String   @default("normal") // low | normal | high | urgent
+  assigneeUserId String?
+  milestoneId    String?
+  linearIssueId  String?  @unique // 54.4b Linear sync idempotency
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column    BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  milestone Milestone?  @relation(fields: [milestoneId], references: [id])
+
+  @@index([columnId, position])
+  @@map("ticket")
+}

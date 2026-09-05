@@ -14,7 +14,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { organization, magicLink, emailOTP, admin } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
-import { sendEmail } from "./email";
+import { sendEmail, escapeHtml } from "./email";
 import { decideUserCreation } from "./invite-gate";
 
 function adminEmails(): string[] {
@@ -121,7 +121,7 @@ export const auth = betterAuth({
         await sendEmail({
           to: data.email,
           subject: `${data.inviter.user.name} invited you to ${data.organization.name} on TenSixtyThree`,
-          html: `<p>You've been invited to the <b>${data.organization.name}</b> organization.</p><p><a href="${base}/signin">Sign in with this email</a> to accept — use the "Email code" option.</p>`,
+          html: `<p>You've been invited to the <b>${escapeHtml(data.organization.name)}</b> organization.</p><p><a href="${base}/signin">Sign in with this email</a> to accept — use the "Email code" option.</p>`,
           text: `You've been invited to ${data.organization.name} on TenSixtyThree. Sign in at ${base}/signin with this email (Email code option) to accept.`,
         });
       },

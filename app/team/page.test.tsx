@@ -23,7 +23,9 @@ describe("/team page", () => {
     vi.doMock("@/lib/db", () => ({ prisma: rig!.prisma }));
     const { default: TeamPage } = await import("./page");
     render(await TeamPage());
-    expect(screen.getByText(/no team yet/i)).toBeInTheDocument();
+    // 54.3 — OrgWorkspace wraps the page; its /api/orgs probe fails in
+    // jsdom and falls back to the legacy children asynchronously.
+    expect(await screen.findByText(/no team yet/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/team name/i)).toBeInTheDocument();
   });
 
@@ -40,7 +42,7 @@ describe("/team page", () => {
     });
     const { default: TeamPage } = await import("./page");
     render(await TeamPage());
-    expect(screen.getByText("Fleet")).toBeInTheDocument();
+    expect(await screen.findByText("Fleet")).toBeInTheDocument();
     expect(screen.getByText(/ship it/)).toBeInTheDocument();
   });
 });

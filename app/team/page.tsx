@@ -2,16 +2,24 @@ import { prisma } from "@/lib/db";
 import { listMembers } from "@/lib/teams";
 import { listTeamActivity } from "@/lib/team-activity";
 import { TeamSetupForm, InviteForm } from "./team-forms";
+import { OrgWorkspace } from "./org-workspace";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Phase 48.3 — the Teams foundation gets a face. Single-team view: members,
- * invites, and the unified activity feed (the collision-plane primitive:
- * human tasks and agent dispatches in one owner-attributed stream).
+ * Phase 48.3 — the Teams foundation gets a face. 54.3 — signed-in users
+ * get the multi-org workspace (OrgWorkspace); the legacy single-team
+ * server view below survives as the local single-operator fallback,
+ * passed in as the workspace's signed-out children.
  */
 export default async function TeamPage() {
-  const team = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
+  return <OrgWorkspace>{await LegacyTeamView()}</OrgWorkspace>;
+}
+
+async function LegacyTeamView() {
+  const team = await prisma.organization.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
 
   if (!team) {
     return (

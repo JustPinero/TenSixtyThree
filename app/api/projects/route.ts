@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
-import { isDemoSession } from "@/lib/demo";
+import { visibleProjectFilter } from "@/lib/project-access";
 import { getAllUnreadCounts } from "@/lib/unread";
 import { getAdvisoryStatuses } from "@/lib/advisory-tracker";
 
@@ -10,12 +10,11 @@ export async function GET(request: NextRequest) {
     const [projects, unreadCounts, advisoryStatuses, humanTaskCounts] =
       await Promise.all([
         prisma.project.findMany({
-          // 54.5 — demo-seeded projects are visible only to demo sessions
-          where: (await getServerSession(prisma, request.headers).then(
-            (s) => isDemoSession(s),
-          ))
-            ? {}
-            : { isDemo: false },
+          // 55.2 — full visibility matrix (owner / org-shared / admin /
+          // demo / local) lives in lib/project-access.ts.
+          where: await getServerSession(prisma, request.headers).then((s) =>
+            visibleProjectFilter(prisma, s?.user.id ?? null),
+          ),
           orderBy: { lastActivityAt: "desc" },
         }),
         getAllUnreadCounts(prisma),

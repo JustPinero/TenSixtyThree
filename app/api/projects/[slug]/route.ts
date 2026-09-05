@@ -4,9 +4,11 @@ import { markAuditsRead } from "@/lib/unread";
 import { isValidSlug } from "@/lib/validators";
 import { validateBadges } from "@/lib/badges";
 import { THEME_KEYS, type ThemeKey } from "@/lib/theme-registry";
+import { getServerSession } from "@/lib/auth-helpers";
+import { canSeeProject } from "@/lib/project-access";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
@@ -32,6 +34,14 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    // 55.2 — visibility gate ([54.D1]): strangers get the same 404.
+    {
+      const session = await getServerSession(prisma, request.headers);
+      if (!(await canSeeProject(prisma, session?.user.id ?? null, project.id))) {
+        return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      }
+    }
+
     // Mark audits as read when viewing project
     await markAuditsRead(prisma, project.id);
 
@@ -49,6 +59,25 @@ export async function PATCH(
   try {
     const { slug } = await params;
     const body = await request.json();
+
+    // 55.2 — visibility gate ([54.D1])
+    {
+      const target = await prisma.project.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (target) {
+        const session = await getServerSession(prisma, request.headers);
+        if (
+          !(await canSeeProject(prisma, session?.user.id ?? null, target.id))
+        ) {
+          return NextResponse.json(
+            { error: "Project not found" },
+            { status: 404 },
+          );
+        }
+      }
+    }
 
     // Allowlist updatable fields to prevent mass assignment
     const ALLOWED_FIELDS = new Set([

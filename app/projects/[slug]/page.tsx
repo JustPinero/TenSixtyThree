@@ -542,6 +542,27 @@ export default function ProjectDetailPage() {
               <span className="text-space-500">Autonomy</span>
               <span className="text-text">{project.autonomyMode}</span>
             </div>
+            {/* 55.2 — share this project into the active org */}
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-space-500">Org</span>
+              <button
+                onClick={async () => {
+                  const res = await fetch("/api/orgs/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ projectId: project.id }),
+                  });
+                  alert(
+                    res.ok
+                      ? "Shared to your active organization."
+                      : (await res.json()).error ?? "Couldn't share.",
+                  );
+                }}
+                className="border border-space-600 px-2 py-1 text-xs font-mono text-text-dim hover:text-cyan hover:border-cyan"
+              >
+                Share to active org
+              </button>
+            </div>
             {/* 53.4 — per-project assistant persona */}
             <div className="flex justify-between items-center gap-2">
               <label htmlFor="project-assistant" className="text-space-500">

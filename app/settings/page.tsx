@@ -28,6 +28,97 @@ interface AuthStatus {
   error: string | null;
 }
 
+/** 55.1 — admin-only: invite independent users (invite-only instance). */
+function AdminInvitesPanel() {
+  const [invites, setInvites] = useState<
+    { id: string; email: string; acceptedAt: string | null; expiresAt: string }[] | null
+  >(null);
+  const [email, setEmail] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const res = await fetch("/api/admin/invites");
+    if (res.ok) setInvites((await res.json()).invites);
+    // non-admin / signed out / demo: keep hidden
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (invites === null) return null;
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
+        User Invites
+      </h2>
+      <p className="text-xs font-mono text-text-dim mb-3">
+        This instance is invite-only. Invite independent users here; org
+        members are invited from the Team page.
+      </p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const res = await fetch("/api/admin/invites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          setNote(
+            res.ok ? `Invited ${email}.` : ((await res.json()).error ?? "Failed."),
+          );
+          if (res.ok) {
+            setEmail("");
+            refresh();
+          }
+        }}
+        className="flex flex-wrap items-center gap-2 mb-3"
+      >
+        <label htmlFor="admin-invite-email" className="sr-only">
+          Email to invite
+        </label>
+        <input
+          id="admin-invite-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="person@company.com"
+          className="w-72 bg-space-900 border border-space-600 px-3 py-2 text-sm font-mono text-text-bright"
+        />
+        <button
+          type="submit"
+          disabled={!email.includes("@")}
+          className="border border-cyan px-3 py-2 text-sm font-mono uppercase text-cyan disabled:opacity-50"
+        >
+          Invite
+        </button>
+        {note && <span className="text-xs font-mono text-text-dim">{note}</span>}
+      </form>
+      {invites.length > 0 && (
+        <ul className="space-y-1">
+          {invites.slice(0, 10).map((inv) => (
+            <li
+              key={inv.id}
+              className="flex justify-between p-2 border border-space-600 bg-space-800 text-xs font-mono"
+            >
+              <span className="text-text-bright">{inv.email}</span>
+              <span className="text-text-dim">
+                {inv.acceptedAt
+                  ? "accepted"
+                  : new Date(inv.expiresAt).getTime() < Date.now()
+                    ? "expired"
+                    : "pending"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** 54.2 — BYOK: run chats on your own Anthropic key. Write-only. */
 function AnthropicKeyPanel() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -1026,6 +1117,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="divider-h mb-8" />
+
+      <AdminInvitesPanel />
 
       <AnthropicKeyPanel />
 

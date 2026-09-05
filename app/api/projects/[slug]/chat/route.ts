@@ -6,6 +6,7 @@ import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildProjectSystemPrompt } from "@/lib/project-chat";
 import { projectPersonaBlock } from "@/lib/persona-prompt";
+import { canSeeProject } from "@/lib/project-access";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 
@@ -50,7 +51,11 @@ export async function POST(
     }
 
     const project = await prisma.project.findUnique({ where: { slug } });
-    if (!project) {
+    if (
+      !project ||
+      // 55.2 — same 404 for projects outside the viewer's scope
+      !(await canSeeProject(prisma, byokSession?.user.id ?? null, project.id))
+    ) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 

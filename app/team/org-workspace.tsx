@@ -51,6 +51,8 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<SharedProject[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newOrgName, setNewOrgName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteNote, setInviteNote] = useState<string | null>(null);
   const [draft, setDraft] = useState({ type: "goal", title: "", body: "" });
 
   const refreshOrgs = useCallback(async () => {
@@ -167,6 +169,48 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
           </button>
         </form>
       </div>
+
+      {active && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const res = await fetch("/api/orgs/invite", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: inviteEmail }),
+            });
+            setInviteNote(
+              res.ok
+                ? `Invited ${inviteEmail} — they sign in with that email and membership applies automatically.`
+                : "Couldn't send that invite.",
+            );
+            if (res.ok) setInviteEmail("");
+          }}
+          className="flex flex-wrap items-center gap-2 mb-6"
+        >
+          <label htmlFor="invite-email" className="text-xs font-mono text-text-dim">
+            Invite member
+          </label>
+          <input
+            id="invite-email"
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="teammate@company.com"
+            className="bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
+          />
+          <button
+            type="submit"
+            disabled={!inviteEmail.includes("@")}
+            className="border border-cyan px-2 py-1.5 text-xs font-mono uppercase text-cyan disabled:opacity-50"
+          >
+            Invite
+          </button>
+          {inviteNote && (
+            <span className="text-xs font-mono text-text-dim">{inviteNote}</span>
+          )}
+        </form>
+      )}
 
       {orgs.length === 0 && (
         <p className="text-sm font-mono text-text-dim mb-6">

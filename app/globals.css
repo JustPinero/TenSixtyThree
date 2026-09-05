@@ -556,27 +556,27 @@ body::before {
 /* Delamain talking animation — RPG portrait effect */
 @keyframes delamain-talk {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(65, 166, 181, 0.4);
+    box-shadow: 0 0 8px var(--cyan-glow);
     transform: scale(1);
   }
   15% {
-    box-shadow: 0 0 20px rgba(65, 166, 181, 0.6);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--cyan) 60%, transparent);
     transform: scale(1.02);
   }
   30% {
-    box-shadow: 0 0 12px rgba(65, 166, 181, 0.3);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cyan) 30%, transparent);
     transform: scale(1);
   }
   45% {
-    box-shadow: 0 0 18px rgba(65, 166, 181, 0.55);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--cyan) 55%, transparent);
     transform: scale(1.015);
   }
   60% {
-    box-shadow: 0 0 10px rgba(65, 166, 181, 0.35);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--cyan) 35%, transparent);
     transform: scale(1);
   }
   75% {
-    box-shadow: 0 0 22px rgba(65, 166, 181, 0.65);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--cyan) 65%, transparent);
     transform: scale(1.02);
   }
 }

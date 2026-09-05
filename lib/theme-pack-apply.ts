@@ -45,6 +45,28 @@ export function shouldApplyPersona(current: OverseerSettings): boolean {
 }
 
 /**
+ * First installed speech voice whose name contains one of the preferred
+ * substrings (case-insensitive), as a partial settings update — empty
+ * when nothing matches (or speechSynthesis is unavailable) so the
+ * current voiceURI survives the merge.
+ */
+function matchPreferredVoice(
+  preferred: string[],
+): Partial<Pick<OverseerSettings, "voiceURI">> {
+  if (preferred.length === 0 || typeof window === "undefined") return {};
+  const synth = window.speechSynthesis;
+  if (!synth) return {};
+  const voices = synth.getVoices();
+  for (const want of preferred) {
+    const hit = voices.find((v) =>
+      v.name.toLowerCase().includes(want.toLowerCase()),
+    );
+    if (hit) return { voiceURI: hit.voiceURI };
+  }
+  return {};
+}
+
+/**
  * Switch to a theme pack: persist + stamp the theme, and apply the
  * pack persona unless the user has a hand-customized assistant.
  * Unknown keys are ignored.
@@ -59,6 +81,11 @@ export function applyThemePack(key: string): void {
       portraitIdle: pack.persona.portraitIdle,
       portraitTalking: pack.persona.portraitTalking,
       personality: pack.persona.personality,
+      // 53.2 — voice defaults ride along with the persona. Never flips
+      // voiceEnabled: speaking stays opt-in.
+      voiceRate: pack.persona.voice.rate,
+      voicePitch: pack.persona.voice.pitch,
+      ...matchPreferredVoice(pack.persona.voice.preferredVoices),
     });
   }
 

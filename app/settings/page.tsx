@@ -897,19 +897,28 @@ export default function SettingsPage() {
               }`}
               style={{ background: "var(--bg-panel)" }}
             >
-              {/* Color preview */}
-              <div className="flex gap-1.5 mb-3">
-                {t.preview.map((color, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-sm"
-                    style={{
-                      background: color,
-                      boxShadow:
-                        theme === t.key ? `0 0 8px ${color}40` : "none",
-                    }}
+              {/* Portrait + color preview */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-14 h-14 rounded border border-space-600 overflow-hidden shrink-0">
+                  <Portrait
+                    src={t.persona.portraitIdle}
+                    alt={`${t.persona.name} portrait`}
+                    className="w-full h-full object-cover"
                   />
-                ))}
+                </div>
+                <div className="flex gap-1.5">
+                  {t.preview.map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-8 h-8 rounded-sm"
+                      style={{
+                        background: color,
+                        boxShadow:
+                          theme === t.key ? `0 0 8px ${color}40` : "none",
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-mono font-bold text-text-bright">

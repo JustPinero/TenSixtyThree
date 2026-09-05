@@ -25,11 +25,21 @@ export type ThemeKey =
   | "quiet"
   | "specter";
 
+export interface ThemeVoice {
+  /** Web Speech API rate/pitch defaults, clamped 0-2 by speak(). */
+  rate: number;
+  pitch: number;
+  /** Case-insensitive substrings matched against installed voice names;
+   *  first match wins. Empty = keep the browser default. */
+  preferredVoices: string[];
+}
+
 export interface ThemePersona {
   name: string;
   portraitIdle: string;
   portraitTalking: string | null;
   personality: string | null;
+  voice: ThemeVoice;
 }
 
 export interface ThemePack {
@@ -58,6 +68,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#f0f2f5", "#ffffff", "#1a8a99", "#c49030"],
     persona: {
       name: "Sunny",
+      voice: { rate: 1.05, pitch: 1.2, preferredVoices: ["Samantha", "Google US English", "Zira"] },
       ...portraits("sunny"),
       personality:
         "Warm, encouraging, and plain-spoken. Explains without jargon and celebrates small wins.",
@@ -71,6 +82,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#060910", "#111620", "#41a6b5", "#e0af68"],
     persona: {
       name: "Delamain",
+      voice: { rate: 1.0, pitch: 0.9, preferredVoices: ["Daniel", "Google UK English Male", "David"] },
       portraitIdle: "/delamain.jpg",
       portraitTalking: "/delamain-talking.jpg",
       personality: null,
@@ -83,6 +95,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#050805", "#0a120a", "#4be36b", "#d8c548"],
     persona: {
       name: "Console",
+      voice: { rate: 1.15, pitch: 0.8, preferredVoices: ["Fred", "Zarvox", "Google US English"] },
       ...portraits("console"),
       personality:
         "Terse sysop. Answers in short lines, all business, dry humor in the comments.",
@@ -95,11 +108,11 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#1c1410", "#2a1f17", "#c98a3d", "#b5764a"],
     persona: {
       name: "Cog",
-      // Single-portrait mode: 2026-09-04 Leonardo runs couldn't hold the
-      // one-eyed gear's identity in a talking variant (4 rounds); the chat
-      // uses the idle for both states until a talking asset lands.
-      portraitIdle: "/portraits/cog/idle.jpg",
-      portraitTalking: null,
+      voice: { rate: 0.95, pitch: 0.85, preferredVoices: ["Daniel", "Fred", "David"] },
+      // Talking cue is an eye-widen, not a mouth (img2img from the idle —
+      // the eye fills the hub, there's no room for a mouth; curator-style
+      // mood cue per the design doc).
+      ...portraits("cog"),
       personality:
         "Gruff-but-kind workshop foreman. Practical, hands-on, fond of mechanical metaphors.",
     },
@@ -111,6 +124,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#eef3fb", "#ffffff", "#5aa5e8", "#e88ac2"],
     persona: {
       name: "Sprite",
+      voice: { rate: 1.1, pitch: 1.3, preferredVoices: ["Samantha", "Karen", "Zira"] },
       ...portraits("sprite"),
       personality:
         "Bubbly and quick. Upbeat, playful, keeps things light without losing the thread.",
@@ -123,6 +137,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#f7f3e8", "#fffdf5", "#2c4a7c", "#c0563a"],
     persona: {
       name: "Margin",
+      voice: { rate: 1.0, pitch: 1.05, preferredVoices: ["Samantha", "Google US English"] },
       ...portraits("margin"),
       personality:
         "Thinks out loud in the margins. Sketches ideas, asks good questions, informal.",
@@ -135,6 +150,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#f2ebdd", "#faf6ec", "#7c2d3a", "#a8862e"],
     persona: {
       name: "Curator",
+      voice: { rate: 0.9, pitch: 0.95, preferredVoices: ["Daniel", "Serena", "Google UK English Female"] },
       ...portraits("curator"),
       personality:
         "Measured and scholarly. Cites precedent, values precision, never rushes.",
@@ -148,6 +164,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#eef0e9", "#f8f9f4", "#3e6b4a", "#b96a4b"],
     persona: {
       name: "Sage",
+      voice: { rate: 0.9, pitch: 0.9, preferredVoices: ["Karen", "Serena", "Samantha"] },
       ...portraits("sage"),
       personality:
         "Calm and grounded. Slows things down, weighs tradeoffs, favors sustainable pace.",
@@ -161,6 +178,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#f4f7fa", "#ffffff", "#1f6ff2", "#5089d8"],
     persona: {
       name: "Pilot",
+      voice: { rate: 1.0, pitch: 0.95, preferredVoices: ["Alex", "Google US English", "David"] },
       ...portraits("pilot"),
       personality:
         "Crisp mission-control cadence. Checklists, clear callouts, calm under pressure.",
@@ -173,6 +191,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#fdf6ea", "#ffffff", "#e8483f", "#2f6fd8"],
     persona: {
       name: "Pixel",
+      voice: { rate: 1.2, pitch: 1.35, preferredVoices: ["Junior", "Samantha", "Zira"] },
       ...portraits("pixel"),
       personality:
         "90s-cartoon sidekick energy. Enthusiastic, a little goofy, always game.",
@@ -185,6 +204,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#fafafa", "#ffffff", "#4a4a52", "#8a8a94"],
     persona: {
       name: "Overseer",
+      voice: { rate: 1.0, pitch: 1.0, preferredVoices: [] },
       ...portraits("quiet"),
       personality:
         "No persona. Neutral, concise, invisible — the work is the interface.",
@@ -198,6 +218,7 @@ export const THEME_PACKS: readonly ThemePack[] = [
     preview: ["#0d0812", "#171021", "#9b5de5", "#f28c28"],
     persona: {
       name: "Specter",
+      voice: { rate: 0.85, pitch: 0.7, preferredVoices: ["Whisper", "Daniel", "Google UK English Male"] },
       ...portraits("specter"),
       personality:
         "Playfully spooky. Deadpan gothic wit, delights in haunting flaky tests.",

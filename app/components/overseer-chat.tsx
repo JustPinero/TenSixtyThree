@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { sendNotification } from "@/lib/notify";
 import { playStartSound, playEndSound } from "@/lib/sounds";
 import { getOverseerSettings } from "@/lib/overseer-settings";
@@ -73,7 +79,7 @@ function stripTagsForSpeech(text: string): string {
     .split("\n")
     .filter(
       (line) =>
-        !/\[(DISPATCH|REMINDER|HUMAN TODO|PLAYBOOK|ENGINEER)\]/i.test(line)
+        !/\[(DISPATCH|REMINDER|HUMAN TODO|PLAYBOOK|ENGINEER)\]/i.test(line),
     )
     .join("\n")
     .replace(/\s+/g, " ")
@@ -116,7 +122,7 @@ function renderWithCitations(text: string): ReactNode {
         title={`Lesson L-${id}`}
       >
         [L-{id}]
-      </a>
+      </a>,
     );
     cursor = match.index + match[0].length;
   }
@@ -139,18 +145,21 @@ interface OverseerChatProps {
 // Types + hasSessionMemory live in lib/session-memory.ts (Phase 18)
 // so they're unit-testable without jsdom.
 
-export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps) {
+export function OverseerChat({
+  onDispatch,
+  fullPage = false,
+}: OverseerChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [pendingActions, setPendingActions] = useState<ParsedAction[] | null>(
-    null
+    null,
   );
   const [dispatching, setDispatching] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [listening, setListening] = useState(false);
   const [sessionMemory, setSessionMemory] = useState<SessionMemoryState | null>(
-    null
+    null,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -164,7 +173,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
     try {
       const res = await fetch(
         `/api/overseer/session-state?sessionDate=${localToday()}`,
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
       if (!res.ok) return;
       const body = await res.json();
@@ -197,7 +206,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
             data.map((m: { role: string; content: string }) => ({
               role: m.role as "user" | "assistant",
               content: m.content,
-            }))
+            })),
           );
         }
       })
@@ -266,7 +275,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
   useEffect(() => {
     setHasSpeechSupport(
       typeof window !== "undefined" &&
-        (!!window.SpeechRecognition || !!window.webkitSpeechRecognition)
+        (!!window.SpeechRecognition || !!window.webkitSpeechRecognition),
     );
   }, []);
 
@@ -336,7 +345,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
           setListening(false);
           // Defer to next tick so React state updates settle first.
           setTimeout(() => sendMessageRef.current(), 0);
-        }
+        },
       );
     }
 
@@ -575,9 +584,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
         const autoEnabled =
           typeof window !== "undefined" &&
           localStorage.getItem("cascade-auto-dispatch") === "true";
-        const allSafeContinue = actions.every(
-          (a) => a.action === "continue"
-        );
+        const allSafeContinue = actions.every((a) => a.action === "continue");
 
         if (autoEnabled && allSafeContinue) {
           // Auto-execute without user approval
@@ -651,9 +658,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
    * Dispatch actions — single project uses direct Terminal,
    * multiple projects use tmux grid via /api/dispatch/batch.
    */
-  async function dispatchActions(
-    actions: ParsedAction[]
-  ): Promise<unknown[]> {
+  async function dispatchActions(actions: ParsedAction[]): Promise<unknown[]> {
     if (actions.length === 1) {
       try {
         const res = await fetch(
@@ -665,7 +670,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
               mode: actions[0].action,
               prompt: actions[0].prompt || undefined,
             }),
-          }
+          },
         );
         const data = await res.json();
         return [{ ...data, projectSlug: actions[0].project }];
@@ -713,7 +718,7 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
       {
         body: actions.map((a) => a.project).join(", "),
         tag: "auto-dispatch",
-      }
+      },
     );
 
     setMessages((prev) => [
@@ -745,7 +750,9 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
   }
 
   return (
-    <div className={`border border-cyan/20 bg-space-900 ${fullPage ? "flex flex-col h-full" : ""}`}>
+    <div
+      className={`border border-cyan/20 bg-space-900 ${fullPage ? "flex flex-col h-full" : ""}`}
+    >
       {/* RPG Portrait — full page only */}
       {fullPage && (
         <div className="flex items-center gap-4 px-6 py-4 border-b border-space-600 bg-space-800/80">
@@ -753,8 +760,8 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
             <div
               className={`w-32 h-32 rounded border-2 overflow-hidden transition-all duration-300 ${
                 streaming
-                  ? "border-cyan shadow-[0_0_16px_rgba(65,166,181,0.5)] delamain-talking"
-                  : "border-space-600 shadow-[0_0_4px_rgba(65,166,181,0.1)]"
+                  ? "border-cyan shadow-[0_0_16px_var(--cyan-glow)] delamain-talking"
+                  : "border-space-600 shadow-[0_0_4px_var(--glass-border)]"
               }`}
             >
               <Portrait
@@ -779,7 +786,9 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
               {overseerName}
             </h2>
             <p className="text-[10px] font-mono text-space-500 uppercase tracking-wider">
-              {streaming ? "Responding..." : "Fleet Dispatcher — Sprint Planning"}
+              {streaming
+                ? "Responding..."
+                : "Fleet Dispatcher — Sprint Planning"}
             </p>
           </div>
         </div>
@@ -818,7 +827,11 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
                     : "border-space-600 text-space-500 hover:text-text"
                 }`}
               >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-3 h-3"
+                >
                   <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                   <path d="M15 7v2a4 4 0 01-4 4H9.41l-1.7 1.7c.18.13.39.21.61.27.13.04.25.06.38.06h2.59l4.71 4.7V13a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
                 </svg>
@@ -866,8 +879,16 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
                     : "border-space-600 text-space-500 hover:text-text"
                 }`}
               >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                  <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-3 h-3"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 {voiceEnabled ? "Mic On" : "Mic"}
               </button>
@@ -897,7 +918,10 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className={`${fullPage ? "flex-1" : "h-56"} overflow-y-auto ${fullPage ? "p-6 space-y-4" : "p-3 space-y-3"}`}>
+      <div
+        ref={scrollRef}
+        className={`${fullPage ? "flex-1" : "h-56"} overflow-y-auto ${fullPage ? "p-6 space-y-4" : "p-3 space-y-3"}`}
+      >
         {messages.length === 0 && (
           <div className="space-y-2">
             <p className="text-xs font-mono text-space-500">
@@ -933,16 +957,22 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
                 : `text-text ${fullPage ? "pl-4" : "pl-3"} border-l-2 border-accent/30`
             }`}
           >
-            <span className={`${fullPage ? "text-xs" : "text-[10px]"} uppercase text-space-500 block mb-0.5`}>
+            <span
+              className={`${fullPage ? "text-xs" : "text-[10px]"} uppercase text-space-500 block mb-0.5`}
+            >
               {msg.role === "user" ? "you" : "delamain"}
             </span>
-            <div className={`whitespace-pre-wrap ${fullPage ? "leading-7" : "leading-relaxed"}`}>
+            <div
+              className={`whitespace-pre-wrap ${fullPage ? "leading-7" : "leading-relaxed"}`}
+            >
               {renderWithCitations(msg.content)}
             </div>
           </div>
         ))}
         {streaming && (
-          <div className={`${fullPage ? "text-sm" : "text-xs"} font-mono text-accent pulse-healthy`}>
+          <div
+            className={`${fullPage ? "text-sm" : "text-xs"} font-mono text-accent pulse-healthy`}
+          >
             {overseerName} is thinking...
           </div>
         )}
@@ -1034,7 +1064,11 @@ export function OverseerChat({ onDispatch, fullPage = false }: OverseerChatProps
             }
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                clipRule="evenodd"
+              />
             </svg>
           </button>
         )}
@@ -1078,7 +1112,7 @@ function SessionMemoryPanel({ state }: { state: SessionMemoryState }) {
   const proposed = state.workingMemory.proposedDispatches;
   const proposedList = Array.isArray(proposed) ? proposed : [];
   const otherKeys = Object.keys(state.workingMemory).filter(
-    (k) => k !== "proposedDispatches"
+    (k) => k !== "proposedDispatches",
   );
   return (
     <div className="border-t border-space-600 bg-space-900/50 px-4 py-2 text-xs font-mono text-space-300">

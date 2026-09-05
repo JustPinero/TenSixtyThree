@@ -60,14 +60,9 @@ describe("THEME_PACKS", () => {
     for (const pack of THEME_PACKS) {
       if (pack.key === "cyberpunk") continue;
       expect(pack.persona.portraitIdle).toBe(`/portraits/${pack.key}/idle.jpg`);
-      if (pack.key === "cog") {
-        // Single-portrait mode until a stable talking asset exists.
-        expect(pack.persona.portraitTalking).toBeNull();
-      } else {
-        expect(pack.persona.portraitTalking).toBe(
-          `/portraits/${pack.key}/talking.jpg`,
-        );
-      }
+      expect(pack.persona.portraitTalking).toBe(
+        `/portraits/${pack.key}/talking.jpg`,
+      );
     }
   });
 

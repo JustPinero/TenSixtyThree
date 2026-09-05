@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { HealthIndicator } from "../../components/health-indicator";
 import { CommandPanel } from "../../components/command-panel";
+import { Portrait } from "../../components/portrait";
+import { THEME_PACKS, getThemePack } from "@/lib/theme-registry";
 
 interface Project {
   id: number;
@@ -16,10 +18,21 @@ interface Project {
   currentPhase: string;
   githubRepo: string | null;
   autonomyMode: string;
+  themeKey: string | null;
   healthDetails: string;
   stack: string;
-  auditSnapshots: { id: number; auditType: string; grade: string | null; capturedAt: string }[];
-  activityEvents: { id: number; eventType: string; summary: string; createdAt: string }[];
+  auditSnapshots: {
+    id: number;
+    auditType: string;
+    grade: string | null;
+    capturedAt: string;
+  }[];
+  activityEvents: {
+    id: number;
+    eventType: string;
+    summary: string;
+    createdAt: string;
+  }[];
 }
 
 interface EnvStatus {
@@ -53,7 +66,7 @@ function DispatchPanel({
       const data = await res.json();
       if (res.ok) {
         setResult(
-          `Harvested ${data.lessonsStored} lessons (${data.duplicatesSkipped} duplicates skipped)`
+          `Harvested ${data.lessonsStored} lessons (${data.duplicatesSkipped} duplicates skipped)`,
         );
         onAction();
       } else {
@@ -153,9 +166,7 @@ function DispatchPanel({
           Send
         </button>
       </div>
-      {result && (
-        <p className="text-xs font-mono text-text mt-2">{result}</p>
-      )}
+      {result && <p className="text-xs font-mono text-text mt-2">{result}</p>}
     </div>
   );
 }
@@ -177,13 +188,13 @@ function DeployStatusPanel({ project }: { project: Project }) {
     if (!stack.deployPlatform || !stack.deployProjectId) return;
 
     fetch(
-      `/api/integrations/deploy-status?platform=${stack.deployPlatform}&projectId=${stack.deployProjectId}`
+      `/api/integrations/deploy-status?platform=${stack.deployPlatform}&projectId=${stack.deployProjectId}`,
     )
       .then((res) => res.json())
       .then((data) => {
         if (data.platform) setDeployStatus(data);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!deployStatus) return null;
@@ -256,9 +267,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
         if (data.phases) {
           setWork(data);
           // Auto-expand current phase
-          const current = data.phases.find(
-            (p: WorkPhase) => p.isCurrent
-          );
+          const current = data.phases.find((p: WorkPhase) => p.isCurrent);
           if (current) setExpandedPhase(current.name);
         }
       })
@@ -280,9 +289,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
         <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider">
           Remaining Work
         </h2>
-        <p className="text-xs font-mono text-space-500">
-          No requests found
-        </p>
+        <p className="text-xs font-mono text-space-500">No requests found</p>
       </div>
     );
   }
@@ -326,26 +333,20 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
         {work.phases.map((phase) => {
           const isExpanded = expandedPhase === phase.name;
           const doneCount = phase.requests.filter(
-            (r) => r.status === "done"
+            (r) => r.status === "done",
           ).length;
 
           return (
             <div key={phase.name}>
               <button
-                onClick={() =>
-                  setExpandedPhase(isExpanded ? null : phase.name)
-                }
+                onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
                 className={`w-full text-left px-2 py-1.5 flex items-center justify-between text-xs font-mono transition-colors hover:bg-space-700/50 ${
                   phase.isCurrent
                     ? "border-l-2 border-cyan"
                     : "border-l-2 border-transparent"
                 }`}
               >
-                <span
-                  className={
-                    phase.isCurrent ? "text-cyan" : "text-text"
-                  }
-                >
+                <span className={phase.isCurrent ? "text-cyan" : "text-text"}>
                   {phase.label}
                 </span>
                 <span className="text-space-500">
@@ -363,9 +364,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
                       <span className="w-4 text-center">
                         {statusIcon(req.status)}
                       </span>
-                      <span className="text-space-500 w-8">
-                        {req.number}
-                      </span>
+                      <span className="text-space-500 w-8">{req.number}</span>
                       <span className={statusColor(req.status)}>
                         {req.title}
                       </span>
@@ -400,7 +399,7 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
         if (Array.isArray(data)) setSessions(data);
       })
       .finally(() => setLoaded(true));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -411,7 +410,9 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
       {!loaded ? (
         <p className="text-xs font-mono text-space-500">Loading...</p>
       ) : sessions.length === 0 ? (
-        <p className="text-xs font-mono text-space-500">No sessions recorded yet</p>
+        <p className="text-xs font-mono text-space-500">
+          No sessions recorded yet
+        </p>
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => (
@@ -435,7 +436,10 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
                 </pre>
               ) : (
                 <p className="px-3 pb-2 text-xs font-mono text-space-400 truncate">
-                  {s.summary.replace(/^#.*\n/gm, "").trim().slice(0, 120)}
+                  {s.summary
+                    .replace(/^#.*\n/gm, "")
+                    .trim()
+                    .slice(0, 120)}
                 </p>
               )}
             </div>
@@ -462,7 +466,7 @@ export default function ProjectDetailPage() {
 
         // Fetch env status
         const envRes = await fetch(
-          `/api/integrations/onepassword?path=${encodeURIComponent(data.path)}&name=${encodeURIComponent(data.name)}`
+          `/api/integrations/onepassword?path=${encodeURIComponent(data.path)}&name=${encodeURIComponent(data.name)}`,
         );
         if (envRes.ok) {
           setEnvStatus(await envRes.json());
@@ -475,7 +479,7 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     fetchProject();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
@@ -508,7 +512,11 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Dispatch Actions */}
-      <DispatchPanel slug={slug} health={project.health} onAction={fetchProject} />
+      <DispatchPanel
+        slug={slug}
+        health={project.health}
+        onAction={fetchProject}
+      />
 
       {/* Command Panel */}
       <div className="mb-6">
@@ -533,6 +541,48 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between">
               <span className="text-space-500">Autonomy</span>
               <span className="text-text">{project.autonomyMode}</span>
+            </div>
+            {/* 53.4 — per-project assistant persona */}
+            <div className="flex justify-between items-center gap-2">
+              <label htmlFor="project-assistant" className="text-space-500">
+                Assistant
+              </label>
+              <div className="flex items-center gap-2">
+                {project.themeKey && (
+                  <div className="w-6 h-6 rounded border border-space-600 overflow-hidden shrink-0">
+                    <Portrait
+                      src={
+                        getThemePack(project.themeKey)?.persona.portraitIdle ??
+                        ""
+                      }
+                      alt={`${getThemePack(project.themeKey)?.persona.name ?? "assistant"} portrait`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <select
+                  id="project-assistant"
+                  value={project.themeKey ?? ""}
+                  onChange={async (e) => {
+                    await fetch(`/api/projects/${slug}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        themeKey: e.target.value || null,
+                      }),
+                    });
+                    fetchProject();
+                  }}
+                  className="bg-space-900 border border-space-600 px-2 py-1 text-xs font-mono text-text"
+                >
+                  <option value="">Inherit global</option>
+                  {THEME_PACKS.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.persona.name} ({p.label})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             {project.githubRepo && (
               <div className="flex justify-between">
@@ -566,11 +616,7 @@ export default function ProjectDetailPage() {
                   className="flex items-center justify-between text-xs font-mono"
                 >
                   <span className="text-text">{v.name}</span>
-                  <span
-                    className={
-                      v.inVault ? "text-success" : "text-danger"
-                    }
-                  >
+                  <span className={v.inVault ? "text-success" : "text-danger"}>
                     {v.inVault ? "in vault" : "missing"}
                   </span>
                 </div>
@@ -645,9 +691,7 @@ export default function ProjectDetailPage() {
             <div className="space-y-1">
               {project.activityEvents.slice(0, 10).map((e) => (
                 <div key={e.id} className="text-xs font-mono">
-                  <span className="text-space-500">
-                    [{e.eventType}]
-                  </span>{" "}
+                  <span className="text-space-500">[{e.eventType}]</span>{" "}
                   <span className="text-text">{e.summary}</span>
                 </div>
               ))}

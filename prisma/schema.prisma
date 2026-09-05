@@ -32,6 +32,7 @@ model Project {
   projectContext     String?           // persisted context.md content — project story, stakeholders, goals
   completionCriteria String?           // persisted done.md content — what "done" means for this project
   badges             String            @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
+  themeKey           String?           // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
   deadline           DateTime?
   lastSessionEndedAt DateTime?
   kickoffTemplateId  Int?

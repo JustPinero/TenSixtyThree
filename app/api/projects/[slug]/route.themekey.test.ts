@@ -1,5 +1,6 @@
 /** 53.4 — Project.themeKey (per-project persona) PATCH surface. */
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { NextRequest } from "next/server";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 
@@ -22,7 +23,7 @@ async function makeProject(r: DispatchRig) {
 }
 
 function patchReq(body: unknown) {
-  return new Request("http://x/api/projects/rig", {
+  return new NextRequest("http://x/api/projects/rig", {
     method: "PATCH",
     body: JSON.stringify(body),
   });

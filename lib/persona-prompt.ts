@@ -9,13 +9,14 @@
  * cache prefix).
  */
 
+import { getThemePack } from "./theme-registry";
+
 const NAME_MAX = 60;
 const PERSONALITY_MAX = 500;
 
 function clean(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
   // Strip C0/C1 control characters (incl. ESC sequences' lead byte).
-  // eslint-disable-next-line no-control-regex
   return value
     .replace(/[\x00-\x1f\x7f-\x9f]/g, "")
     .trim()
@@ -25,6 +26,19 @@ function clean(value: unknown, max: number): string {
 export interface PersonaInput {
   name?: unknown;
   personality?: unknown;
+}
+
+/**
+ * Persona block for a project's theme-pack override (Project.themeKey,
+ * 53.4). Null / unknown keys mean "inherit" — empty block.
+ */
+export function projectPersonaBlock(themeKey: string | null): string {
+  const pack = themeKey ? getThemePack(themeKey) : null;
+  if (!pack) return "";
+  return buildPersonaBlock({
+    name: pack.persona.name,
+    personality: pack.persona.personality,
+  });
 }
 
 /**

@@ -125,3 +125,15 @@ describe("pack voices (53.2)", () => {
     }
   });
 });
+
+describe("pack sounds (53.5)", () => {
+  const WAVEFORMS = ["sine", "square", "triangle", "sawtooth"];
+  it("every pack has a sound profile with sane bounds", () => {
+    for (const pack of THEME_PACKS) {
+      expect(pack.sound, `${pack.key} missing sound`).toBeDefined();
+      expect(pack.sound.freqScale).toBeGreaterThanOrEqual(0.5);
+      expect(pack.sound.freqScale).toBeLessThanOrEqual(2);
+      expect(WAVEFORMS).toContain(pack.sound.waveform);
+    }
+  });
+});

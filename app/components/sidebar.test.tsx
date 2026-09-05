@@ -109,3 +109,18 @@ describe("Sidebar", () => {
     expect(container!.textContent).toContain("Delamain v1");
   });
 });
+
+describe("Sidebar theme quick-switcher (53.5)", () => {
+  it("renders a labeled theme-pack select", async () => {
+    let container: HTMLElement;
+    await act(async () => {
+      const result = render(<Sidebar />);
+      container = result.container;
+    });
+    const select = container!.querySelector(
+      'select[aria-label="Switch theme pack"]'
+    );
+    expect(select).not.toBeNull();
+    expect(select!.querySelectorAll("option").length).toBeGreaterThanOrEqual(12);
+  });
+});

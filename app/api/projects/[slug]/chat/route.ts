@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildProjectSystemPrompt } from "@/lib/project-chat";
+import { projectPersonaBlock } from "@/lib/persona-prompt";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const chatModel = await resolveChatModel(prisma);
   const limited = checkRateLimit(
     getRateLimitKey(request, "project-chat"),
     20,
-    60_000
+    60_000,
   );
   if (limited) return limited;
 
@@ -22,7 +23,7 @@ export async function POST(
     if (!apiKey || !apiKey.startsWith("sk-")) {
       return NextResponse.json(
         { error: "ANTHROPIC_API_KEY not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -30,25 +31,19 @@ export async function POST(
     const body = await request.json();
     const validation = validateMessages(body.messages);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const project = await prisma.project.findUnique({ where: { slug } });
     if (!project) {
-      return NextResponse.json(
-        { error: "Project not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const systemPrompt = await buildProjectSystemPrompt(
-      prisma,
-      project.path,
-      project.name
-    );
+    // 53.4 — per-project persona appended after the cached project block,
+    // so the prompt-cache prefix stays stable per project.
+    const systemPrompt =
+      (await buildProjectSystemPrompt(prisma, project.path, project.name)) +
+      projectPersonaBlock(project.themeKey);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
@@ -85,14 +80,14 @@ export async function POST(
       const err = await response.text();
       return NextResponse.json(
         { error: `Anthropic API error: ${response.status} ${err}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
     if (!response.body) {
       return NextResponse.json(
         { error: "Anthropic streaming response had no body" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -125,8 +120,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

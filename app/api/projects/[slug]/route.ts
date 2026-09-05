@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db";
 import { markAuditsRead } from "@/lib/unread";
 import { isValidSlug } from "@/lib/validators";
 import { validateBadges } from "@/lib/badges";
+import { THEME_KEYS, type ThemeKey } from "@/lib/theme-registry";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -28,10 +29,7 @@ export async function GET(
     });
 
     if (!project) {
-      return NextResponse.json(
-        { error: "Project not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     // Mark audits as read when viewing project
@@ -39,15 +37,14 @@ export async function GET(
 
     return NextResponse.json(project);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -73,11 +70,26 @@ export async function PATCH(
       "badges",
       "deadline",
       "lastSessionEndedAt",
+      "themeKey",
     ]);
 
     // Enum validation for constrained fields
-    const VALID_STATUS = new Set(["building", "complete", "deployed", "backburner", "paused", "archived"]);
-    const VALID_BUSINESS_STAGE = new Set(["building", "pre-sale", "active-sale", "revenue", "growth", "internal"]);
+    const VALID_STATUS = new Set([
+      "building",
+      "complete",
+      "deployed",
+      "backburner",
+      "paused",
+      "archived",
+    ]);
+    const VALID_BUSINESS_STAGE = new Set([
+      "building",
+      "pre-sale",
+      "active-sale",
+      "revenue",
+      "growth",
+      "internal",
+    ]);
     const VALID_HEALTH = new Set(["healthy", "warning", "blocked", "idle"]);
     const VALID_AUTONOMY = new Set(["full", "semi", "manual"]);
 
@@ -88,11 +100,29 @@ export async function PATCH(
       // Validate enum fields
       if (key === "status" && !VALID_STATUS.has(value as string)) continue;
       if (key === "health" && !VALID_HEALTH.has(value as string)) continue;
-      if (key === "autonomyMode" && !VALID_AUTONOMY.has(value as string)) continue;
-      if (key === "businessStage" && !VALID_BUSINESS_STAGE.has(value as string)) continue;
-      if ((key === "agentTeamsEnabled" || key === "prWorkflowEnabled") && typeof value !== "boolean") continue;
+      if (key === "autonomyMode" && !VALID_AUTONOMY.has(value as string))
+        continue;
+      if (key === "businessStage" && !VALID_BUSINESS_STAGE.has(value as string))
+        continue;
+      if (
+        (key === "agentTeamsEnabled" || key === "prWorkflowEnabled") &&
+        typeof value !== "boolean"
+      )
+        continue;
       if (key === "badges") {
         data[key] = JSON.stringify(validateBadges(value as string[]));
+        continue;
+      }
+      // 53.4 — per-project persona: registry key or explicit null (inherit)
+      if (key === "themeKey") {
+        if (value === null) {
+          data[key] = null;
+        } else if (
+          typeof value === "string" &&
+          THEME_KEYS.includes(value as ThemeKey)
+        ) {
+          data[key] = value;
+        }
         continue;
       }
 
@@ -102,7 +132,7 @@ export async function PATCH(
     if (Object.keys(data).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -113,8 +143,7 @@ export async function PATCH(
 
     return NextResponse.json(project);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

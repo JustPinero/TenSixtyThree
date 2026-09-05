@@ -183,3 +183,66 @@ describe("/api/milestones", () => {
     expect(list.milestones[0].status).toBe("shipped");
   });
 });
+
+describe("security review fixes (54.4)", () => {
+  it("stale activeOrganizationId (removed member) leaks no org boards", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { boards } = await load(rig);
+    const me = await makeSession(rig, "tok");
+    const { createOrg } = await import("@/lib/orgs");
+    const org = await createOrg(rig.prisma, { name: "O", ownerId: me.id });
+    await createBoard(rig.prisma, { name: "Org board", organizationId: org.id });
+    await rig.prisma.session.update({
+      where: { token: "tok" },
+      data: { activeOrganizationId: org.id },
+    });
+    // Remove membership; session still points at the org.
+    await rig.prisma.member.deleteMany({ where: { userId: me.id } });
+    const list = await (await boards.GET(req("/api/boards", "GET", "tok"))).json();
+    expect(list.boards).toHaveLength(0);
+  });
+
+  it("cannot attach a stranger's milestone or assign a non-member", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { tickets } = await load(rig);
+    const me = await makeSession(rig, "tok");
+    const stranger = await makeSession(rig, "tok2");
+    const board = await createBoard(rig.prisma, {
+      name: "Mine",
+      ownerUserId: me.id,
+    });
+    const col = await rig.prisma.boardColumn.findFirst({
+      where: { boardId: board.id },
+    });
+    const theirMilestone = await rig.prisma.milestone.create({
+      data: { title: "Theirs", ownerUserId: stranger.id, position: 1024 },
+    });
+
+    const linked = await tickets.POST(
+      req("/api/tickets", "POST", "tok", {
+        boardId: board.id,
+        columnId: col!.id,
+        title: "T",
+        milestoneId: theirMilestone.id,
+      })
+    );
+    expect(linked.status).toBe(400);
+
+    const created = await (
+      await tickets.POST(
+        req("/api/tickets", "POST", "tok", {
+          boardId: board.id,
+          columnId: col!.id,
+          title: "T",
+        })
+      )
+    ).json();
+    const assigned = await tickets.PATCH(
+      req("/api/tickets", "PATCH", "tok", {
+        id: created.ticket.id,
+        assigneeUserId: stranger.id,
+      })
+    );
+    expect(assigned.status).toBe(400);
+  });
+});

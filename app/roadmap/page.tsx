@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { MilestonesPanel } from "../components/milestones-panel";
 
 interface Project {
   slug: string;
@@ -37,7 +38,11 @@ const statusColors: Record<string, string> = {
 };
 
 function ProgressBar({ score, details }: { score: number; details: string }) {
-  let parsed: { phases?: { score: number }; tests?: { score: number }; readiness?: { score: number } } | null = null;
+  let parsed: {
+    phases?: { score: number };
+    tests?: { score: number };
+    readiness?: { score: number };
+  } | null = null;
   try {
     parsed = JSON.parse(details);
   } catch {
@@ -61,12 +66,11 @@ function ProgressBar({ score, details }: { score: number; details: string }) {
           style={{ width: `${Math.min(score, 100)}%` }}
         />
       </div>
-      <span className="text-[10px] font-mono text-space-400 w-8">
-        {score}%
-      </span>
+      <span className="text-[10px] font-mono text-space-400 w-8">{score}%</span>
       {parsed && (
         <span className="text-[10px] font-mono text-space-600 hidden lg:inline">
-          P{parsed.phases?.score ?? 0} T{parsed.tests?.score ?? 0} R{parsed.readiness?.score ?? 0}
+          P{parsed.phases?.score ?? 0} T{parsed.tests?.score ?? 0} R
+          {parsed.readiness?.score ?? 0}
         </span>
       )}
     </div>
@@ -85,7 +89,7 @@ function formatTimeAgo(dateStr: string): string {
 export default function RoadmapPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortBy, setSortBy] = useState<"health" | "activity" | "name">(
-    "health"
+    "health",
   );
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
@@ -97,7 +101,7 @@ export default function RoadmapPage() {
 
   useEffect(() => {
     fetchProjects();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   let displayed = [...projects];
@@ -128,6 +132,8 @@ export default function RoadmapPage() {
       <h1 className="text-2xl font-bold font-mono tracking-wide text-text-bright uppercase mb-2">
         Roadmap
       </h1>
+
+      <MilestonesPanel />
       <div className="flex gap-4 text-xs font-mono text-text mb-6">
         <span>
           <span className="text-cyan">{buildingCount}</span> building
@@ -219,7 +225,10 @@ export default function RoadmapPage() {
                   {p.currentPhase.replace(/-/g, " ").replace(/phase /, "P")}
                 </td>
                 <td className="px-3 py-2">
-                  <ProgressBar score={p.progressScore} details={p.progressDetails} />
+                  <ProgressBar
+                    score={p.progressScore}
+                    details={p.progressDetails}
+                  />
                 </td>
                 <td className="px-3 py-2">
                   <span className={statusColors[p.status] || "text-text"}>

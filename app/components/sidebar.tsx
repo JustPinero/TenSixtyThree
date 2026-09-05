@@ -171,6 +171,12 @@ const navItems = [
     tooltip: "All projects with progress bars",
   },
   {
+    href: "/boards",
+    label: "Boards",
+    icon: <TasksIcon />,
+    tooltip: "Kanban boards — personal and org tickets",
+  },
+  {
     href: "/team",
     label: "Team",
     icon: <TasksIcon />,

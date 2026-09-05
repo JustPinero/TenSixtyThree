@@ -497,6 +497,8 @@ model Organization {
   humanTasks  HumanTask[]
   posts       OrgPost[]
   projectShares OrgProjectShare[]
+  // 54.4b — org's Linear API key, sealed by lib/crypto-box
+  linearKeyEnc String?
 
   @@unique([slug])
   @@map("organization")

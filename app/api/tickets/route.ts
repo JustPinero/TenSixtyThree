@@ -6,6 +6,41 @@ import { canAccessBoard, positionAfter } from "@/lib/boards";
 
 const PRIORITIES = ["low", "normal", "high", "urgent"];
 
+
+/**
+ * Security review 54.4: linked records must live in the caller's scope.
+ * A milestone may be attached only when it's the caller's personal
+ * milestone or belongs to the board's org; an assignee must be the
+ * personal-board owner or a member of the board's org.
+ */
+async function milestoneInScope(
+  milestoneId: string,
+  board: { organizationId: string | null },
+  userId: string
+): Promise<boolean> {
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+  });
+  if (!milestone) return false;
+  if (milestone.ownerUserId) return milestone.ownerUserId === userId;
+  return (
+    milestone.organizationId !== null &&
+    milestone.organizationId === board.organizationId
+  );
+}
+
+async function assigneeInScope(
+  assigneeUserId: string,
+  board: { organizationId: string | null; ownerUserId: string | null }
+): Promise<boolean> {
+  if (board.ownerUserId) return assigneeUserId === board.ownerUserId;
+  if (!board.organizationId) return false;
+  const member = await prisma.member.findFirst({
+    where: { userId: assigneeUserId, organizationId: board.organizationId },
+  });
+  return member !== null;
+}
+
 async function guard(request: NextRequest, boardId: string) {
   const session = await getServerSession(prisma, request.headers);
   if (!session) return { error: 401 as const };
@@ -38,6 +73,16 @@ export async function POST(request: NextRequest) {
   });
   if (!column) {
     return NextResponse.json({ error: "Column not on that board" }, { status: 400 });
+  }
+  const board = await prisma.board.findUniqueOrThrow({ where: { id: boardId } });
+  if (
+    typeof body.milestoneId === "string" &&
+    !(await milestoneInScope(body.milestoneId, board, g.session.user.id))
+  ) {
+    return NextResponse.json(
+      { error: "Milestone not available on this board" },
+      { status: 400 }
+    );
   }
   const last = await prisma.ticket.findFirst({
     where: { columnId },
@@ -97,10 +142,29 @@ export async function PATCH(request: NextRequest) {
   if (typeof body.position === "number" && Number.isFinite(body.position)) {
     data.position = body.position;
   }
-  if (body.assigneeUserId === null || typeof body.assigneeUserId === "string") {
+  const board = await prisma.board.findUniqueOrThrow({
+    where: { id: existing.boardId },
+  });
+  if (body.assigneeUserId === null) {
+    data.assigneeUserId = null;
+  } else if (typeof body.assigneeUserId === "string") {
+    if (!(await assigneeInScope(body.assigneeUserId, board))) {
+      return NextResponse.json(
+        { error: "Assignee is not in this board's scope" },
+        { status: 400 }
+      );
+    }
     data.assigneeUserId = body.assigneeUserId;
   }
-  if (body.milestoneId === null || typeof body.milestoneId === "string") {
+  if (body.milestoneId === null) {
+    data.milestoneId = null;
+  } else if (typeof body.milestoneId === "string") {
+    if (!(await milestoneInScope(body.milestoneId, board, g.session.user.id))) {
+      return NextResponse.json(
+        { error: "Milestone not available on this board" },
+        { status: 400 }
+      );
+    }
     data.milestoneId = body.milestoneId;
   }
   const ticket = await prisma.ticket.update({ where: { id }, data });

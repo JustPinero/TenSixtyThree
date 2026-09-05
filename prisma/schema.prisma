@@ -33,6 +33,7 @@ model Project {
   completionCriteria String?           // persisted done.md content — what "done" means for this project
   badges             String            @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
   themeKey           String?           // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
+  isDemo             Boolean           @default(false) // 54.5 — demo-seeded project (tenancy debt: real project multi-tenancy is post-54)
   deadline           DateTime?
   lastSessionEndedAt DateTime?
   kickoffTemplateId  Int?
@@ -399,6 +400,8 @@ model User {
 
   // 54.2 — BYOK: user's own Anthropic key, sealed by lib/crypto-box
   anthropicKeyEnc String?
+  // 54.5 — ephemeral demo identity (swept by cleanupDemo)
+  isDemo Boolean @default(false)
 
   // Better Auth relations
   sessions    Session[]
@@ -499,6 +502,8 @@ model Organization {
   projectShares OrgProjectShare[]
   // 54.4b — org's Linear API key, sealed by lib/crypto-box
   linearKeyEnc String?
+  // 54.5 — ephemeral demo org
+  isDemo Boolean @default(false)
 
   @@unique([slug])
   @@map("organization")

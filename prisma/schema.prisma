@@ -33,7 +33,8 @@ model Project {
   completionCriteria String?           // persisted done.md content — what "done" means for this project
   badges             String            @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
   themeKey           String?           // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
-  isDemo             Boolean           @default(false) // 54.5 — demo-seeded project (tenancy debt: real project multi-tenancy is post-54)
+  isDemo             Boolean           @default(false) // 54.5 — demo-seeded project
+  ownerUserId        String?           // 55.2 — [54.D1] owner; null = operator fleet (admin/local visibility)
   deadline           DateTime?
   lastSessionEndedAt DateTime?
   kickoffTemplateId  Int?

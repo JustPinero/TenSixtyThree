@@ -11,7 +11,7 @@
 import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
 import type { RunnerDeps } from "./job";
@@ -22,6 +22,13 @@ import {
   type SdkWireMessage,
 } from "./sdk-map";
 import { resolveAnthropicKey } from "../anthropic-key";
+import { ensureAgentUser, type AgentUser } from "./agent-user";
+
+/** execFile-shaped (no shell) exec for agent-user provisioning. */
+const execForUser = async (command: string, args: string[]) => {
+  const { stdout } = await execFileAsync(command, args, { timeout: 30_000 });
+  return { stdout };
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -66,8 +73,8 @@ export function classifyToolUse(
   return { allowed: true };
 }
 
-async function trustWorkdir(workdir: string): Promise<void> {
-  const configPath = join(homedir(), ".claude.json");
+async function trustWorkdir(workdir: string, home: string): Promise<void> {
+  const configPath = join(home, ".claude.json");
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(await readFile(configPath, "utf8"));
@@ -111,9 +118,33 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       workdir: string;
       dispatch: Dispatch;
     }): AsyncGenerator<RunnerMessage> {
+      // [52.D1] Run the agent as an unprivileged uid so it cannot read
+      // the runner's /proc/<pid>/environ. Degrades to same-uid with a
+      // warning where provisioning isn't possible (dev boxes, non-root).
+      const agentUser: AgentUser | null = await ensureAgentUser(execForUser);
+      const home = agentUser?.home ?? homedir();
+      if (agentUser) {
+        await execFileAsync(
+          "chown",
+          ["-R", `${agentUser.uid}:${agentUser.gid}`, args.workdir],
+          { timeout: 60_000 },
+        );
+      } else {
+        console.warn(
+          "[runner] agent user unavailable — running the session same-uid ([52.D1])",
+        );
+      }
+
       // Headless Claude Code refuses untrusted workspaces (repos carrying
       // .claude/settings.json). Pre-trust the ephemeral clone dir.
-      await trustWorkdir(args.workdir);
+      await trustWorkdir(args.workdir, home);
+      if (agentUser) {
+        await execFileAsync(
+          "chown",
+          [`${agentUser.uid}:${agentUser.gid}`, join(home, ".claude.json")],
+          { timeout: 30_000 },
+        ).catch(() => {});
+      }
       const { query } = await import("@anthropic-ai/claude-agent-sdk");
       const { key } = await resolveAnthropicKey(
         prisma,
@@ -159,9 +190,28 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
           env: {
             ANTHROPIC_API_KEY: key,
             PATH: process.env.PATH ?? "",
-            HOME: process.env.HOME ?? "/tmp",
+            HOME: home,
             ...(process.env.TMPDIR ? { TMPDIR: process.env.TMPDIR } : {}),
           },
+          ...(agentUser
+            ? {
+                spawnClaudeCodeProcess: (o: {
+                  command: string;
+                  args: string[];
+                  cwd?: string;
+                  env: Record<string, string | undefined>;
+                  signal?: AbortSignal;
+                }) =>
+                  spawn(o.command, o.args, {
+                    cwd: o.cwd,
+                    env: o.env as NodeJS.ProcessEnv,
+                    signal: o.signal,
+                    stdio: ["pipe", "pipe", "pipe"],
+                    uid: agentUser.uid,
+                    gid: agentUser.gid,
+                  }),
+              }
+            : {}),
           ...(Number.isFinite(MAX_BUDGET_USD)
             ? { maxBudgetUsd: MAX_BUDGET_USD }
             : {}),

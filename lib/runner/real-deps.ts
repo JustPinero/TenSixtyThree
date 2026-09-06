@@ -227,6 +227,55 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       return { pushed: true, branch };
     },
 
+    async openPullRequest(args: {
+      dispatch: Dispatch;
+      branch: string;
+      title: string;
+      body: string;
+    }): Promise<string> {
+      const token = process.env.GITHUB_TOKEN;
+      if (!token) throw new Error("GITHUB_TOKEN unset — cannot open a PR");
+      const project = await prisma.project.findUnique({
+        where: { id: args.dispatch.projectId },
+        select: { githubRepo: true },
+      });
+      if (!project?.githubRepo) throw new Error("Project has no GitHub repo");
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      };
+      const repoRes = await fetch(
+        `https://api.github.com/repos/${project.githubRepo}`,
+        { headers },
+      );
+      if (!repoRes.ok) {
+        throw new Error(`GitHub repo lookup failed: ${repoRes.status}`);
+      }
+      const base = (await repoRes.json()).default_branch as string;
+
+      const prRes = await fetch(
+        `https://api.github.com/repos/${project.githubRepo}/pulls`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            title: args.title,
+            body: args.body,
+            head: args.branch,
+            base,
+          }),
+        },
+      );
+      if (!prRes.ok) {
+        throw new Error(
+          `GitHub PR creation failed: ${prRes.status} ${(await prRes.text()).slice(0, 200)}`,
+        );
+      }
+      return (await prRes.json()).html_url as string;
+    },
+
     async cleanup(workdir: string): Promise<void> {
       await rm(workdir, { recursive: true, force: true });
     },

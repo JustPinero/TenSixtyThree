@@ -22,6 +22,7 @@ interface RunState {
     costUsd: number | null;
     errorMessage: string | null;
     resultBranch: string | null;
+    resultPrUrl: string | null;
   };
   outcome: { outcome: string } | null;
   events: RunEvent[];
@@ -148,6 +149,19 @@ export function CloudDispatchPanel({
           {run.dispatch.resultBranch && (
             <p className="text-xs font-mono text-success mb-2">
               Pushed branch: {run.dispatch.resultBranch}
+              {run.dispatch.resultPrUrl && (
+                <>
+                  {" · "}
+                  <a
+                    href={run.dispatch.resultPrUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-info underline"
+                  >
+                    review the pull request
+                  </a>
+                </>
+              )}
             </p>
           )}
           {run.dispatch.errorMessage && (

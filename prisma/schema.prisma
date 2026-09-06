@@ -177,6 +177,8 @@ model Dispatch {
   runtime          String           @default("local")
   runnerId         String?
   costUsd          Float?
+  // 52.4 — branch the runner pushed the session's commits to (null = nothing pushed)
+  resultBranch     String?
 
   outcome          DispatchOutcome?
   project          Project          @relation(fields: [projectId], references: [id])

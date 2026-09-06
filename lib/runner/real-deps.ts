@@ -175,6 +175,58 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       }
     },
 
+    async pushBranch(args: {
+      workdir: string;
+      dispatch: Dispatch;
+    }): Promise<{ pushed: boolean; branch: string | null }> {
+      const { workdir, dispatch } = args;
+      // Anything uncommitted the agent left behind gets committed too.
+      const status = await execFileAsync(
+        "git",
+        ["-C", workdir, "status", "--porcelain"],
+        { timeout: 30_000 },
+      );
+      if (status.stdout.trim()) {
+        await execFileAsync(
+          "git",
+          ["-C", workdir, "add", "-A"],
+          { timeout: 30_000 },
+        );
+        await execFileAsync(
+          "git",
+          [
+            "-C", workdir,
+            "-c", "user.name=TenSixtyThree Runner",
+            "-c", "user.email=runner@tensixtythree.com",
+            "commit", "-m", `cloud ${dispatch.mode}: session work (dispatch ${dispatch.id})`,
+          ],
+          { timeout: 30_000 },
+        );
+      }
+      // No commits beyond the clone point → nothing to publish.
+      const ahead = await execFileAsync(
+        "git",
+        ["-C", workdir, "rev-list", "--count", "origin/HEAD..HEAD"],
+        { timeout: 30_000 },
+      ).catch(() => ({ stdout: "0" }));
+      if (Number(ahead.stdout.trim()) === 0) {
+        return { pushed: false, branch: null };
+      }
+      const project = await prisma.project.findUnique({
+        where: { id: dispatch.projectId },
+        select: { githubRepo: true },
+      });
+      if (!project?.githubRepo) return { pushed: false, branch: null };
+      const branch = `cloud/${dispatch.id}`;
+      // Push straight to a credentialed URL — never persisted in .git/config.
+      await execFileAsync(
+        "git",
+        ["-C", workdir, "push", cloneUrl(project.githubRepo), `HEAD:refs/heads/${branch}`],
+        { timeout: 120_000 },
+      );
+      return { pushed: true, branch };
+    },
+
     async cleanup(workdir: string): Promise<void> {
       await rm(workdir, { recursive: true, force: true });
     },

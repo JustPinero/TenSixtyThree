@@ -19,6 +19,13 @@ export interface RunnerDeps {
   }) => AsyncGenerator<RunnerMessage>;
   /** Remove the working directory (always called). */
   cleanup: (workdir: string) => Promise<void>;
+  /** 52.4 — publish the session's commits (if any) to a result branch.
+   *  Returns pushed:false when the tree left no commits. Optional so
+   *  older tests/deps keep working; failures never fail the run. */
+  pushBranch?: (args: {
+    workdir: string;
+    dispatch: Dispatch;
+  }) => Promise<{ pushed: boolean; branch: string | null }>;
 }
 
 export async function runClaimedDispatch(
@@ -64,6 +71,20 @@ export async function runClaimedDispatch(
       }
     }
 
+    // 52.4 — publish work product before the workdir evaporates.
+    let resultBranch: string | null = null;
+    if (deps.pushBranch) {
+      try {
+        const pushed = await deps.pushBranch({ workdir, dispatch });
+        if (pushed.pushed) resultBranch = pushed.branch;
+      } catch (pushError) {
+        console.warn(
+          `[runner] push failed for ${dispatch.id}:`,
+          pushError instanceof Error ? pushError.message : pushError,
+        );
+      }
+    }
+
     const folded = foldRunnerMessages(messages);
     await prisma.dispatchOutcome.create({
       data: {
@@ -83,6 +104,7 @@ export async function runClaimedDispatch(
         status: folded.outcome.status,
         completedAt: new Date(),
         costUsd: folded.outcome.costUsd,
+        resultBranch,
       },
     });
   } catch (error) {

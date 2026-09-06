@@ -8,6 +8,7 @@
  */
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
 import { foldRunnerMessages, type RunnerMessage } from "./lifecycle";
+import { composePr } from "./pr-body";
 
 export interface RunnerDeps {
   /** Clone the repo, return the working directory. */
@@ -26,6 +27,14 @@ export interface RunnerDeps {
     workdir: string;
     dispatch: Dispatch;
   }) => Promise<{ pushed: boolean; branch: string | null }>;
+  /** 52.5 — open a PR for the pushed branch; returns its url. Optional;
+   *  failures never fail the run (the branch is still on the remote). */
+  openPullRequest?: (args: {
+    dispatch: Dispatch;
+    branch: string;
+    title: string;
+    body: string;
+  }) => Promise<string>;
 }
 
 export async function runClaimedDispatch(
@@ -86,6 +95,33 @@ export async function runClaimedDispatch(
     }
 
     const folded = foldRunnerMessages(messages);
+
+    // 52.5 — a pushed branch becomes a reviewable PR.
+    let resultPrUrl: string | null = null;
+    if (resultBranch && deps.openPullRequest) {
+      try {
+        const pr = composePr({
+          mode: dispatch.mode,
+          dispatchId: dispatch.id,
+          costUsd: folded.outcome.costUsd,
+          outcome: folded.outcome.outcome,
+          signals: folded.outcome.signals,
+          events: folded.events,
+        });
+        resultPrUrl = await deps.openPullRequest({
+          dispatch,
+          branch: resultBranch,
+          title: pr.title,
+          body: pr.body,
+        });
+      } catch (prError) {
+        console.warn(
+          `[runner] PR failed for ${dispatch.id}:`,
+          prError instanceof Error ? prError.message : prError,
+        );
+      }
+    }
+
     await prisma.dispatchOutcome.create({
       data: {
         projectId: dispatch.projectId,
@@ -105,6 +141,7 @@ export async function runClaimedDispatch(
         completedAt: new Date(),
         costUsd: folded.outcome.costUsd,
         resultBranch,
+        resultPrUrl,
       },
     });
   } catch (error) {

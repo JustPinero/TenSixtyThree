@@ -123,6 +123,19 @@ async function sweepStaleRigDbs(): Promise<void> {
   }
 }
 
+async function pgAdminOn<T>(
+  dbName: string,
+  fn: (c: PgClient) => Promise<T>
+): Promise<T> {
+  const client = new PgClient({ connectionString: `${TEST_PG_BASE}/${dbName}` });
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.end();
+  }
+}
+
 async function preparePerRigDb(dbName: string): Promise<void> {
   // Phase 51.1 — CREATE DATABASE ... TEMPLATE is the Postgres analog of the
   // old SQLite file copy. Falls back to a direct schema push when the rig is
@@ -151,6 +164,32 @@ async function preparePerRigDb(dbName: string): Promise<void> {
 
 let rigCounter = 0;
 
+/**
+ * Phase 52.6 — one scratch database per WORKER, not per rig.
+ *
+ * `CREATE DATABASE ... TEMPLATE` serializes behind advisory lock 1063, so
+ * the old create-per-rig scheme turned into a lock queue as the suite grew
+ * (~60 clones): individual tests then starved past their timeout — four
+ * separate "flakes" that were really the same contention. Each worker now
+ * clones once and resets between rigs with TRUNCATE, which needs no lock
+ * and leaves the same empty-schema state the template clone gave.
+ */
+let workerDbName: string | null = null;
+/** Rigs alive in this worker right now — concurrent rigs must stay isolated. */
+let liveRigs = 0;
+
+async function resetWorkerDb(dbName: string): Promise<void> {
+  await pgAdminOn(dbName, async (c) => {
+    const { rows } = await c.query<{ tables: string | null }>(
+      `SELECT string_agg(format('%I.%I', schemaname, tablename), ', ') AS tables
+       FROM pg_tables WHERE schemaname = 'public'`
+    );
+    if (rows[0]?.tables) {
+      await c.query(`TRUNCATE ${rows[0].tables} RESTART IDENTITY CASCADE`);
+    }
+  });
+}
+
 export async function createDispatchRig(
   opts: DispatchRigOptions = {}
 ): Promise<DispatchRig> {
@@ -163,9 +202,26 @@ export async function createDispatchRig(
 
   // 1. Scratch Postgres database, cloned from the schema-applied template
   //    (Phase 51.1). Leaked DBs from crashed runs are swept by globalSetup.
-  const dbName = `test_rig_${process.pid}_${++rigCounter}_${Date.now().toString(36)}`;
+  // Reuse the worker's database only when nothing else is using it;
+  // overlapping rigs (isolation tests, cross-rig scenarios) still get
+  // their own clone so the per-rig isolation contract holds.
+  rigCounter++;
+  const exclusive = liveRigs > 0;
+  let dbName: string;
+  if (exclusive) {
+    dbName = `test_rig_${process.pid}_x${rigCounter}_${Date.now().toString(36)}`;
+    await preparePerRigDb(dbName);
+  } else {
+    if (workerDbName === null) {
+      workerDbName = `test_rig_${process.pid}_${Date.now().toString(36)}`;
+      await preparePerRigDb(workerDbName);
+    } else {
+      await resetWorkerDb(workerDbName);
+    }
+    dbName = workerDbName;
+  }
+  liveRigs++;
   const dbUrl = `${TEST_PG_BASE}/${dbName}`;
-  await preparePerRigDb(dbName);
   // Small pool per rig — the full suite runs many rigs concurrently and
   // Postgres connections are a shared, finite resource.
   const adapter = new PrismaPg({ connectionString: dbUrl, max: 3 });
@@ -434,12 +490,18 @@ export async function createDispatchRig(
       } else {
         process.env.CASCADE_MAX_CONCURRENT_SUBAGENTS = previousConcurrencyEnv;
       }
-      try {
-        await pgAdmin((c) =>
-          c.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`)
-        );
-      } catch {
-        // best-effort — globalSetup sweeps leftovers on the next run
+      liveRigs = Math.max(0, liveRigs - 1);
+      // 52.6 — the worker's shared database outlives the rig (reset by
+      // TRUNCATE on next use; globalSetup sweeps test_rig_* at run start).
+      // Exclusive clones made for overlapping rigs are dropped here.
+      if (exclusive) {
+        try {
+          await pgAdmin((c) =>
+            c.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`)
+          );
+        } catch {
+          // best-effort — swept on the next run
+        }
       }
     },
   };

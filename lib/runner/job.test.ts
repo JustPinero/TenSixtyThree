@@ -160,3 +160,65 @@ describe("push step (52.4)", () => {
     expect(row?.resultBranch).toBeNull();
   });
 });
+
+describe("PR step (52.5)", () => {
+  const pushed = { pushed: true, branch: "cloud/x" };
+
+  it("opens a PR after a successful push and records the url", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    const openPullRequest = vi
+      .fn()
+      .mockResolvedValue("https://github.com/j/p/pull/7");
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      async *runAgent() {
+        for (const m of HAPPY) yield m;
+      },
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      pushBranch: vi.fn().mockResolvedValue(pushed),
+      openPullRequest,
+    });
+    expect(openPullRequest).toHaveBeenCalled();
+    const row = await rig.prisma.dispatch.findUnique({
+      where: { id: dispatch.id },
+    });
+    expect(row?.resultPrUrl).toBe("https://github.com/j/p/pull/7");
+  });
+
+  it("skips the PR when nothing was pushed", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    const openPullRequest = vi.fn();
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      async *runAgent() {
+        for (const m of HAPPY) yield m;
+      },
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      pushBranch: vi.fn().mockResolvedValue({ pushed: false, branch: null }),
+      openPullRequest,
+    });
+    expect(openPullRequest).not.toHaveBeenCalled();
+  });
+
+  it("PR failure never fails the run; branch still recorded", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      async *runAgent() {
+        for (const m of HAPPY) yield m;
+      },
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      pushBranch: vi.fn().mockResolvedValue(pushed),
+      openPullRequest: vi.fn().mockRejectedValue(new Error("403 from GitHub")),
+    });
+    const row = await rig.prisma.dispatch.findUnique({
+      where: { id: dispatch.id },
+    });
+    expect(row?.status).toBe("completed");
+    expect(row?.resultBranch).toBe("cloud/x");
+    expect(row?.resultPrUrl).toBeNull();
+  });
+});

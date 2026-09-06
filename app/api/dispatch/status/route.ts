@@ -16,6 +16,23 @@ export async function GET() {
   const queue = getDispatchQueue();
   const { running, pending } = queue.size();
 
+  // 52.3 — recent cloud runs for the runner panel (and ops smoke checks).
+  const recentCloud = await prisma.dispatch.findMany({
+    where: { runtime: "cloud" },
+    orderBy: { enqueuedAt: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      projectSlug: true,
+      mode: true,
+      status: true,
+      costUsd: true,
+      runnerId: true,
+      errorMessage: true,
+      completedAt: true,
+    },
+  });
+
   const now = new Date();
   const [queued, started, overdue] = await Promise.all([
     prisma.dispatch.count({ where: { status: "queued" } }),
@@ -31,7 +48,11 @@ export async function GET() {
   return NextResponse.json(
     {
       queue: { running, pending, capacity: queue.capacity() },
-      dispatches: { queued, started, overdue },
+      recentCloud: recentCloud.map((d) => ({
+      ...d,
+      errorMessage: d.errorMessage?.slice(0, 300) ?? null,
+    })),
+    dispatches: { queued, started, overdue },
     },
     { headers: { "Cache-Control": "no-store" } }
   );

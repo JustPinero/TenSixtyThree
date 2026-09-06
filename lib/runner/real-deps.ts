@@ -52,7 +52,7 @@ async function trustWorkdir(workdir: string): Promise<void> {
     hasTrustDialogAccepted: true,
   };
   config.projects = projects;
-  await writeFile(configPath, JSON.stringify(config));
+  await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
 }
 
 export function buildRealDeps(prisma: PrismaClient): RunnerDeps {

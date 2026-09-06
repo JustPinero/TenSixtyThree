@@ -8,8 +8,8 @@
  * without it public repos still work and private ones fail with a clear
  * error on the Dispatch row.
  */
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
+import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -33,6 +33,26 @@ function cloneUrl(githubRepo: string): string {
   return token
     ? `https://x-access-token:${token}@github.com/${githubRepo}.git`
     : `https://github.com/${githubRepo}.git`;
+}
+
+async function trustWorkdir(workdir: string): Promise<void> {
+  const configPath = join(homedir(), ".claude.json");
+  let config: Record<string, unknown> = {};
+  try {
+    config = JSON.parse(await readFile(configPath, "utf8"));
+  } catch {
+    // first run — no config yet
+  }
+  const projects = (config.projects ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  projects[workdir] = {
+    ...(projects[workdir] ?? {}),
+    hasTrustDialogAccepted: true,
+  };
+  config.projects = projects;
+  await writeFile(configPath, JSON.stringify(config));
 }
 
 export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
@@ -60,6 +80,9 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       workdir: string;
       dispatch: Dispatch;
     }): AsyncGenerator<RunnerMessage> {
+      // Headless Claude Code refuses untrusted workspaces (repos carrying
+      // .claude/settings.json). Pre-trust the ephemeral clone dir.
+      await trustWorkdir(args.workdir);
       const { query } = await import("@anthropic-ai/claude-agent-sdk");
       const { key } = await resolveAnthropicKey(
         prisma,

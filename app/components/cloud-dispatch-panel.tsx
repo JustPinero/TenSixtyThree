@@ -21,6 +21,7 @@ interface RunState {
     mode: string;
     costUsd: number | null;
     errorMessage: string | null;
+    resultBranch: string | null;
   };
   outcome: { outcome: string } | null;
   events: RunEvent[];
@@ -144,6 +145,11 @@ export function CloudDispatchPanel({
               {run.outcome && ` · ${run.outcome.outcome}`}
             </span>
           </p>
+          {run.dispatch.resultBranch && (
+            <p className="text-xs font-mono text-success mb-2">
+              Pushed branch: {run.dispatch.resultBranch}
+            </p>
+          )}
           {run.dispatch.errorMessage && (
             <p className="text-xs font-mono text-danger mb-2">
               {run.dispatch.errorMessage.slice(0, 200)}

@@ -1,6 +1,12 @@
 /** 52.7 [52.D1] — unprivileged agent user provisioning. */
-import { describe, it, expect, vi } from "vitest";
-import { ensureAgentUser, AGENT_USER } from "./agent-user";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  ensureAgentUser,
+  AGENT_USER,
+  __resetAgentUserCache,
+} from "./agent-user";
+
+beforeEach(() => __resetAgentUserCache());
 
 function execOk(map: Record<string, string>) {
   return vi.fn(async (cmd: string, args: string[]) => {
@@ -62,10 +68,9 @@ describe("ensureAgentUser", () => {
       [`id -u ${AGENT_USER}`]: "1500\n",
       [`id -g ${AGENT_USER}`]: "1500\n",
     });
-    const { ensureAgentUser: fresh } = await import("./agent-user");
-    await fresh(exec);
+    await ensureAgentUser(exec);
     const callsAfterFirst = exec.mock.calls.length;
-    await fresh(exec);
+    await ensureAgentUser(exec);
     expect(exec.mock.calls.length).toBe(callsAfterFirst);
   });
 });

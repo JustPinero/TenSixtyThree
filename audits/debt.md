@@ -110,7 +110,16 @@ so users can see queue state for multi-dispatch without looking at tmux.
 Not urgent — tmux "[queued]" placeholders already communicate this at the
 terminal level.
 
-### [52.D1] Runner agent shares uid with the runner process — OPEN (2026-09-06)
+### [52.D1] Runner agent shares uid with the runner process — RESOLVED 2026-09-06 (52.7)
+The agent CLI now spawns as an unprivileged uid via the Agent SDK's
+`spawnClaudeCodeProcess` override (lib/runner/agent-user.ts provisions
+`tsagent`; the clone dir and the CLI's ~/.claude.json are chowned to it).
+A non-root agent cannot read the root runner's /proc/<pid>/environ, so
+GITHUB_TOKEN/DATABASE_URL are out of reach even from Bash. Provisioning
+degrades to the old same-uid posture with a warning where useradd isn't
+available (dev boxes), so runs never break over it. Original note below.
+
+### [52.D1-original] Runner agent shares uid with the runner process (2026-09-06)
 The cloud runner's agent subprocess runs same-uid (root) as the runner, so
 Bash inside a dispatched session could read /proc/<runner-pid>/environ
 (GITHUB_TOKEN, DATABASE_URL) despite the allowlisted agent env. Accepted for

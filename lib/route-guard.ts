@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/api/health", // deploy healthcheck must stay unauthenticated (51.4)
   "/api/webhook/session-complete", // shared-secret auth of its own (42.x)
   "/api/demo", // 54.5 — demo entry + status (rate-limited, mints its own session)
+  "/api/admin/ops", // 52.3 — OPS_SECRET-gated (own constant-time auth; 404 when unset)
   "/_next/",
 ];
 

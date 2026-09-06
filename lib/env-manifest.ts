@@ -66,6 +66,12 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
       "54.2 — Resend API key for invite/OTP email. Unset: emails are logged to the server console instead (dev/local mode).",
   },
   {
+    name: "OPS_SECRET",
+    scope: "hosted-optional",
+    description:
+      "52.3 — enables the headless operator ops endpoint (/api/admin/ops, constant-time compared). Unset: endpoint 404s.",
+  },
+  {
     name: "EMAIL_FROM",
     scope: "hosted-optional",
     description:

@@ -26,6 +26,10 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/demo/status")).toBe(true);
   });
 
+  it("ops surface bypasses middleware — it carries its own secret auth (52.3)", () => {
+    expect(isPublicPath("/api/admin/ops")).toBe(true);
+  });
+
   it("app pages and APIs are guarded", () => {
     for (const p of [
       "/",

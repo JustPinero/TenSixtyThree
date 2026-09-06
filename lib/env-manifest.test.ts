@@ -68,6 +68,7 @@ describe("AC1 — validateHostedEnv", () => {
       "ENCRYPTION_KEY",
       "RESEND_API_KEY",
       "EMAIL_FROM",
+      "OPS_SECRET",
       "VERCEL_TOKEN",
       "DATABASE_URL",
       "RAILWAY_TOKEN",

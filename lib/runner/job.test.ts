@@ -119,3 +119,44 @@ describe("budget-stop handling (round-4 lesson)", () => {
     expect(row?.errorMessage).toContain("Budget limit");
   });
 });
+
+describe("push step (52.4)", () => {
+  it("pushes a result branch when the session left commits, records it", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    const pushBranch = vi
+      .fn()
+      .mockResolvedValue({ pushed: true, branch: `cloud/${dispatch.id}` });
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      async *runAgent() {
+        for (const m of HAPPY) yield m;
+      },
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      pushBranch,
+    });
+    expect(pushBranch).toHaveBeenCalled();
+    const row = await rig.prisma.dispatch.findUnique({
+      where: { id: dispatch.id },
+    });
+    expect(row?.resultBranch).toBe(`cloud/${dispatch.id}`);
+  });
+
+  it("no commits → no branch recorded; push failure doesn't fail the run", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      async *runAgent() {
+        for (const m of HAPPY) yield m;
+      },
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      pushBranch: vi.fn().mockRejectedValue(new Error("push denied")),
+    });
+    const row = await rig.prisma.dispatch.findUnique({
+      where: { id: dispatch.id },
+    });
+    expect(row?.status).toBe("completed");
+    expect(row?.resultBranch).toBeNull();
+  });
+});

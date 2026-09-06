@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
 import { isDemoSession } from "@/lib/demo";
 import { canSeeProject } from "@/lib/project-access";
+import { cloudPermissionFor } from "@/lib/runner/autonomy";
 
 const MODES = ["continue", "audit", "investigate", "custom"];
 
@@ -40,6 +41,11 @@ export async function POST(request: NextRequest) {
       { error: "Cloud dispatch needs a GitHub repo on the project" },
       { status: 400 },
     );
+  }
+  // 52.8 — honor the project's autonomy toggle; manual can't run headless.
+  const permission = cloudPermissionFor(project.autonomyMode);
+  if (!permission.allowed) {
+    return NextResponse.json({ error: permission.reason }, { status: 400 });
   }
 
   const dispatch = await prisma.dispatch.create({

@@ -23,6 +23,7 @@ import {
 } from "./sdk-map";
 import { resolveAnthropicKey } from "../anthropic-key";
 import { ensureAgentUser, type AgentUser } from "./agent-user";
+import { cloudPermissionFor } from "./autonomy";
 
 /** execFile-shaped (no shell) exec for agent-user provisioning. */
 const execForUser = async (command: string, args: string[]) => {
@@ -154,6 +155,16 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
         args.dispatch.mode,
         args.dispatch.customPrompt,
       );
+      // 52.8 — posture from the project's autonomy toggle (manual is
+      // refused at enqueue; acceptEdits is the fallback here).
+      const project = await prisma.project.findUnique({
+        where: { id: args.dispatch.projectId },
+        select: { autonomyMode: true },
+      });
+      const permission = cloudPermissionFor(project?.autonomyMode);
+      const permissionMode = permission.allowed
+        ? permission.permissionMode
+        : "acceptEdits";
 
       const stream = query({
         prompt,
@@ -231,21 +242,20 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
     }): Promise<{ pushed: boolean; branch: string | null }> {
       const { workdir, dispatch } = args;
       // Anything uncommitted the agent left behind gets committed too.
+      // 52.8 — the worktree is owned by the agent uid now; root git
+      // refuses "dubious ownership" without this. Scoped to this dir.
+      const G = ["-C", workdir, "-c", `safe.directory=${workdir}`];
       const status = await execFileAsync(
         "git",
-        ["-C", workdir, "status", "--porcelain"],
+        [...G, "status", "--porcelain"],
         { timeout: 30_000 },
       );
       if (status.stdout.trim()) {
-        await execFileAsync(
-          "git",
-          ["-C", workdir, "add", "-A"],
-          { timeout: 30_000 },
-        );
+        await execFileAsync("git", [...G, "add", "-A"], { timeout: 30_000 });
         await execFileAsync(
           "git",
           [
-            "-C", workdir,
+            ...G,
             "-c", "user.name=TenSixtyThree Runner",
             "-c", "user.email=runner@tensixtythree.com",
             "commit", "-m", `cloud ${dispatch.mode}: session work (dispatch ${dispatch.id})`,
@@ -256,7 +266,7 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       // No commits beyond the clone point → nothing to publish.
       const ahead = await execFileAsync(
         "git",
-        ["-C", workdir, "rev-list", "--count", "origin/HEAD..HEAD"],
+        [...G, "rev-list", "--count", "origin/HEAD..HEAD"],
         { timeout: 30_000 },
       ).catch(() => ({ stdout: "0" }));
       if (Number(ahead.stdout.trim()) === 0) {
@@ -271,7 +281,7 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       // Push straight to a credentialed URL — never persisted in .git/config.
       await execFileAsync(
         "git",
-        ["-C", workdir, "push", cloneUrl(project.githubRepo), `HEAD:refs/heads/${branch}`],
+        [...G, "push", cloneUrl(project.githubRepo), `HEAD:refs/heads/${branch}`],
         { timeout: 120_000 },
       );
       return { pushed: true, branch };

@@ -96,3 +96,24 @@ describe("POST /api/dispatch/cloud", () => {
     expect((await route.POST(req("tokd", { slug: "p" }))).status).toBe(403);
   });
 });
+
+describe("autonomy posture (52.8)", () => {
+  it("refuses to cloud-dispatch a manual-autonomy project", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const route = await load(rig);
+    const me = await makeSession(rig, "tok");
+    await rig.prisma.project.create({
+      data: {
+        name: "M",
+        slug: "manual-proj",
+        path: "/p/m",
+        githubRepo: "j/m",
+        autonomyMode: "manual",
+        ownerUserId: me.id,
+      },
+    });
+    const res = await route.POST(req("tok", { slug: "manual-proj" }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/manual/i);
+  });
+});

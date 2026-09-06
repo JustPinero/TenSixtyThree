@@ -6,6 +6,7 @@ import Link from "next/link";
 import { HealthIndicator } from "../../components/health-indicator";
 import { CommandPanel } from "../../components/command-panel";
 import { Portrait } from "../../components/portrait";
+import { CloudDispatchPanel } from "../../components/cloud-dispatch-panel";
 import { THEME_PACKS, getThemePack } from "@/lib/theme-registry";
 
 interface Project {
@@ -518,6 +519,9 @@ export default function ProjectDetailPage() {
         onAction={fetchProject}
       />
 
+      {/* 52.3 — hosted runner dispatch + live run view */}
+      <CloudDispatchPanel slug={slug} hasRepo={Boolean(project.githubRepo)} />
+
       {/* Command Panel */}
       <div className="mb-6">
         <CommandPanel projectSlug={slug} projectName={project.name} />
@@ -555,7 +559,7 @@ export default function ProjectDetailPage() {
                   alert(
                     res.ok
                       ? "Shared to your active organization."
-                      : (await res.json()).error ?? "Couldn't share.",
+                      : ((await res.json()).error ?? "Couldn't share."),
                   );
                 }}
                 className="border border-space-600 px-2 py-1 text-xs font-mono text-text-dim hover:text-cyan hover:border-cyan"

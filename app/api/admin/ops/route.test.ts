@@ -88,6 +88,50 @@ describe("POST /api/admin/ops", () => {
     expect(data.recent[0].status).toBe("queued");
   });
 
+  it("cloud-events returns the run's event stream for a dispatch id", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    vi.stubEnv("OPS_SECRET", "s3cret-s3cret-s3cret");
+    const route = await load(rig);
+    const project = await rig.prisma.project.create({
+      data: { name: "R", slug: "r", path: "/p/r", githubRepo: "j/r" },
+    });
+    const dispatch = await rig.prisma.dispatch.create({
+      data: {
+        projectId: project.id,
+        projectSlug: "r",
+        mode: "audit",
+        runtime: "cloud",
+        status: "completed",
+      },
+    });
+    await rig.prisma.activityEvent.createMany({
+      data: [
+        {
+          projectId: project.id,
+          eventType: "session-complete",
+          summary: "[cloud audit] the answer is 42",
+          details: JSON.stringify({ dispatchId: dispatch.id }),
+        },
+        {
+          projectId: project.id,
+          eventType: "session-complete",
+          summary: "someone else's run",
+          details: JSON.stringify({ dispatchId: "other" }),
+        },
+      ],
+    });
+    const res = await route.POST(
+      req("s3cret-s3cret-s3cret", {
+        op: "cloud-events",
+        dispatchId: dispatch.id,
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.events).toHaveLength(1);
+    expect(data.events[0].summary).toContain("42");
+  });
+
   it("400s unknown ops and invalid payloads", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     vi.stubEnv("OPS_SECRET", "s3cret-s3cret-s3cret");

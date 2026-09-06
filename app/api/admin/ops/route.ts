@@ -81,6 +81,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ dispatch });
   }
 
+  if (body.op === "cloud-events") {
+    const dispatchId =
+      typeof body.dispatchId === "string" ? body.dispatchId : "";
+    if (!dispatchId) {
+      return NextResponse.json({ error: "dispatchId required" }, { status: 400 });
+    }
+    const events = await prisma.activityEvent.findMany({
+      where: { details: { contains: `"dispatchId":"${dispatchId}"` } },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      select: { id: true, summary: true, createdAt: true },
+    });
+    return NextResponse.json({ events });
+  }
+
   if (body.op === "cloud-status") {
     const recent = await prisma.dispatch.findMany({
       where: { runtime: "cloud" },

@@ -10,7 +10,7 @@
  */
 import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
@@ -33,6 +33,37 @@ function cloneUrl(githubRepo: string): string {
   return token
     ? `https://x-access-token:${token}@github.com/${githubRepo}.git`
     : `https://github.com/${githubRepo}.git`;
+}
+
+const FILE_TOOLS = new Set([
+  "Read",
+  "Write",
+  "Edit",
+  "NotebookEdit",
+  "Glob",
+  "Grep",
+]);
+const PATH_KEYS = ["file_path", "path", "notebook_path"];
+
+/** File tools must stay inside the clone; everything else is allowed. */
+export function classifyToolUse(
+  toolName: string,
+  input: Record<string, unknown>,
+  workdir: string,
+): { allowed: true } | { allowed: false; reason: string } {
+  if (!FILE_TOOLS.has(toolName)) return { allowed: true };
+  for (const key of PATH_KEYS) {
+    const value = input[key];
+    if (typeof value !== "string" || value.length === 0) continue;
+    const resolved = resolve(workdir, value);
+    if (resolved !== workdir && !resolved.startsWith(workdir + "/")) {
+      return {
+        allowed: false,
+        reason: `${key} resolves outside the workspace`,
+      };
+    }
+  }
+  return { allowed: true };
 }
 
 async function trustWorkdir(workdir: string): Promise<void> {
@@ -105,10 +136,26 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
           // the pattern the 52 security review preferred). The agent
           // still never sees runner secrets: subprocess env is an
           // explicit allowlist, not process.env.
+          // Security posture (reviewed, accepted 52): file tools are
+          // path-scoped to the clone; Bash stays open because dispatched
+          // sessions legitimately run arbitrary builds/tests — the same
+          // full-autonomy posture as local dispatches, with the container
+          // as the boundary and no runner secrets in the agent env.
+          // [52.D1] uid-separation for the agent subprocess is the real
+          // fix for same-uid /proc reads — logged in audits/debt.md.
           canUseTool: async (
-            _toolName: string,
+            toolName: string,
             input: Record<string, unknown>,
-          ) => ({ behavior: "allow" as const, updatedInput: input }),
+          ) => {
+            const decision = classifyToolUse(toolName, input, args.workdir);
+            if (!decision.allowed) {
+              console.warn(
+                `[runner] denied ${toolName}: ${decision.reason}`,
+              );
+              return { behavior: "deny" as const, message: decision.reason };
+            }
+            return { behavior: "allow" as const, updatedInput: input };
+          },
           env: {
             ANTHROPIC_API_KEY: key,
             PATH: process.env.PATH ?? "",

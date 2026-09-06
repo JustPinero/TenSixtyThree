@@ -109,3 +109,12 @@ in `lib/claude-dispatcher.multi.test.ts` verify enqueue counts + IDs.
 so users can see queue state for multi-dispatch without looking at tmux.
 Not urgent — tmux "[queued]" placeholders already communicate this at the
 terminal level.
+
+### [52.D1] Runner agent shares uid with the runner process — OPEN (2026-09-06)
+The cloud runner's agent subprocess runs same-uid (root) as the runner, so
+Bash inside a dispatched session could read /proc/<runner-pid>/environ
+(GITHUB_TOKEN, DATABASE_URL) despite the allowlisted agent env. Accepted for
+now: dispatches run only operator/owner repos (full-autonomy posture matches
+local dispatches) and the container is the boundary. Real fix: spawn the CLI
+as an unprivileged user (SDK spawnClaudeCodeProcess override + useradd in
+image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.

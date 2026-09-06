@@ -87,12 +87,16 @@ export async function runClaimedDispatch(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // Budget stops kill the process instead of yielding a result message —
+    // salvage the spend so cost accounting stays honest (round-4 lesson).
+    const budgetMatch = message.match(/Budget limit reached \(\$([\d.]+)/);
     await prisma.dispatch.update({
       where: { id: dispatch.id },
       data: {
         status: "failed",
         completedAt: new Date(),
         errorMessage: message.slice(0, 1000),
+        ...(budgetMatch ? { costUsd: Number(budgetMatch[1]) } : {}),
       },
     });
   } finally {

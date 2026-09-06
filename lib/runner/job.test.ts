@@ -95,3 +95,27 @@ describe("runClaimedDispatch", () => {
     expect(cleanup).toHaveBeenCalled();
   });
 });
+
+describe("budget-stop handling (round-4 lesson)", () => {
+  it("extracts the spent amount from a budget-stop error into costUsd", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    async function* runAgent(): AsyncGenerator<RunnerMessage> {
+      yield { type: "assistant", text: "auditing" };
+      throw new Error(
+        "Claude Code process exited with code 1. stderr: Budget limit reached ($5.06 of $5); stopping background agents."
+      );
+    }
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      runAgent,
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    });
+    const row = await rig.prisma.dispatch.findUnique({
+      where: { id: dispatch.id },
+    });
+    expect(row?.status).toBe("failed");
+    expect(row?.costUsd).toBe(5.06);
+    expect(row?.errorMessage).toContain("Budget limit");
+  });
+});

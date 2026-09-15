@@ -15,6 +15,10 @@ const PUBLIC_PREFIXES = [
   "/api/demo", // 54.5 — demo entry + status (rate-limited, mints its own session)
   "/api/admin/ops", // 52.3 — OPS_SECRET-gated (own constant-time auth; 404 when unset)
   "/_next/",
+  // TLS issuance/renewal: Railway's proxy normally answers ACME
+  // challenges itself, but when it passes them through, a redirect here
+  // fails Let's Encrypt validation outright. Never gate this path.
+  "/.well-known/",
 ];
 
 /** Static assets served from /public (images, fonts, icons). */

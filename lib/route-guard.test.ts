@@ -30,6 +30,21 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/admin/ops")).toBe(true);
   });
 
+  it("ACME challenge paths are public — gating them breaks TLS issuance", () => {
+    expect(
+      isPublicPath("/.well-known/acme-challenge/tokenABC123")
+    ).toBe(true);
+    expect(isPublicPath("/.well-known/security.txt")).toBe(true);
+    // the guarded decision path must agree, not just the classifier
+    expect(
+      guardDecision({
+        path: "/.well-known/acme-challenge/tokenABC123",
+        hasSessionCookie: false,
+        authRequired: true,
+      }).kind
+    ).toBe("allow");
+  });
+
   it("app pages and APIs are guarded", () => {
     for (const p of [
       "/",

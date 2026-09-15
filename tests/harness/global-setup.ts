@@ -19,7 +19,7 @@ const CASCADE_ROOT = path.resolve(__dirname, "..", "..");
 
 export const TEST_PG_BASE =
   process.env.TEST_PG_BASE_URL ||
-  "postgresql://tensixtythree:tensixtythree@localhost:51063";
+  "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063";
 const ADMIN_URL = `${TEST_PG_BASE}/postgres`;
 export const TEMPLATE_DB = "test_rig_template";
 

@@ -10,6 +10,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { cloudPermissionFor } from "@/lib/runner/autonomy";
 
 function authorized(request: NextRequest): "disabled" | "no" | "yes" {
   const secret = process.env.OPS_SECRET;
@@ -64,6 +65,13 @@ export async function POST(request: NextRequest) {
         { error: "No such project (or repo-less)" },
         { status: 400 },
       );
+    }
+    // Bughunt 1.0: the operator surface must honor the same safety
+    // invariant as the user route — manual-autonomy projects never run
+    // unattended, no matter who enqueues.
+    const permission = cloudPermissionFor(project.autonomyMode);
+    if (!permission.allowed) {
+      return NextResponse.json({ error: permission.reason }, { status: 400 });
     }
     const dispatch = await prisma.dispatch.create({
       data: {

@@ -9,6 +9,9 @@
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
 import { foldRunnerMessages, type RunnerMessage } from "./lifecycle";
 import { composePr } from "./pr-body";
+import { heartbeat, finalizeIfOwned } from "./claim";
+
+const HEARTBEAT_MS = 5 * 60_000;
 
 export interface RunnerDeps {
   /** Clone the repo, return the working directory. */
@@ -59,6 +62,12 @@ export async function runClaimedDispatch(
 
   let workdir: string | null = null;
   const messages: RunnerMessage[] = [];
+  const runnerId = dispatch.runnerId ?? "";
+  // Bughunt 1.0: renew the lease while working so a long run is never
+  // mistaken for a dead runner and re-claimed out from under us.
+  const lease = setInterval(() => {
+    heartbeat(prisma, dispatch.id, runnerId).catch(() => {});
+  }, HEARTBEAT_MS);
   try {
     workdir = await deps.cloneRepo(project.githubRepo);
     for await (const message of deps.runAgent({ workdir, dispatch })) {
@@ -122,6 +131,18 @@ export async function runClaimedDispatch(
       }
     }
 
+    const owned = await finalizeIfOwned(prisma, dispatch.id, runnerId, {
+      status: folded.outcome.status,
+      costUsd: folded.outcome.costUsd,
+      resultBranch,
+      resultPrUrl,
+    });
+    if (!owned) {
+      console.warn(
+        `[runner] lost claim on ${dispatch.id} before finalize — result discarded`,
+      );
+      return;
+    }
     await prisma.dispatchOutcome.create({
       data: {
         projectId: dispatch.projectId,
@@ -134,31 +155,18 @@ export async function runClaimedDispatch(
         dispatchId: dispatch.id,
       },
     });
-    await prisma.dispatch.update({
-      where: { id: dispatch.id },
-      data: {
-        status: folded.outcome.status,
-        completedAt: new Date(),
-        costUsd: folded.outcome.costUsd,
-        resultBranch,
-        resultPrUrl,
-      },
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Budget stops kill the process instead of yielding a result message —
     // salvage the spend so cost accounting stays honest (round-4 lesson).
     const budgetMatch = message.match(/Budget limit reached \(\$([\d.]+)/);
-    await prisma.dispatch.update({
-      where: { id: dispatch.id },
-      data: {
-        status: "failed",
-        completedAt: new Date(),
-        errorMessage: message.slice(0, 1000),
-        ...(budgetMatch ? { costUsd: Number(budgetMatch[1]) } : {}),
-      },
+    await finalizeIfOwned(prisma, dispatch.id, runnerId, {
+      status: "failed",
+      errorMessage: message.slice(0, 1000),
+      ...(budgetMatch ? { costUsd: Number(budgetMatch[1]) } : {}),
     });
   } finally {
+    clearInterval(lease);
     if (workdir) await deps.cleanup(workdir);
   }
 }

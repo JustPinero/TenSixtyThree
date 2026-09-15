@@ -44,3 +44,44 @@ export async function requeueStaleClaims(
   });
   return result.count;
 }
+
+/**
+ * Bughunt 1.0 — lease renewal. A long job touches startedAt so the stale
+ * sweep (elapsed-time only, no liveness signal) never requeues a job whose
+ * runner is alive. Returns false when this runner no longer holds the claim.
+ */
+export async function heartbeat(
+  prisma: PrismaClient,
+  dispatchId: string,
+  runnerId: string
+): Promise<boolean> {
+  const result = await prisma.dispatch.updateMany({
+    where: { id: dispatchId, runnerId, status: "started" },
+    data: { startedAt: new Date() },
+  });
+  return result.count === 1;
+}
+
+/**
+ * Bughunt 1.0 — terminal writes are conditioned on still owning the claim,
+ * so a runner that was requeued-and-reclaimed from under it cannot clobber
+ * the winner's result. Returns false when the claim was lost.
+ */
+export async function finalizeIfOwned(
+  prisma: PrismaClient,
+  dispatchId: string,
+  runnerId: string,
+  data: {
+    status: "completed" | "failed";
+    costUsd?: number | null;
+    errorMessage?: string;
+    resultBranch?: string | null;
+    resultPrUrl?: string | null;
+  }
+): Promise<boolean> {
+  const result = await prisma.dispatch.updateMany({
+    where: { id: dispatchId, runnerId, status: "started" },
+    data: { ...data, completedAt: new Date() },
+  });
+  return result.count === 1;
+}

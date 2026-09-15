@@ -12,7 +12,13 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
-  const orgId = session.session.activeOrganizationId;
+  // Bughunt 1.0: re-verify membership — a stale activeOrganizationId
+  // (user removed from the org) must not leak that org's roadmap. Mirrors
+  // the boards route; POST/PATCH/DELETE already checked.
+  let orgId = session.session.activeOrganizationId;
+  if (orgId && !(await requireMembership(prisma, session.user.id, orgId))) {
+    orgId = null;
+  }
   const milestones = await prisma.milestone.findMany({
     where: {
       OR: [

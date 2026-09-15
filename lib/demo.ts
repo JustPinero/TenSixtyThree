@@ -22,7 +22,11 @@ export function isDemoEmail(email: string): boolean {
 }
 
 export function isDemoSession(session: ServerSession | null): boolean {
-  return session !== null && isDemoEmail(session.user.email);
+  // Bughunt 1.0: the persisted User.isDemo flag is the source of truth;
+  // the email suffix stays only as belt-and-braces for legacy rows.
+  return (
+    session !== null && (session.user.isDemo || isDemoEmail(session.user.email))
+  );
 }
 
 export interface DemoIdentity {
@@ -185,8 +189,9 @@ export async function cleanupDemo(
   });
   const orgIds = orgs.map((o) => o.id);
 
-  // Orders matter only where cascades don't cover (posts/shares/boards
-  // cascade from Organization; sessions/members cascade from User).
+  // Posts and shares cascade from Organization; sessions and members from
+  // User. Board and Milestone do NOT — they carry a bare organizationId with
+  // no FK (app-level ownership), so they must be deleted explicitly here.
   await prisma.board.deleteMany({
     where: {
       OR: [{ organizationId: { in: orgIds } }, { ownerUserId: { in: ids } }],

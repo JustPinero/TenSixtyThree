@@ -13,6 +13,10 @@ const SESSION_COOKIE = "better-auth.session_token";
 export async function POST(request: NextRequest) {
   const limited = checkRateLimit(getRateLimitKey(request, "demo"), 3, 3600_000);
   if (limited) return limited;
+  // Bughunt 1.0: per-IP keys can be gamed; a global ceiling bounds the
+  // worst case (each mint seeds ~15 rows) regardless of header tricks.
+  const globalLimited = checkRateLimit("demo:global", 60, 3600_000);
+  if (globalLimited) return globalLimited;
 
   await cleanupDemo(prisma);
   const demo = await seedDemo(prisma);

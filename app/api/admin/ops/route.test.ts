@@ -132,6 +132,20 @@ describe("POST /api/admin/ops", () => {
     expect(data.events[0].summary).toContain("42");
   });
 
+  it("enqueue-cloud refuses manual-autonomy projects like the user route does", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    vi.stubEnv("OPS_SECRET", "s3cret-s3cret-s3cret");
+    const route = await load(rig);
+    await rig.prisma.project.create({
+      data: { name: "M", slug: "manual-p", path: "/p/m", githubRepo: "j/m", autonomyMode: "manual" },
+    });
+    const res = await route.POST(
+      req("s3cret-s3cret-s3cret", { op: "enqueue-cloud", slug: "manual-p" })
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/manual/i);
+  });
+
   it("400s unknown ops and invalid payloads", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     vi.stubEnv("OPS_SECRET", "s3cret-s3cret-s3cret");

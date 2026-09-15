@@ -13,7 +13,7 @@
 import type { PrismaClient } from "@/app/generated/prisma/client";
 
 export interface ServerSession {
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; isDemo: boolean };
   session: {
     token: string;
     expiresAt: Date;
@@ -55,6 +55,7 @@ export async function getServerSession(
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      isDemo: session.user.isDemo,
     },
     session: {
       token: session.token,

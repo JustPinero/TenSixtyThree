@@ -57,8 +57,9 @@ export async function ensureAgentUser(exec: ExecFn): Promise<AgentUser | null> {
     cached = { uid, gid, home: `/home/${AGENT_USER}` };
     return cached;
   } catch {
-    cached = null;
-    return cached;
+    // Bughunt 1.0: do NOT cache a failure — a transient useradd hiccup
+    // must not permanently degrade this runner to the same-uid posture.
+    return null;
   }
 }
 

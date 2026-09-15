@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "@/lib/auth-helpers";
 import { requireMembership } from "@/lib/orgs";
+import { canSeeProject } from "@/lib/project-access";
 
 async function activeOrgContext(request: NextRequest) {
   const session = await getServerSession(prisma, request.headers);
@@ -53,8 +54,14 @@ export async function POST(request: NextRequest) {
   if (projectId === null) {
     return NextResponse.json({ error: "projectId required" }, { status: 400 });
   }
+  // Bughunt 1.0 (critical): Project.id is a sequential Int — sharing must
+  // require the caller to be able to SEE the project, not just guess its id.
+  // Strangers get the same 404 as a missing project.
   const project = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!project) {
+  if (
+    !project ||
+    !(await canSeeProject(prisma, ctx.session.user.id, project.id))
+  ) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
   const existing = await prisma.orgProjectShare.findFirst({

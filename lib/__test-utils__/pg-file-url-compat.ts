@@ -22,7 +22,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 export const TEST_PG_BASE =
   process.env.TEST_PG_BASE_URL ||
-  "postgresql://tensixtythree:tensixtythree@localhost:51063";
+  "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063";
 
 /** file:/path/to/foo.db → test_rig_c_<hash12> (stable within+across runs). */
 export function dbNameForFileUrl(fileUrl: string): string {

@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 // Phase 51.1 — Postgres everywhere (hosted-foundation). DATABASE_URL is a
 // postgres:// URL; local dev runs the tensixtythree-pg Docker container
 // (postgres:16 on 127.0.0.1:51063). The old better-sqlite3 adapter and the
-// file:./dev.db convention are retired (data migration: scripts/migrate-dev-db.ts).
+// file:./dev.db convention are retired (one-way data migration ran in Phase 51.1).
 const adapter = new PrismaPg({
   connectionString:
     process.env.DATABASE_URL ||

@@ -17,7 +17,6 @@
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | PROJECTS_DIR | `~/projects` | Root directory the scanner walks. Absolute or `~`-prefixed |
-| CASCADE_KNOWLEDGE_DIR | `./knowledge` | Path to the knowledge directory (lessons + advisories) |
 | CASCADE_PORT | `3000` | Port the dev server binds. Threaded into `scripts/install-hooks.ts` so generated Stop hooks ping the right webhook |
 | CASCADE_MAX_CONCURRENT_SUBAGENTS | `3` | Concurrency cap for the dispatch queue. Tuned per host RAM (Phase 22 — leave room for the lead Claude + N teammates) |
 | NODE_OPTIONS | unset | Phase 26 — on this Windows box set to `--use-system-ca` so Node trusts the local TLS-intercepting root CA. Required for `fetch("https://api.anthropic.com/...")` to succeed on networks that do SSL inspection |

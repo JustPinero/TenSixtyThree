@@ -107,3 +107,67 @@ describe("requeueStaleClaims", () => {
     ).toBe("started");
   });
 });
+
+describe("bughunt 1.0 — claim ownership", () => {
+  it("heartbeat keeps a live job from being requeued as stale", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const project = await makeProject(rig);
+    const row = await rig.prisma.dispatch.create({
+      data: {
+        projectId: project.id,
+        projectSlug: "p",
+        mode: "continue",
+        runtime: "cloud",
+        status: "started",
+        runnerId: "alive",
+        startedAt: new Date(Date.now() - 3 * 3600_000),
+      },
+    });
+    const { heartbeat } = await import("./claim");
+    await heartbeat(rig.prisma, row.id, "alive");
+    expect(await requeueStaleClaims(rig.prisma, 60 * 60_000)).toBe(0);
+  });
+
+  it("heartbeat from a runner that lost the claim is a no-op", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const project = await makeProject(rig);
+    const row = await rig.prisma.dispatch.create({
+      data: {
+        projectId: project.id,
+        projectSlug: "p",
+        mode: "continue",
+        runtime: "cloud",
+        status: "started",
+        runnerId: "other-runner",
+        startedAt: new Date(Date.now() - 3 * 3600_000),
+      },
+    });
+    const { heartbeat } = await import("./claim");
+    expect(await heartbeat(rig.prisma, row.id, "me")).toBe(false);
+  });
+
+  it("finalizeIfOwned refuses to write a terminal state for a lost claim", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const project = await makeProject(rig);
+    const row = await rig.prisma.dispatch.create({
+      data: {
+        projectId: project.id,
+        projectSlug: "p",
+        mode: "continue",
+        runtime: "cloud",
+        status: "started",
+        runnerId: "runner-b",
+        startedAt: new Date(),
+      },
+    });
+    const { finalizeIfOwned } = await import("./claim");
+    const ok = await finalizeIfOwned(rig.prisma, row.id, "runner-a", {
+      status: "completed",
+      costUsd: 1,
+    });
+    expect(ok).toBe(false);
+    const after = await rig.prisma.dispatch.findUnique({ where: { id: row.id } });
+    expect(after?.status).toBe("started");
+    expect(after?.costUsd).toBeNull();
+  });
+});

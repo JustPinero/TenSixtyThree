@@ -246,11 +246,8 @@ export async function ingestSessionComplete(
       }
     }
 
-    // Record DispatchOutcome — keyed off the Dispatch row when we
-    // found one; otherwise fall back to the legacy "find latest
-    // session-launched activity event" lookup so pre-23.2 in-flight
-    // dispatches still produce outcomes during the transition window.
-    let outcomeWritten = false;
+    // Record DispatchOutcome — keyed off the Dispatch row. Key-less pings
+    // get no outcome row ([23.D6]).
     if (dispatch) {
       try {
         const outcome = deriveOutcome(signalTypes);
@@ -273,7 +270,6 @@ export async function ingestSessionComplete(
             goalReason,
           },
         });
-        outcomeWritten = true;
       } catch (err) {
         // DispatchOutcome write is independent — failure here must
         // not crash the webhook. Log and continue.

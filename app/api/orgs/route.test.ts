@@ -126,7 +126,7 @@ describe("/api/orgs/posts", () => {
     const { posts, projects } = await load(rig);
     const { user, org } = await setup(rig);
     const project = await rig.prisma.project.create({
-      data: { name: "P", slug: "p", path: "/p/p" },
+      data: { name: "P", slug: "p", path: "/p/p", ownerUserId: user.id },
     });
 
     const unshared = await posts.POST(
@@ -165,7 +165,7 @@ describe("/api/orgs/projects", () => {
       data: { activeOrganizationId: org.id },
     });
     const project = await rig.prisma.project.create({
-      data: { name: "P", slug: "p", path: "/p/p" },
+      data: { name: "P", slug: "p", path: "/p/p", ownerUserId: user.id },
     });
 
     const share = await projects.POST(
@@ -194,5 +194,31 @@ describe("/api/orgs/projects", () => {
       (await (await projects.GET(req("/projects", "GET", "tok"))).json())
         .projects
     ).toHaveLength(0);
+  });
+});
+
+describe("bughunt 1.0 — share IDOR", () => {
+  it("cannot share a project the caller cannot see (sequential id guess)", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { projects } = await load(rig);
+    const victim = await rig.prisma.user.create({
+      data: { id: "victim", name: "V", email: "v@x.dev" },
+    });
+    const secret = await rig.prisma.project.create({
+      data: { name: "Secret", slug: "secret", path: "/p/s", ownerUserId: victim.id },
+    });
+    const attacker = await makeSession(rig, "tok");
+    const org = await createOrg(rig.prisma, { name: "Evil", ownerId: attacker.id });
+    await rig.prisma.session.update({
+      where: { token: "tok" },
+      data: { activeOrganizationId: org.id },
+    });
+    const res = await projects.POST(
+      req("/projects", "POST", "tok", { projectId: secret.id })
+    );
+    expect(res.status).toBe(404);
+    expect(
+      await rig.prisma.orgProjectShare.count({ where: { projectId: secret.id } })
+    ).toBe(0);
   });
 });

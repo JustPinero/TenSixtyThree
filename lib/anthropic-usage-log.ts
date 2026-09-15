@@ -77,7 +77,6 @@ export function logUsage(prisma: PrismaClient, input: UsageEventInput): void {
       })
       .catch((err) => {
         if (process.env.NODE_ENV !== "test") {
-          // eslint-disable-next-line no-console
           console.warn(
             `[anthropic-usage-log] insert failed for ${input.callSite}: ${
               err instanceof Error ? err.message : String(err)

@@ -6,11 +6,11 @@
 | Frontend | Next.js 16 (App Router) | SSR for dashboard, server components for direct fs reads |
 | Backend | Next.js API Routes | No separate backend needed; API routes handle fs scanning, shell execution |
 | Language | TypeScript (strict mode) | Type safety across the full stack |
-| Database | SQLite via Prisma 7 | Lightweight, file-based, no server needed, perfect for local-first app |
+| Database | Postgres 16 via Prisma 7 (`@prisma/adapter-pg`) | Hosted-first since Phase 51; local dev = `tensixtythree-pg` Docker container. Real concurrency: advisory locks / `FOR UPDATE` where find-or-create or read-modify-write matters (see `.claude/rules/db.md`) |
 | Styling | Tailwind CSS 4 | Utility-first, CSS-based config (not tailwind.config.js) |
 | AI | Anthropic Claude API | Sonnet for chat/dispatch, Haiku for briefing/harvest |
-| Auth | None yet | Single-operator today; Teams identity foundation (User/Team/Membership/Invite, Phases 43-45) is in the schema awaiting the hosted-vs-local decision before an auth layer is added |
-| Hosting | localhost:3000 | Local dev server |
+| Auth | Better Auth (invite-only) | Email code / password-after-first-login / GitHub+Google OAuth; org plugin owns Organization/Member/Invitation; `databaseHooks.user.create.before` → `lib/invite-gate.ts` is the single creation choke point; `ADMIN_EMAILS` bootstrap. Local single-operator mode runs with `AUTH_REQUIRED` unset |
+| Hosting | Railway (2 services + Postgres) | `tensixtythree-app` (Next.js) and `tensixtythree-runner` (cloud agent runner, `RUNNER_MODE=1`, same repo). `railway.json` is honored by the app service only — new services ignore it (see landmines) |
 | Testing | Vitest + Playwright | Fast unit tests + real browser E2E |
 | Package Manager | pnpm | Fast, disk-efficient |
 
@@ -49,12 +49,12 @@ Stop hook pipeline:
 ```
 
 ## Key Architectural Decisions
-1. **File system is source of truth** — SQLite indexes and caches project data; actual project directories are canonical
+1. **File system is source of truth (local mode)** — Postgres indexes and caches project data; actual project directories are canonical
 2. **Event-driven, not polling** — Stop hooks fire on session end; no background polling for project changes
 3. **Server components by default** — Only use "use client" when React state, effects, or event handlers are needed
 4. **Incremental scanning** — importSingleProject() for webhook-triggered updates; full scan only on manual "Scan" button
 5. **Knowledge in-repo** — Knowledge base structure lives in /knowledge; actual lessons are gitignored (populated per-user)
-6. **SQLite at project root** — Database is `./dev.db`, derived from fs and can be rebuilt; gitignored
+6. **Postgres is the store** — local dev container `tensixtythree-pg`; hosted Railway Postgres. Local-mode project rows are derived from the filesystem and can be rescanned; hosted rows (orgs, boards, users) are authoritative
 7. **Platform-aware dispatch** — `detectPlatform()` selects osascript+Terminal.app (macOS), tmux-direct (Linux/WSL2), or wt.exe + Git Bash (Windows; Phase 26). `lib/dispatch-preflight.ts` reports per-platform tool availability; the result is surfaced in the dashboard header via `<PlatformBadge />` (Phase 28). On Windows, batch dispatch (`dispatchAll`/`dispatchBatch`) opens **one named wt window with split panes** rather than N independent tabs — `wt -w cascade-<timestamp> new-tab` creates the window on the first job and `split-pane` adds panes for the rest (Phase 29). Single dispatch still uses `-w 0 new-tab`. See `knowledge/cascade-windows-dispatch.md` for the full flow.
 8. **Overseer is customizable** — Name, portrait, personality stored in localStorage; defaults to "Overseer"
 9. **Personal data never committed** — Playbook, lessons, sessions, channel, database all gitignored
@@ -85,3 +85,18 @@ User/Team/Membership/Invite identity model + nullable team/owner attribution on 
 
 ### 20. Hosted foundation (Phase 51, 2026-08-06)
 Postgres everywhere (tensixtythree-pg docker container; see .claude/rules/db.md), Better Auth identity (GitHub/Google OAuth + magic-link stub, BA-owned String-cuid User; AUTH_REQUIRED env gates enforcement, local single-user mode unchanged), Teams rebuilt on the org plugin (Organization/Member/Invitation; invite token = Invitation.id, rotated on re-invite). Deploy prep: lib/env-manifest.ts is the machine-checked catalog of every env var (hosted-required / hosted-optional / local-only; validateHostedEnv powers boot diagnostics), GET /api/health is the unauthenticated Railway healthcheck (200 ok/up | 503 degraded/down + missingEnv self-diagnosis, seam in lib/health-check.ts), railway.json carries build/preDeploy(prisma db push)/healthcheck config, `pnpm start:hosted` starts without op-run env injection. Architecture: hosted control plane + local runners — filesystem-fleet features (health scans, dispatch, hook installs) intentionally degrade on the hosted instance until Phase 52 cloud runners.
+
+### 21. Cloud runner (Phase 52, 2026-09-05/06)
+Hosted dispatches execute on a second always-on Railway service, not the operator's laptop. `POST /api/dispatch/cloud` writes a `Dispatch` row (`runtime: "cloud"`); `scripts/runner.ts` polls `lib/runner/loop.ts` → `claim.ts` (`FOR UPDATE SKIP LOCKED`, 60-min stale requeue, 5-min lease **heartbeat**, terminal writes conditioned on still owning the claim) → `job.ts` (injected deps) → `real-deps.ts`: shallow clone (credentialed URL stripped from `.git/config`), Claude Agent SDK `query()` with a typed message stream folded by `lifecycle.ts` into `ActivityEvent` rows + a `DispatchOutcome` (cost/turns/signals via the existing escalation detector), then push to `cloud/<dispatch-id>` and open a PR (`pr-body.ts`). Security posture: the agent runs as unprivileged uid 1500 `tsagent` (`agent-user.ts`, SDK `spawnClaudeCodeProcess` override) with an allowlisted env — the runner's own secrets are provably unreadable (verified in-run: `/proc/1/environ` → DENIED); file tools are path-scoped (`classifyToolUse`), Bash stays open (container is the boundary; same posture as local full-autonomy). Project `autonomyMode` maps full→bypass, semi→acceptEdits, manual→refused (nobody can approve headless). Guardrails: `RUNNER_MAX_TURNS=40`, `RUNNER_MAX_BUDGET_USD=5` (budget stops are salvaged into `costUsd`). `/api/admin/ops` (OPS_SECRET) exists because the hosted DB is private-network-only and `railway ssh` piped stdin is unreliable.
+
+### 22. Theme packs & personas (Phase 53, 2026-09-04)
+12 packs (`lib/theme-registry.ts`): a `[data-theme]` CSS-var block each + a persona (name, idle/talking portraits generated via the Leonardo API, personality, voice defaults, chime profile). `applyThemePack` swaps the persona only when the current one is pristine. Personas are real, not cosmetic: `lib/persona-prompt.ts` appends a sanitized `# Persona` block to the Overseer system prompt (base prompt untouched — snapshot test + cache prefix safe); `Project.themeKey` gives per-project personas in project chat.
+
+### 23. Lockdown, orgs, boards, demo (Phase 54, 2026-09-04/05)
+Invite-only auth as in the stack table; edge middleware (`lib/route-guard.ts`, optimistic cookie-presence gate; `/.well-known/` and `/api/health` and `/api/demo` and `/api/admin/ops` are public) with real checks in routes. `lib/crypto-box.ts` (AES-256-GCM, `ENCRYPTION_KEY`) seals BYOK Anthropic keys (`resolveAnthropicKey`: user key wins, else app key — no quotas by decision) and org Linear keys. Multi-org on the org-plugin tables (`lib/orgs.ts`, `lib/org-context.ts`), `OrgPost` typed feed, `OrgProjectShare`. Kanban: `Board/BoardColumn/Ticket` (fractional positions, exactly-one-owner rule in `lib/boards.ts`), `Milestone`, dnd-kit UI, Linear import idempotent by `linearIssueId`. Demo: `lib/demo.ts` seeds an `isDemo` user+org+projects+board+posts per visit (2h session, 24h sweep, 3/h/IP + 60/h global rate limits); choke points (canned Overseer, refused dispatch/admin/BYOK) key on the persisted `User.isDemo` flag. Guided tour: hand-rolled spotlight (`lib/tour-steps.ts` + anchor drift-guard test).
+
+### 24. Invite loop + project tenancy (Phase 55, 2026-09-05)
+`lib/invite-accept.ts` turns pending org invitations into memberships on first authenticated touch (canonical, verified email only). `Project.ownerUserId` (null = operator fleet) + `lib/project-access.ts` visibility matrix: local mode → all non-demo; admin → all non-demo; user → owned + org-shared; demo → demo only. Enforced on the list, detail, chat, cloud-dispatch, and (1.0 fix) org-share routes — strangers always get 404. The Phase-48 single-team layer (`/api/team`, `lib/teams.ts`) was retired in the 1.0 cleanup.
+
+### 25. v1.0 release (2026-09-15)
+Full audit pass (drift, test, bughunt, optimize, dead-code): 1 critical (org-share IDOR) + 2 high (claim race, XFF rate-limit bypass) fixed with regression tests; ~2,900 lines of relics removed; test harness moved to worker-scoped rig databases (suite ~90s flaky → ~30s stable). Known debt carried into 1.0 is listed in `audits/debt.md`.

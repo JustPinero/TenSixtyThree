@@ -11,6 +11,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] || "file:./dev.db",
+    url: process.env["DATABASE_URL"] || "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063/tensixtythree",
   },
 });

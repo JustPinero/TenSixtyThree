@@ -59,8 +59,14 @@ export function getRateLimitKey(
   request: Request,
   prefix: string
 ): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "local";
+  // Bughunt 1.0: behind a single trusted proxy (Railway) the connecting
+  // IP is the LAST hop it appends; anything earlier is client-supplied and
+  // spoofable — keying on [0] let attackers mint a fresh bucket per request.
+  const hops = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  const ip = hops.length > 0 ? hops[hops.length - 1] : "local";
   return `${prefix}:${ip}`;
 }
 

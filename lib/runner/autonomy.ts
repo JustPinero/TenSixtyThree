@@ -7,6 +7,13 @@
  * manual-autonomy project is REFUSED rather than silently promoted to
  * unattended — the toggle means "I approve each action", and nobody is
  * there to approve.
+ *
+ * `permissionMode` is the posture the project's toggle IMPLIES; the
+ * enqueue routes act only on `allowed`. The SDK run itself deliberately
+ * passes no permissionMode (lib/runner/real-deps.ts): bypass and
+ * acceptEdits both sidestep canUseTool, which is where the clone-dir path
+ * scoping lives, so every cloud run uses the default consult-everything
+ * mode regardless of toggle.
  */
 
 export type CloudPermission =

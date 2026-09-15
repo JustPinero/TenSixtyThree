@@ -87,6 +87,23 @@ export async function syncLinearIssues(
   });
   const columnByName = new Map(columns.map((c) => [c.name, c]));
 
+  // 1.0 optimize: one lookup for existing tickets and one for column tail
+  // positions, instead of ~3 round trips per issue (N+1 on a user request).
+  const existingRows = await prisma.ticket.findMany({
+    where: { linearIssueId: { in: issues.map((i) => i.id) } },
+  });
+  const existingByIssue = new Map(
+    existingRows.map((t) => [t.linearIssueId as string, t])
+  );
+  const tails = await prisma.ticket.groupBy({
+    by: ["columnId"],
+    where: { boardId: args.boardId },
+    _max: { position: true },
+  });
+  const tailByColumn = new Map(
+    tails.map((t) => [t.columnId, t._max.position ?? 0])
+  );
+
   let created = 0;
   let updated = 0;
   for (const issue of issues) {
@@ -94,9 +111,7 @@ export async function syncLinearIssues(
     const column = columnByName.get(columnName) ?? columns[0];
     if (!column) continue;
 
-    const existing = await prisma.ticket.findUnique({
-      where: { linearIssueId: issue.id },
-    });
+    const existing = existingByIssue.get(issue.id);
     if (existing) {
       const needsMove = existing.columnId !== column.id;
       await prisma.ticket.update({
@@ -112,10 +127,8 @@ export async function syncLinearIssues(
       continue;
     }
 
-    const last = await prisma.ticket.findFirst({
-      where: { columnId: column.id },
-      orderBy: { position: "desc" },
-    });
+    const position = positionAfter(tailByColumn.get(column.id) ?? null);
+    tailByColumn.set(column.id, position);
     await prisma.ticket.create({
       data: {
         boardId: args.boardId,
@@ -123,7 +136,7 @@ export async function syncLinearIssues(
         title: issue.title.slice(0, 200),
         description: issue.description.slice(0, 5000),
         priority: LINEAR_PRIORITY[issue.priority] ?? "normal",
-        position: positionAfter(last?.position ?? null),
+        position,
         createdById: args.createdById,
         linearIssueId: issue.id,
       },

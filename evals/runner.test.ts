@@ -114,7 +114,7 @@ describe("loadScenario", () => {
 
 describe("runScenario", () => {
   it("dispatches to the registered executor and returns its result", async () => {
-    registerKindExecutor("overseer-tool-sequence", async (s) => {
+    registerKindExecutor("overseer-tool-sequence", async () => {
       return { pass: true };
     });
     const result = await runScenario(

@@ -45,20 +45,28 @@ async function checkAdvisoryRead(projectPath: string): Promise<{
  * Get advisory status for all projects.
  */
 export async function getAdvisoryStatuses(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  // 1.0 optimize: callers that already hold the project list pass it in —
+  // the dashboard was scanning the Project table twice per request.
+  projects?: { name: string; slug: string; path: string }[]
 ): Promise<AdvisoryStatus[]> {
-  const projects = await prisma.project.findMany();
-  const statuses: AdvisoryStatus[] = [];
-
-  for (const project of projects) {
-    const { hasAdvisory, isRead } = await checkAdvisoryRead(project.path);
-    statuses.push({
-      projectName: project.name,
-      projectSlug: project.slug,
-      hasAdvisory,
-      isRead,
-    });
-  }
+  const list =
+    projects ??
+    (await prisma.project.findMany({
+      select: { name: true, slug: true, path: true },
+    }));
+  // Filesystem probes are independent — run them together, not serially.
+  const statuses: AdvisoryStatus[] = await Promise.all(
+    list.map(async (project) => {
+      const { hasAdvisory, isRead } = await checkAdvisoryRead(project.path);
+      return {
+        projectName: project.name,
+        projectSlug: project.slug,
+        hasAdvisory,
+        isRead,
+      };
+    })
+  );
 
   return statuses;
 }

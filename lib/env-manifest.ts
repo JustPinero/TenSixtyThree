@@ -138,11 +138,6 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
       "Root directory of the local project fleet for health/progress scans.",
   },
   {
-    name: "CASCADE_KNOWLEDGE_DIR",
-    scope: "local-only",
-    description: "Knowledge base directory for harvesting/brain-sync.",
-  },
-  {
     name: "KILROY_BRAIN_PATH",
     scope: "local-only",
     description: "Path to the shared kilroy-brain repo checkout.",

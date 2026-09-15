@@ -5,7 +5,7 @@ import path from "path";
 
 // Fallback aligned with prisma.config.ts and lib/db.ts. Canonical
 // SQLite file lives at the project root (./dev.db), not under prisma/.
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL || "postgresql://tensixtythree:tensixtythree@localhost:51063/tensixtythree" });
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL || "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063/tensixtythree" });
 
 const prisma = new PrismaClient({ adapter });
 

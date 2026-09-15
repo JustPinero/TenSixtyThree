@@ -61,11 +61,10 @@ const FIXTURE_PROJECT_PATH = path.resolve(
 // scratch DBs live inside the project's prisma/ directory, not /tmp.
 // File: URLs with absolute paths under /tmp don't reach the prisma CLI's
 // schema-push the same way relative-to-cwd paths do.
-const PRISMA_DIR = path.resolve(__dirname, "..", "..", "prisma");
 
 const TEST_PG_BASE =
   process.env.TEST_PG_BASE_URL ||
-  "postgresql://tensixtythree:tensixtythree@localhost:51063";
+  "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063";
 const TEMPLATE_DB = "test_rig_template";
 
 async function pgAdmin<T>(fn: (c: PgClient) => Promise<T>): Promise<T> {
@@ -78,50 +77,6 @@ async function pgAdmin<T>(fn: (c: PgClient) => Promise<T>): Promise<T> {
   }
 }
 
-/**
- * Phase 41.1 — stale scratch DB sweep.
- *
- * dispose() removes each rig's own scratch DB, but crashed or
- * interrupted runs never reach dispose, so `test-rig-*.db` files
- * accumulate in prisma/ over time. Every rig startup sweeps scratch
- * files whose mtime predates this process by more than a grace
- * window. The window exists so parallel vitest workers (separate
- * processes, started within seconds of each other) never delete a
- * sibling's live scratch DB; anything left from a previous run is
- * minutes-to-hours old and gets removed. The shared template
- * (test-rig-template.db, owned by globalSetup) is never swept.
- */
-const RIG_PROCESS_START_MS = Date.now();
-const STALE_SWEEP_GRACE_MS = 60_000;
-
-function isRigScratchFile(name: string): boolean {
-  if (!name.startsWith("test-rig-")) return false;
-  if (name.startsWith("test-rig-template.db")) return false;
-  return /\.db(?:-journal|-wal|-shm)?$/.test(name);
-}
-
-async function sweepStaleRigDbs(): Promise<void> {
-  // Real fs binding — test files often vi.mock("fs").
-  const realFs = await vi.importActual<typeof import("fs")>("fs");
-  let entries: string[];
-  try {
-    entries = realFs.readdirSync(PRISMA_DIR);
-  } catch {
-    return; // best-effort hygiene, never fail the rig over it
-  }
-  const cutoffMs = RIG_PROCESS_START_MS - STALE_SWEEP_GRACE_MS;
-  for (const name of entries) {
-    if (!isRigScratchFile(name)) continue;
-    const filePath = path.join(PRISMA_DIR, name);
-    try {
-      if (realFs.statSync(filePath).mtimeMs < cutoffMs) {
-        realFs.unlinkSync(filePath);
-      }
-    } catch {
-      // raced with another worker or locked — best-effort
-    }
-  }
-}
 
 async function pgAdminOn<T>(
   dbName: string,
@@ -195,10 +150,6 @@ export async function createDispatchRig(
 ): Promise<DispatchRig> {
   const concurrency = opts.concurrency ?? 1;
   const useFakeTimers = opts.fakeTimers !== false;
-
-  // 0. Hygiene — sweep legacy SQLite scratch files leaked by pre-51 runs
-  //    (Phase 41.1; keeps the old guarantee while any .db strays remain).
-  await sweepStaleRigDbs();
 
   // 1. Scratch Postgres database, cloned from the schema-applied template
   //    (Phase 51.1). Leaked DBs from crashed runs are swept by globalSetup.

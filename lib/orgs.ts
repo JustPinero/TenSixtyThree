@@ -5,22 +5,43 @@
  * (activeOrganizationId), same field Better Auth's plugin uses.
  */
 import type { PrismaClient, Organization } from "@/app/generated/prisma/client";
-import { createTeam } from "./teams";
 
 export interface OrgWithRole extends Organization {
   role: string;
+}
+
+/** URL slug from an org name: accents folded, non-alphanumerics collapsed. */
+export function slugifyOrgName(name: string): string {
+  return (
+    name
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "") // í→i etc. — Coquí Labs → coqui-labs
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "org"
+  );
 }
 
 export async function createOrg(
   prisma: PrismaClient,
   args: { name: string; ownerId: string },
 ): Promise<Organization> {
-  const owner = await prisma.user.findUniqueOrThrow({
-    where: { id: args.ownerId },
+  await prisma.user.findUniqueOrThrow({ where: { id: args.ownerId } });
+  // Unique-ify the slug: coqui-labs, coqui-labs-2, coqui-labs-3 …
+  const base = slugifyOrgName(args.name);
+  let slug = base;
+  for (let n = 2; ; n++) {
+    const clash = await prisma.organization.findUnique({ where: { slug } });
+    if (!clash) break;
+    slug = `${base}-${n}`;
+  }
+  const org = await prisma.organization.create({
+    data: { name: args.name, slug },
   });
-  // createTeam (51.3) already slugifies + uniquifies + writes the owner
-  // Member row; the single-team restriction was route policy, not lib.
-  return createTeam(prisma, { name: args.name, owner });
+  await prisma.member.create({
+    data: { organizationId: org.id, userId: args.ownerId, role: "owner" },
+  });
+  return org;
 }
 
 export async function listUserOrgs(

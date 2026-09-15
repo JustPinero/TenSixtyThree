@@ -77,3 +77,20 @@ describe("rate-limiter", () => {
     expect(__rateLimiterStoreSizeForTests()).toBeLessThan(300);
   });
 });
+
+describe("bughunt 1.0 — client IP derivation", () => {
+  it("uses the LAST x-forwarded-for hop (the one the trusted proxy appends), not the first", async () => {
+    const { getRateLimitKey } = await import("./rate-limiter");
+    // An attacker prepends junk; Railway appends the real connecting IP.
+    const req = new Request("http://x", {
+      headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8, 203.0.113.9" },
+    });
+    expect(getRateLimitKey(req, "demo")).toBe("demo:203.0.113.9");
+  });
+
+  it("a spoofed single-entry header still yields a stable non-empty key", async () => {
+    const { getRateLimitKey } = await import("./rate-limiter");
+    const req = new Request("http://x", { headers: { "x-forwarded-for": "  " } });
+    expect(getRateLimitKey(req, "demo")).toBe("demo:local");
+  });
+});

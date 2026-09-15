@@ -7,9 +7,45 @@
   Acceptable while the hosted DB holds no irreplaceable data; convert to
   `prisma migrate` (baseline + migration files) before real production data
   accumulates. Trigger: first external user, or first schema change after
-  launch, whichever comes first.
+  launch, whichever comes first. **1.0 note:** the hosted DB now holds real
+  rows (orgs, invites, boards, sealed BYOK keys) — the trigger has fired;
+  baseline `prisma migrate` is the first post-1.0 chore.
 
-*(empty — ledger zeroed 2026-07-30. Five former entries were promoted to the
+- **[1.0.D1]** (2026-09-15, release test-audit) 47 legacy test files still
+  build their Prisma client through the `@prisma/adapter-better-sqlite3` →
+  pg compat alias in `vitest.config.ts` (`lib/__test-utils__/pg-file-url-compat.ts`).
+  They run green against Postgres, but the alias is a shim over a retired
+  driver. Migrate them to `tests/harness/dispatch-rig.ts` (worker-scoped
+  DBs) and delete the alias. Mechanical; do it file-by-file, not in one PR.
+
+- **[1.0.D2]** (2026-09-15, release test-audit) `app/api/__tests__/*.test.ts`
+  (10 files: activity, dispatch, feature-proposals, knowledge, playbook,
+  projects, reminders, reports, templates, webhook) are largely tautological
+  — they mock the module under test and assert the mock. Real coverage for
+  those routes lives in the per-route `route.test.ts` files and
+  `tests/scenarios/`. Rewrite against the rig or delete; they cost CI time
+  and give false confidence.
+
+- **[1.0.D3]** (2026-09-15, release optimize) `app/page.tsx` dashboard is a
+  client component that fetches `/api/projects` on mount. The 1.0 pass fixed
+  the double-scan and moved visibility resolution ahead of the fan-out, but
+  the right shape is a server component that calls the engines directly
+  (one round-trip, no waterfall, streaming-friendly).
+
+- **[1.0.D4]** (2026-09-15, release bughunt, low) `/api/admin/ops`
+  `cloud-events` and `/api/dispatch/cloud/[id]` find a dispatch's ActivityEvents with a
+  JSON-substring `contains: '"dispatchId":"…"'` on the `details` String
+  column. Works because the writer is ours, but it is a seq-scan and
+  fragile to key ordering. Add a nullable `dispatchId` column on
+  ActivityEvent (indexed) and write it at emit time.
+
+- **[1.0.D5]** (2026-09-15, release bughunt, low) `classifyToolUse`
+  (lib/runner/real-deps.ts) scopes file tools by lexical path prefix under
+  the clone dir; a symlink created inside the workspace could point out of
+  it. The uid drop ([52.D1]) already denies reads of anything sensitive, so
+  this is defense-in-depth: resolve with `realpath` before the prefix check.
+
+*(ledger was zeroed 2026-07-30. Five former entries were promoted to the
 roadmap in `audits/modernization-plan-2026-07.md` § Promoted-from-debt because
 they are feature slices, not defects: [23.D1] eval recordings, [23.D2] team-
 dispatch lifecycle rearchitecture, [23.D4] real-log escalation corpus,

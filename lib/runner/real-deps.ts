@@ -23,7 +23,6 @@ import {
 } from "./sdk-map";
 import { resolveAnthropicKey } from "../anthropic-key";
 import { ensureAgentUser, type AgentUser } from "./agent-user";
-import { cloudPermissionFor } from "./autonomy";
 
 /** execFile-shaped (no shell) exec for agent-user provisioning. */
 const execForUser = async (command: string, args: string[]) => {
@@ -155,16 +154,12 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
         args.dispatch.mode,
         args.dispatch.customPrompt,
       );
-      // 52.8 — posture from the project's autonomy toggle (manual is
-      // refused at enqueue; acceptEdits is the fallback here).
-      const project = await prisma.project.findUnique({
-        where: { id: args.dispatch.projectId },
-        select: { autonomyMode: true },
-      });
-      const permission = cloudPermissionFor(project?.autonomyMode);
-      const permissionMode = permission.allowed
-        ? permission.permissionMode
-        : "acceptEdits";
+      // Autonomy is enforced at enqueue (manual is refused — see
+      // lib/runner/autonomy.ts). No permissionMode is passed here on
+      // purpose: bypassPermissions skips canUseTool entirely and
+      // acceptEdits auto-approves file edits without it, and both would
+      // drop the path scoping below. Default mode routes every tool
+      // through canUseTool, which is the reviewed posture.
 
       const stream = query({
         prompt,

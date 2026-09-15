@@ -87,9 +87,3 @@ export function getPortraitMode(): "single" | "dual" {
   return settings.portraitTalking ? "dual" : "single";
 }
 
-/**
- * Get the Overseer's display name (for use in system prompts and UI).
- */
-export function getOverseerName(): string {
-  return getOverseerSettings().name;
-}

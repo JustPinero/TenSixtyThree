@@ -12,14 +12,16 @@ import type { PrismaClient, Prisma } from "@/app/generated/prisma/client";
 
 async function viewerContext(prisma: PrismaClient, userId: string | null) {
   if (!userId) return { kind: "local" as const };
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, isDemo: true },
-  });
-  const memberships = await prisma.member.findMany({
-    where: { userId },
-    select: { organizationId: true },
-  });
+  const [user, memberships] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, isDemo: true },
+    }),
+    prisma.member.findMany({
+      where: { userId },
+      select: { organizationId: true },
+    }),
+  ]);
   return {
     kind: "user" as const,
     isAdmin: user?.role === "admin",

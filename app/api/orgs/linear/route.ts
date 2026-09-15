@@ -4,25 +4,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
-import { requireMembership } from "@/lib/orgs";
+import { activeOrgContext } from "@/lib/org-context";
 import { seal, open } from "@/lib/crypto-box";
 import { canAccessBoard } from "@/lib/boards";
 import { syncLinearIssues, fetchLinearIssues } from "@/lib/linear-sync";
 
-async function orgContext(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) return { error: "Authentication required", status: 401 as const };
-  const orgId = session.session.activeOrganizationId;
-  if (!orgId) return { error: "No active organization", status: 400 as const };
-  const member = await requireMembership(prisma, session.user.id, orgId);
-  if (!member) return { error: "Not a member", status: 403 as const };
-  return { session, orgId };
-}
-
 export async function GET(request: NextRequest) {
-  const ctx = await orgContext(request);
-  if ("error" in ctx) {
+  const ctx = await activeOrgContext(prisma, request);
+  if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
   const org = await prisma.organization.findUnique({
@@ -33,8 +22,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const ctx = await orgContext(request);
-  if ("error" in ctx) {
+  const ctx = await activeOrgContext(prisma, request);
+  if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
   const body = await request.json();
@@ -53,8 +42,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await orgContext(request);
-  if ("error" in ctx) {
+  const ctx = await activeOrgContext(prisma, request);
+  if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
   const body = await request.json();

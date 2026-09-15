@@ -7,6 +7,7 @@ import {
   listUserOrgs,
   setActiveOrg,
   requireMembership,
+  slugifyOrgName,
 } from "./orgs";
 
 let rig: DispatchRig | null = null;
@@ -46,6 +47,23 @@ describe("createOrg / listUserOrgs", () => {
     expect(orgs).toHaveLength(1);
     expect(orgs[0].id).toBe(mine.id);
     expect(orgs[0].role).toBe("owner");
+  });
+});
+
+describe("slugifyOrgName / slug uniqueness (re-homed from lib/teams)", () => {
+  it("folds accents and collapses punctuation", () => {
+    expect(slugifyOrgName("Coquí Labs")).toBe("coqui-labs");
+    expect(slugifyOrgName("  Weird -- Name!! ")).toBe("weird-name");
+    expect(slugifyOrgName("!!!")).toBe("org");
+  });
+
+  it("disambiguates clashing slugs with a numeric suffix", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    await makeUser(rig, "u1");
+    const a = await createOrg(rig.prisma, { name: "Same", ownerId: "u1" });
+    const b = await createOrg(rig.prisma, { name: "Same", ownerId: "u1" });
+    const c = await createOrg(rig.prisma, { name: "Same", ownerId: "u1" });
+    expect([a.slug, b.slug, c.slug]).toEqual(["same", "same-2", "same-3"]);
   });
 });
 

@@ -166,8 +166,15 @@ First-class lifecycle row for a Claude Code dispatch. Written at enqueue, transi
 | startedAt | DateTime? | null | Set when the spawn returns |
 | completedAt | DateTime? | null | Set by the webhook |
 | errorMessage | String? | null | Set on failure or timeout |
+| organizationId | String? | null | Phase 45 — team attribution (FK Organization) |
+| ownerUserId | String? | null | Phase 45 — owner attribution (FK User) |
+| runtime | String | "local" | 52.1 — `local` (tmux, operator machine) or `cloud` (runner service) |
+| runnerId | String? | null | 52.1 — which runner holds the claim; `startedAt` doubles as the lease (5-min heartbeat, 60-min stale requeue) |
+| costUsd | Float? | null | 52.1 — from the SDK result message (budget stops salvaged) |
+| resultBranch | String? | null | 52.4 — `cloud/<dispatch-id>` the runner pushed (null = nothing pushed) |
+| resultPrUrl | String? | null | 52.5 — PR opened for resultBranch |
 
-**Relations:** project, outcome? (1:1 → DispatchOutcome.dispatchId)
+**Relations:** project, outcome? (1:1 → DispatchOutcome.dispatchId), organization?, owner?
 **Indexes:** (projectId, status), expectedBy, status
 
 ## ChatSession
@@ -407,3 +414,63 @@ User (54.1 admin plugin): + role String? ("user"/"admin"), banned Boolean?, banR
 | createdAt | DateTime | now() | — |
 
 User (54.2): + anthropicKeyEnc String? (BYOK, sealed by lib/crypto-box).
+
+## Milestone (54.4 — roadmap)
+Org-scoped (`organizationId`) or personal (`ownerUserId`); exactly one set — app-level rule in `lib/boards.ts`/`/api/milestones`, no DB FK (bare ids).
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| organizationId | String? | null | org roadmap |
+| ownerUserId | String? | null | personal roadmap |
+| title | String | — | 1-200 |
+| description | String | "" | ≤5000 |
+| status | String | "planned" | planned, in_progress, shipped |
+| targetDate | DateTime? | null | — |
+| position | Float | — | fractional ordering (`positionAfter`/`positionBetween`) |
+| createdAt / updatedAt | DateTime | — | — |
+
+**Relations:** tickets[] · **Indexes:** (organizationId, position), (ownerUserId, position)
+
+## Board (54.4 — kanban)
+Same exactly-one-owner rule as Milestone. `createBoard` seeds columns Todo / In Progress / Done.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| organizationId | String? | null | org board (members) |
+| ownerUserId | String? | null | personal board (owner only) |
+| name | String | — | 1-80 |
+| createdAt | DateTime | now() | — |
+
+**Relations:** columns[], tickets[]
+
+## BoardColumn (54.4)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| boardId | String | — | FK Board (cascade) |
+| name | String | — | — |
+| position | Float | — | fractional ordering |
+
+**Relations:** board, tickets[] · **Indexes:** (boardId, position)
+
+## Ticket (54.4)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id | String cuid | — | PK |
+| boardId | String | — | FK Board (cascade) |
+| columnId | String | — | FK BoardColumn (cascade) |
+| title | String | — | 1-200 |
+| description | String | "" | ≤5000 |
+| position | Float | — | fractional ordering within the column |
+| priority | String | "normal" | low, normal, high, urgent |
+| assigneeUserId | String? | null | must be in the board's scope (owner / org member) |
+| milestoneId | String? | null | FK Milestone; must be in the board's scope |
+| linearIssueId | String? | null | unique — Linear import idempotency key |
+| createdById | String | — | user id |
+| createdAt / updatedAt | DateTime | — | — |
+
+**Relations:** board, column, milestone? · **Indexes:** (columnId, position)
+
+Organization (54.4b): + `linearKeyEnc String?` (Linear API key, sealed by lib/crypto-box); (54.5): + `isDemo Boolean`.

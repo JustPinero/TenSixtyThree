@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@justpinero/create-cascade?label=create-cascade&color=0366d6)](https://www.npmjs.com/package/@justpinero/create-cascade)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
-[![Tests](https://img.shields.io/badge/tests-1257+-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-1450+-brightgreen)](#)
 
 A nerve center for orchestrating multi-project Claude Code workflows. The **Overseer**, your customizable AI fleet dispatcher, manages your projects, learns from every session, and tells you when it needs you.
 
@@ -55,6 +55,7 @@ You need these installed yourself. `create-cascade` checks for them and prints i
 |------|-----|---------|
 | Node.js | Runtime | 22+ |
 | pnpm | Package manager | any recent |
+| Docker | Local Postgres 16 (`docker-compose.dev.yml`) | any recent |
 | Claude Code CLI | Subagent runtime | any |
 | tmux | Multi-pane dispatch | any |
 | 1Password CLI (`op`) | Secrets source | 2.x |
@@ -128,9 +129,10 @@ cp .env.example .env
 # Claude Code Stop hooks
 pnpm exec tsx scripts/install-hooks.ts
 
-# Database
-pnpm exec prisma generate
+# Database — Postgres 16 in Docker (container: tensixtythree-pg, port 127.0.0.1:51063)
+docker compose -f docker-compose.dev.yml up -d
 pnpm exec prisma db push
+pnpm exec prisma generate
 pnpm db:seed
 
 # Start
@@ -156,10 +158,13 @@ Projects need `CLAUDE.md` + `.git` + `package.json` (or `Cargo.toml` / `pyprojec
 
 | Page | Purpose |
 |------|---------|
+| **Sign in** (`/signin`) | Invite-only sign-in — email code, password, GitHub or Google OAuth. **Try the demo** mints a 2-hour sandbox with no account (hosted instances) |
 | **Dashboard** | Project tiles with health, progress, activity feed, morning briefing |
 | **The Overseer** | Full-screen AI chat — sprint planning, dispatch, fleet management |
 | **My Tasks** | Human-only tasks checklist (assets, credentials, manual testing) |
 | **Roadmap** | Bird's-eye table of all projects with progress bars |
+| **Boards** (`/boards`) | Kanban boards — personal or org-scoped, drag tickets between columns, milestones, Linear import |
+| **Organizations** (`/team`) | Multi-org workspace — members, invites, shared projects, typed team feed (goals / bugs / test requests / notes). Requires a signed-in session |
 | **Playbook** | Rules that shape every dispatched Claude session |
 | **Knowledge Base** | Lessons harvested from all projects, searchable |
 | **Templates** | Kickoff templates for the project creation wizard |
@@ -203,11 +208,26 @@ Projects need `CLAUDE.md` + `.git` + `package.json` (or `Cargo.toml` / `pyprojec
 ## Stack
 
 - **Frontend:** Next.js 16 (App Router), TypeScript strict, Tailwind CSS 4
-- **Database:** SQLite via Prisma 7 (local file at `./dev.db`)
-- **AI:** Anthropic Claude API (Sonnet for chat, Haiku for briefing/harvest)
+- **Database:** Postgres 16 via Prisma 7 (`@prisma/adapter-pg`). Local dev runs the `tensixtythree-pg` Docker container from `docker-compose.dev.yml`; hosted uses Railway Postgres
+- **Auth:** Better Auth — invite-only, email code / password / GitHub + Google OAuth; organizations via the org plugin. Local single-operator mode runs with `AUTH_REQUIRED` unset
+- **Hosting:** Railway, two services from one repo — `tensixtythree-app` (Next.js) and `tensixtythree-runner` (cloud agent runner, `RUNNER_MODE=1`) — plus Postgres
+- **AI:** Anthropic Claude API (Sonnet for chat, Haiku for briefing/harvest); cloud runs use the Claude Agent SDK
 - **Testing:** Vitest + Playwright E2E
-- **Dispatch:** tmux + Claude Code CLI, queued via `lib/dispatch-queue.ts`
-- **Secrets:** 1Password CLI, `op run` wrapper
+- **Dispatch:** local — tmux + Claude Code CLI, queued via `lib/dispatch-queue.ts`; hosted — `Dispatch` rows with `runtime: "cloud"` claimed by the runner service
+- **Secrets:** 1Password CLI, `op run` wrapper (local); Railway service variables (hosted)
+
+---
+
+## Hosted Deployment
+
+One repo, two Railway services, one Postgres:
+
+- **App service** — Next.js. `railway.json` sets the build (`prisma generate && pnpm build`), pre-deploy (`prisma db push`), start (`pnpm start:hosted` — no `op run`), and healthcheck (`/api/health`).
+- **Runner service** — same repo with `RUNNER_MODE=1`; the `start` script branches into `scripts/runner.ts`, which polls for queued cloud dispatches and executes them with the Claude Agent SDK. Guardrails via `RUNNER_MAX_TURNS` / `RUNNER_MAX_BUDGET_USD`. See [`references/deployment-landmines.md`](references/deployment-landmines.md) — new Railway services ignore `railway.json`.
+
+Every env var the app reads is catalogued in [`lib/env-manifest.ts`](lib/env-manifest.ts) with a scope (`hosted-required` / `hosted-optional` / `local-only`); the full table is in [`references/env-vars.md`](references/env-vars.md). A hosted instance must set all `hosted-required` vars — `GET /api/health` (unauthenticated) reports any that are missing under `missingEnv`, and returns 503 when the database is unreachable.
+
+`AUTH_REQUIRED=true` enforces sessions on a hosted instance. Sign-in is invite-only; `ADMIN_EMAILS` is the bootstrap allowlist. `/signin`, `/api/health`, `/api/demo`, and `/.well-known/` stay public — **Try the demo** works without an account.
 
 ---
 
@@ -242,17 +262,28 @@ Reboot.
 
 **Projects show "not dispatch-ready"** — add a `CLAUDE.md` file to the project root, initialize git, ensure a `package.json` / `Cargo.toml` / `pyproject.toml` exists.
 
-**SQLite database empty after restart** — the file lives at `./dev.db` (project root, not `prisma/`). Check `DATABASE_URL=file:./dev.db` in `.env`.
+**Database connection refused / Prisma can't reach Postgres** — the local DB is the `tensixtythree-pg` Docker container. Check it's up with `docker ps`; start it with `docker start tensixtythree-pg` (or `docker compose -f docker-compose.dev.yml up -d` on a fresh machine). `DATABASE_URL` should point at `127.0.0.1:51063` — `postgresql://tensixtythree:tensixtythree@127.0.0.1:51063/tensixtythree`.
 
 **Terminal crashes across the board** — could be Windows host running out of committed memory. See "WSL2 terminals die under load" above; the fix is the same.
 
 ---
 
-## Where It's Heading
+## What Shipped in 1.0
 
-TenSixtyThree is evolving from a single-operator tool into a **team platform**: teams, invites, and shared work visibility are already in the codebase (User/Team/Membership models plus a unified activity feed that merges human tasks and agent dispatches into one owner-attributed stream).
+1.0 turned the single-operator tool into a hosted **team platform** without giving up local mode:
 
-The direction is the **collision plane**: one board that sees both human assignments and live AI-agent work, so it can flag when two workers (human or agent) are about to touch the same files. Task management tools track people. Agent frameworks run bots. This watches both. See [`docs/cascade-2.0-team-direction.md`](docs/cascade-2.0-team-direction.md) for the full thesis.
+- **Hosted control plane** — Postgres everywhere, Railway deploy, `/api/health` self-diagnosis, `lib/env-manifest.ts` as the machine-checked env catalog
+- **Identity** — Better Auth users with invite-only sign-up (`ADMIN_EMAILS` bootstrap, admin-issued invites, password-after-first-login), organizations on the org plugin (`Organization` / `Member` / `Invitation`), and a project visibility matrix (owned + org-shared; strangers get 404)
+- **Organizations** — multi-org workspace, project sharing, a typed team feed (goals, objectives, bugs, test requests, notes), org invites that apply on first sign-in
+- **Boards & roadmap** — kanban boards (personal or org), tickets with fractional ordering, milestones, idempotent Linear import
+- **Cloud runner** — hosted dispatches run on a second Railway service via the Claude Agent SDK as an unprivileged user, then push a branch and open a PR. Project autonomy is honored (`manual` is refused — nobody can approve headless)
+- **BYOK + encryption** — users store their own Anthropic key, orgs store a Linear key, both sealed at rest with `ENCRYPTION_KEY`
+- **Demo mode** — "Try the demo" on `/signin` mints an ephemeral sandbox (2-hour session, swept after 24h, rate-limited) with a canned Overseer and refused spend paths
+- **Theme packs & personas** — 12 packs, each with a persona that actually shapes the Overseer's system prompt
+
+The **collision plane** — one feed that sees both human assignments and live agent work so overlapping edits get flagged — remains the product thesis; see [`docs/cascade-2.0-team-direction.md`](docs/cascade-2.0-team-direction.md).
+
+**Next:** known debt carried into 1.0 is tracked in [`audits/debt.md`](audits/debt.md). Start there.
 
 ---
 

@@ -1,6 +1,6 @@
 # Deployment Landmines
 
-Stack-specific warnings for Next.js + Prisma + SQLite + Anthropic API.
+Stack-specific warnings for Next.js + Prisma/Postgres + Railway + Anthropic API.
 
 ## Next.js App Router
 - **Server vs Client boundary**: `fs`, `child_process`, and Prisma can ONLY be used in server components and API routes. Any component using these must NOT have "use client" directive.
@@ -9,13 +9,14 @@ Stack-specific warnings for Next.js + Prisma + SQLite + Anthropic API.
 - **Metadata**: Use `generateMetadata` in server components, not in client components.
 - **Streaming**: When using Anthropic API streaming in API routes, use `ReadableStream` and proper `Response` objects.
 
-## Prisma + SQLite
-- **WAL mode**: Enable WAL journal mode for concurrent reads: `PRAGMA journal_mode=WAL` on connection.
-- **No migrations in production**: For SQLite, use `prisma db push` instead of `prisma migrate` in production/development.
-- **File path**: SQLite database file path is relative to the Prisma schema location, not the project root.
-- **JSON fields**: SQLite doesn't support native JSON. Store as String and parse/stringify manually. Do NOT use `Json` type in schema.
-- **Connection pooling**: SQLite doesn't need connection pooling. Single connection is fine for a local app.
-- **Concurrent writes**: SQLite has a single-writer limitation. Use transactions for write operations that must be atomic.
+## Prisma + Postgres (hosted-first since Phase 51)
+- **Real concurrency**: Postgres has no single-writer safety net. Find-or-create flows need `pg_advisory_xact_lock`; read-modify-write needs `SELECT ... FOR UPDATE` (see `lib/chat-session.ts`, `lib/runner/claim.ts`). Two production races were found by prod-parity tests during the migration.
+- **`db push` in prod** (`railway.json` preDeploy) — acceptable at 1.0; convert to `prisma migrate` before real customer data ([51.D1]).
+- **Schema changes ride the WEB service's preDeploy** — deploy `tensixtythree-app` before `tensixtythree-runner` after any schema change, or the runner ticks `ColumnNotFound` until restarted.
+- **New Railway services IGNORE `railway.json`** (Railpack default): `prisma generate` runs on `postinstall`, and the plain `start` script branches on `RUNNER_MODE` — that is how the runner service boots. Runtime image also lacks git (`RAILPACK_DEPLOY_APT_PACKAGES=git`).
+- **JSON is `String`** columns parsed manually (legacy convention) — migrate to native `Json` deliberately.
+- **Local dev URL is `127.0.0.1:51063`, not `localhost`** — `localhost` can resolve to `::1` and trip an "invalid response to SSL negotiation" flake against the container.
+- **Hosted Postgres is private-network-only** (correct); there is no TCP proxy. Headless ops go through `/api/admin/ops` (OPS_SECRET), not `railway ssh` (piped stdin is unreliable).
 
 ## Shell Execution (gh, op CLIs)
 - **child_process**: Use `execAsync` (promisified exec) for CLI calls. Always handle stderr.

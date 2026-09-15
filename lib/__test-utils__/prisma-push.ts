@@ -17,14 +17,6 @@ export function pushTestSchema(dbUrl: string, cwd: string = CASCADE_ROOT): void 
   // fall back to a real `prisma db push` when the template is absent.
   if (dbUrl.startsWith("file:")) {
     const dbName = dbNameForFileUrl(dbUrl);
-    const psql = (sql: string) =>
-      execSync(`psql "${PSQL_ADMIN}" -v ON_ERROR_STOP=1 -c '${sql}'`, {
-        stdio: "pipe",
-        env: {
-          ...process.env,
-          PATH: `/opt/homebrew/opt/libpq/bin:${process.env.PATH ?? ""}`,
-        },
-      });
     const locked = (sql: string) =>
       execSync(
         `psql "${PSQL_ADMIN}" -v ON_ERROR_STOP=1 -c 'SELECT pg_advisory_lock(1063)' -c '${sql}'`,

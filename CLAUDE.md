@@ -1,6 +1,6 @@
 # TenSixtyThree — AI-Powered Multi-Project Orchestration
 > Also answers to **1063** / **10-63** — same product, radio shorthand. Use interchangeably in requests and docs.
-Local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. Features: fleet health monitoring, knowledge harvesting + brain-sync, session feedback loop (Stop-hook webhook + spool + quarantine), dispatch outcome tracking with watchdog liveness, morning briefings, conversation memory, publish-safety audits, and a Teams/collision-plane foundation (identity model + unified activity feed, backend-only pending the hosted-vs-local decision).
+Hosted (Railway) + local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. v1.0 features: fleet health + progress, local tmux dispatch AND a hosted cloud runner (Agent SDK, second Railway service: claim → clone → unprivileged agent session → branch → PR), knowledge harvesting + brain-sync, Stop-hook session feedback (webhook + spool + quarantine), dispatch outcomes + watchdog, morning briefings, invite-only auth (Better Auth: email code / password / OAuth, admin bootstrap), multi-org workspaces (shared projects, typed feed, member invites), kanban boards + milestones + Linear import, per-project tenancy, BYOK Anthropic keys, 12 theme packs with prebuilt assistant personas, and a public demo sandbox with a persona-guided tour.
 
 ## Stack & Commands
 Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgres (local: docker-compose.dev.yml) | Vitest + Playwright
@@ -12,13 +12,20 @@ Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgr
 - `lib/health-engine.ts` — computes project health from filesystem
 - `lib/progress-engine.ts` — computes progress score (phases + tests + build readiness)
 - `lib/escalation-detector.ts` — parses session logs for [NEEDS ATTENTION], [LESSON], [HUMAN TODO]
-- SQLite DB at `./dev.db` (project root, NOT prisma/)
+- `lib/auth.ts` + `middleware.ts` + `lib/route-guard.ts` — Better Auth (invite-only via `lib/invite-gate.ts`), edge gate; real session checks live in routes (`lib/auth-helpers.ts`)
+- `lib/orgs.ts`, `lib/org-context.ts`, `lib/project-access.ts` — multi-org, active-org resolution, project visibility matrix (owner / org-shared / admin / demo / local)
+- `lib/runner/*` + `scripts/runner.ts` — cloud runner (claim/lease, SDK stream fold, job executor, uid drop, push + PR); `app/api/dispatch/cloud/*`
+- `lib/boards.ts`, `lib/linear-sync.ts` — kanban core + Linear import; `lib/demo.ts` — demo sandbox seed/sweep; `lib/crypto-box.ts` — AES-GCM for BYOK/Linear keys
+- `lib/theme-registry.ts` + `lib/persona-prompt.ts` — theme packs / assistant personas (reach the model's system prompt)
+- `lib/env-manifest.ts` — every env var, scoped; `/api/health` self-diagnoses hosted env
+- **Postgres** everywhere: local dev via `docker compose -f docker-compose.dev.yml up -d` (container `tensixtythree-pg`, `127.0.0.1:51063`); hosted = Railway Postgres. No SQLite remains.
 - `pnpm dev` — start dev server
 - `pnpm build` — production build
 - `pnpm test` — run Vitest
 - `pnpm lint` — run ESLint
 - `pnpm exec tsc --noEmit` — type check
-- `pnpm exec prisma db push` — sync schema to SQLite
+- `pnpm exec prisma db push` — sync schema to Postgres (`prisma.config.ts` defaults to the dev container); then `pnpm exec prisma generate`
+- `pnpm start:runner` — run the cloud runner locally (needs `ANTHROPIC_API_KEY`, optional `GITHUB_TOKEN`)
 
 ## References
 @import references/architecture.md

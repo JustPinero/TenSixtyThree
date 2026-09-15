@@ -7,7 +7,6 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 import { isInsideProjectsDir, sanitizeForShell } from "./validators";
 import { readIfExists } from "./file-utils";
 import { detectPlatform } from "./platform";
-import { getDispatchQueue } from "./dispatch-queue";
 import { enqueueWithDispatchRow } from "./dispatch-lifecycle";
 import { composeGoalLine } from "./dispatch-goals";
 

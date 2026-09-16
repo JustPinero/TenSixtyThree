@@ -26,7 +26,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "start:runner": "tsx scripts/runner.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "infra:cloudflare": "sh -c 'CLOUDFLARE_API_TOKEN=$(op read \"op://Cascade/TenSixtyThree Cloudflare token/credential\") tsx scripts/cloudflare-setup.ts \"$@\"' --"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

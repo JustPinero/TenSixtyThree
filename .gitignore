@@ -93,3 +93,4 @@ knowledge/deployment-playbook/COLLECTION-PROMPT.md
 # one-off ops drafts stay local
 .claude/*-draft.md
 .test-manifest/
+.claude/godaddy-zone-snapshot-*.md

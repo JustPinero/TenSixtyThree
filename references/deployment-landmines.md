@@ -36,3 +36,11 @@ Stack-specific warnings for Next.js + Prisma/Postgres + Railway + Anthropic API.
 - **Error boundaries**: Use Next.js `error.tsx` files for graceful error handling per route segment.
 - **Loading states**: Use `loading.tsx` for route-level loading skeletons.
 - **.env.local**: Never commit. Always have .env.example with placeholder values.
+
+## Cloudflare (edge in front of Railway, since 2026-09-16)
+- **Why**: Railway never issued a certificate for the `tensixtythree.com` zone (www stuck ISSUING/VALIDATING_OWNERSHIP for 5+ weeks, fresh hostnames too — ticket drafted). Cloudflare is authoritative DNS (GoDaddy stays registrar) and terminates TLS.
+- **The Worker is load-bearing**: `infra/cloudflare/edge-worker.ts` (`tensixtythree-edge`, routes `tensixtythree.com/*` + `www.tensixtythree.com/*`) reverse-proxies to `tensixtythree-app-production.up.railway.app` because Railway's edge returns `x-railway-fallback` for hostnames it hasn't validated — a plain proxied CNAME is NOT enough until Railway's cert lands. Apex and any other hostname 301 to `www`. Origin `Location` headers are rewritten back to `www`.
+- **Bring-up is a script, not clicks**: `pnpm infra:cloudflare [--dry-run] [--skip-worker]` (`scripts/cloudflare-setup.ts`) is idempotent upsert-only — it never deletes records. Token lives in 1Password `Cascade` → "TenSixtyThree Cloudflare token". DNS truth: `infra/cloudflare/setup.ts#desiredRecords` (Resend + DMARC + GoDaddy pay/domainconnect stay grey-cloud).
+- **Order matters**: zone → NS change at GoDaddy → zone `active` → `BETTER_AUTH_URL=https://www.tensixtythree.com` + redeploy web → OAuth callback URLs. Flipping `BETTER_AUTH_URL` before the zone is active breaks sign-in on the railway.app hostname.
+- **SSL mode Full (not Strict)**: the origin cert is Railway's `*.up.railway.app`, valid for the origin hostname the Worker fetches, so Full is safe. Never set Flexible (auth cookies are `Secure`).
+- **Exit path**: when Railway issues the cert, delete the Worker routes (keep the proxied CNAMEs) and the app is served by Railway's edge directly.

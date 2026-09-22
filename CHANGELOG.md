@@ -5,6 +5,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [SemVer](https://semver.org/). Phase numbers in parentheses map to
 `requests/` and the decision log in `references/architecture.md`.
 
+## [1.0.1] — 2026-09-22 — Cloudflare edge
+
+- **Hosting**: `www.tensixtythree.com` is the canonical host. Cloudflare is authoritative DNS + TLS (Railway never issued a certificate for the zone); the Worker `tensixtythree-edge` reverse-proxies www → the Railway origin, apex/other hosts 301 → www. `pnpm infra:cloudflare` is the idempotent bring-up (`infra/cloudflare/*`, `scripts/cloudflare-setup.ts`).
+- **Fix**: rate limiting behind two proxies. The last `x-forwarded-for` hop is now Cloudflare's egress, which collapsed every visitor into one bucket (3 OTP sends/minute site-wide → sign-in lockouts). `lib/client-ip.ts` + `middleware.ts` trust `cf-connecting-ip` only when the Worker presents `EDGE_SHARED_SECRET`, pin `x-client-ip` for the app-level limiter and Better Auth, and refuse direct-to-origin requests when the secret is configured.
+- **Auth**: `BETTER_AUTH_URL=https://www.tensixtythree.com`.
+
 ## [1.0.0] — 2026-09-15
 
 First cut release. Everything below 1.0 was the 0.x modernization arc

@@ -48,6 +48,12 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
       "Public base URL of the deployment (https://<app>.up.railway.app until the domain lands).",
   },
   {
+    name: "EDGE_SHARED_SECRET",
+    scope: "hosted-optional",
+    description:
+      "Cloudflare move — shared secret the edge Worker presents in x-edge-secret (Worker secret binding of the same name). When set: direct-to-origin requests get 403 (except /api/health) and cf-connecting-ip is trusted for rate limits. Set the Worker binding FIRST, then this.",
+  },
+  {
     name: "AUTH_REQUIRED",
     scope: "hosted-required",
     description:

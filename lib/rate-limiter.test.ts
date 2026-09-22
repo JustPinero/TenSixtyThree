@@ -94,3 +94,19 @@ describe("bughunt 1.0 — client IP derivation", () => {
     expect(getRateLimitKey(req, "demo")).toBe("demo:local");
   });
 });
+
+describe("Cloudflare edge — middleware-resolved client IP", () => {
+  it("prefers the x-client-ip header set by middleware over x-forwarded-for", async () => {
+    const { getRateLimitKey } = await import("./rate-limiter");
+    const req = new Request("http://x", {
+      headers: { "x-client-ip": "198.51.100.7", "x-forwarded-for": "198.51.100.7, 172.71.0.1" },
+    });
+    expect(getRateLimitKey(req, "demo")).toBe("demo:198.51.100.7");
+  });
+
+  it("still falls back to the last hop when middleware did not run (direct handler tests)", async () => {
+    const { getRateLimitKey } = await import("./rate-limiter");
+    const req = new Request("http://x", { headers: { "x-forwarded-for": "1.1.1.1, 203.0.113.9" } });
+    expect(getRateLimitKey(req, "demo")).toBe("demo:203.0.113.9");
+  });
+});

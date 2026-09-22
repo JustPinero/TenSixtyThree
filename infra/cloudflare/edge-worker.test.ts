@@ -163,3 +163,35 @@ describe("edge worker — www proxy", () => {
     expect(res.headers.get("content-type")).toContain("text/plain");
   });
 });
+
+describe("edge worker — shared secret to origin", () => {
+  it("adds x-edge-secret when configured", async () => {
+    const { fetchOrigin, calls } = originStub(new Response("ok"));
+    await handleRequest(new Request(`https://${CANONICAL_HOST}/`), {
+      fetchOrigin,
+      edgeSecret: "abc",
+    });
+    expect(calls[0].headers.get("x-edge-secret")).toBe("abc");
+  });
+
+  it("strips a client-supplied x-edge-secret and x-client-ip even when unconfigured", async () => {
+    const { fetchOrigin, calls } = originStub(new Response("ok"));
+    await handleRequest(
+      new Request(`https://${CANONICAL_HOST}/`, {
+        headers: { "x-edge-secret": "forged", "x-client-ip": "6.6.6.6" },
+      }),
+      { fetchOrigin },
+    );
+    expect(calls[0].headers.get("x-edge-secret")).toBeNull();
+    expect(calls[0].headers.get("x-client-ip")).toBeNull();
+  });
+
+  it("overwrites (never appends to) a client-supplied x-edge-secret when configured", async () => {
+    const { fetchOrigin, calls } = originStub(new Response("ok"));
+    await handleRequest(
+      new Request(`https://${CANONICAL_HOST}/`, { headers: { "x-edge-secret": "forged" } }),
+      { fetchOrigin, edgeSecret: "abc" },
+    );
+    expect(calls[0].headers.get("x-edge-secret")).toBe("abc");
+  });
+});

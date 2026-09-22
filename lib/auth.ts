@@ -101,6 +101,15 @@ export const auth = betterAuth({
       },
     },
   },
+  advanced: {
+    ipAddress: {
+      // middleware.ts writes the verified client IP here on every request
+      // (lib/client-ip.ts). Better Auth's default x-forwarded-for parser
+      // returns null behind two proxies → one shared bucket for the whole
+      // site (observed 2026-09-17: "could not determine a client IP").
+      ipAddressHeaders: ["x-client-ip"],
+    },
+  },
   rateLimit: {
     // Better Auth enables rate limiting in production by default;
     // tighten the code endpoints (brute-force surface).

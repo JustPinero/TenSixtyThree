@@ -52,6 +52,8 @@ export function checkRateLimit(
   return null;
 }
 
+import { CLIENT_IP_HEADER, lastForwardedHop } from "./client-ip";
+
 /**
  * Get a rate limit key from a request (uses IP or fallback).
  */
@@ -59,14 +61,13 @@ export function getRateLimitKey(
   request: Request,
   prefix: string
 ): string {
-  // Bughunt 1.0: behind a single trusted proxy (Railway) the connecting
-  // IP is the LAST hop it appends; anything earlier is client-supplied and
-  // spoofable — keying on [0] let attackers mint a fresh bucket per request.
-  const hops = (request.headers.get("x-forwarded-for") ?? "")
-    .split(",")
-    .map((h) => h.trim())
-    .filter(Boolean);
-  const ip = hops.length > 0 ? hops[hops.length - 1] : "local";
+  // Cloudflare move: middleware.ts resolves the real client (lib/client-ip)
+  // and writes it to x-client-ip on EVERY request, overwriting anything the
+  // client sent — so it is authoritative when present. Handlers invoked
+  // without middleware (tests) fall back to the Bughunt-1.0 rule: the LAST
+  // x-forwarded-for hop, the one the trusted proxy appended.
+  const resolved = request.headers.get(CLIENT_IP_HEADER)?.trim();
+  const ip = resolved || lastForwardedHop(request.headers) || "local";
   return `${prefix}:${ip}`;
 }
 

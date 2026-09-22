@@ -6,6 +6,10 @@
  *   CLOUDFLARE_API_TOKEN=$(op read "op://Cascade/TenSixtyThree Cloudflare token/credential") \
  *     pnpm exec tsx scripts/cloudflare-setup.ts [--dry-run] [--skip-worker]
  *
+ * Optional: EDGE_SHARED_SECRET in env → also (re)sets the Worker's secret
+ * binding of that name (the app's EDGE_SHARED_SECRET must match; see
+ * lib/client-ip.ts). Re-uploads keep existing secret bindings.
+ *
  * Token scopes: Account·Workers Scripts·Edit; Zone·Zone·Edit; Zone·DNS·Edit;
  * Zone·Zone Settings·Edit; Zone·SSL and Certificates·Edit; Zone·Workers
  * Routes·Edit — zone resources "all zones in account".
@@ -142,13 +146,32 @@ async function ensureWorker(zoneId: string): Promise<void> {
   form.set(
     "metadata",
     new Blob(
-      [JSON.stringify({ main_module: "worker.js", compatibility_date: COMPATIBILITY_DATE })],
+      [
+        JSON.stringify({
+          main_module: "worker.js",
+          compatibility_date: COMPATIBILITY_DATE,
+          // Re-uploads must not wipe the EDGE_SHARED_SECRET binding.
+          keep_bindings: ["secret_text"],
+        }),
+      ],
       { type: "application/json" },
     ),
   );
   form.set("worker.js", new Blob([js], { type: "application/javascript+module" }), "worker.js");
   await cf("PUT", `/accounts/${ACCOUNT_ID}/workers/scripts/${WORKER_NAME}`, form, null);
   log("worker", "uploaded");
+
+  const edgeSecret = process.env.EDGE_SHARED_SECRET;
+  if (edgeSecret) {
+    await cf(
+      "PUT",
+      `/accounts/${ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/secrets`,
+      JSON.stringify({ name: "EDGE_SHARED_SECRET", text: edgeSecret, type: "secret_text" }),
+    );
+    log("worker", "EDGE_SHARED_SECRET binding set (from env)");
+  } else {
+    log("worker", "EDGE_SHARED_SECRET not in env — binding left as-is");
+  }
 
   const routes = await cf<WorkerRoute[]>("GET", `/zones/${zoneId}/workers/routes`);
   for (const pattern of WORKER_ROUTES) {

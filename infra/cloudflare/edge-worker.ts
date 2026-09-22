@@ -21,6 +21,16 @@ export const ORIGIN = "https://tensixtythree-app-production.up.railway.app";
 export interface EdgeDeps {
   /** Injected for tests; the deployed Worker uses the global fetch. */
   fetchOrigin: (request: Request) => Promise<Response>;
+  /**
+   * Shared secret (Worker secret binding EDGE_SHARED_SECRET). The app
+   * trusts cf-connecting-ip and refuses direct-to-origin traffic only when
+   * this matches its own EDGE_SHARED_SECRET.
+   */
+  edgeSecret?: string;
+}
+
+interface EdgeEnv {
+  EDGE_SHARED_SECRET?: string;
 }
 
 function redirectToCanonical(url: URL): Response {
@@ -50,6 +60,10 @@ export async function handleRequest(
   headers.delete("host"); // derived from originUrl by the runtime
   headers.set("x-forwarded-host", CANONICAL_HOST);
   headers.set("x-forwarded-proto", "https");
+  // Never let a client smuggle the trust headers through the edge.
+  headers.delete("x-edge-secret");
+  headers.delete("x-client-ip");
+  if (deps.edgeSecret) headers.set("x-edge-secret", deps.edgeSecret);
 
   const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
@@ -85,8 +99,11 @@ export async function handleRequest(
 }
 
 const worker = {
-  fetch(request: Request): Promise<Response> {
-    return handleRequest(request, { fetchOrigin: (req) => fetch(req) });
+  fetch(request: Request, env: EdgeEnv = {}): Promise<Response> {
+    return handleRequest(request, {
+      fetchOrigin: (req) => fetch(req),
+      edgeSecret: env.EDGE_SHARED_SECRET,
+    });
   },
 };
 

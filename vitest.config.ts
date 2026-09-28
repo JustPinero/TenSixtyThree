@@ -12,6 +12,17 @@ export default defineConfig({
     // default 10s hook/test timeouts flake under full-suite contention.
     hookTimeout: 30_000,
     testTimeout: 30_000,
+    /*
+     * [1.0.D1] — bound the worker pool. Vitest defaults to one fork per
+     * CPU (12 here); each fork loads its own Prisma client and opens its
+     * own Postgres connections, and the peak drove a 32GB machine to
+     * ~0.1GB free. Under that pressure rig `beforeAll` hooks blew the
+     * 30s timeout at random: four runs of one unchanged commit gave 0, 2,
+     * 9 and 9 failing files, and a later run was killed outright by the
+     * OS for low memory. Capping the pool trades a little wall-clock for
+     * a suite whose result means something.
+     */
+    maxWorkers: 2,
     include: ["**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules", ".next", "e2e"],
     // Phase 23.7 — push schema to a template DB once per test run.

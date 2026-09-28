@@ -13,6 +13,9 @@
   you. Find-or-create flows need advisory locks (`pg_advisory_xact_lock`) and
   read-modify-write flows need `SELECT ... FOR UPDATE` (see lib/chat-session.ts).
 - Tests: per-rig databases are template clones (`CREATE DATABASE ... TEMPLATE`),
-  serialized by advisory lock 1063. Legacy test files run through the compat
+  serialized by advisory lock 1063. That lock is SESSION-scoped, so the
+  drop and the create must share ONE `psql` invocation — splitting them
+  across two processes releases the lock between them and reintroduces
+  the flakiness fixed in [1.0.D1] (see references/deployment-landmines.md). Legacy test files run through the compat
   alias in vitest.config (`@prisma/adapter-better-sqlite3` → pg shim).
 - After any schema change, update `references/schema.md` to match.

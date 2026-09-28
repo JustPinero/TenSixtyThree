@@ -17,9 +17,24 @@ export function pushTestSchema(dbUrl: string, cwd: string = CASCADE_ROOT): void 
   // fall back to a real `prisma db push` when the template is absent.
   if (dbUrl.startsWith("file:")) {
     const dbName = dbNameForFileUrl(dbUrl);
-    const locked = (sql: string) =>
+    /*
+     * [1.0.D1] — every statement below must run in ONE psql session.
+     * pg_advisory_lock is session-scoped: it is released the moment psql
+     * exits, so issuing DROP and CREATE as two processes left the pair
+     * unserialized. Parallel files then raced on
+     * `CREATE DATABASE ... TEMPLATE test_rig_template`, which errors
+     * while any other session is connected to the template. The catch
+     * fell back to a full `prisma db push` (seconds each), and enough of
+     * those at once blew the 30s beforeAll timeout — the suite's only
+     * source of non-determinism.
+     */
+    const lockedSession = (...statements: string[]) =>
       execSync(
-        `psql "${PSQL_ADMIN}" -v ON_ERROR_STOP=1 -c 'SELECT pg_advisory_lock(1063)' -c '${sql}'`,
+        [
+          `psql "${PSQL_ADMIN}" -v ON_ERROR_STOP=1`,
+          `-c 'SELECT pg_advisory_lock(1063)'`,
+          ...statements.map((sql) => `-c '${sql}'`),
+        ].join(" "),
         {
           stdio: "pipe",
           env: {
@@ -28,12 +43,36 @@ export function pushTestSchema(dbUrl: string, cwd: string = CASCADE_ROOT): void 
           },
         }
       );
-    locked(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
+
     try {
-      locked(`CREATE DATABASE "${dbName}" TEMPLATE "test_rig_template"`);
+      lockedSession(
+        `DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`,
+        `CREATE DATABASE "${dbName}" TEMPLATE "test_rig_template"`
+      );
       return;
-    } catch {
-      locked(`CREATE DATABASE "${dbName}"`);
+    } catch (err) {
+      /*
+       * The bare `catch {}` this replaces swallowed the reason entirely,
+       * so a template clone that started failing under load looked
+       * identical to "template absent" — and the only visible symptom
+       * was a 30s hook timeout somewhere else. The fallback runs a full
+       * `prisma db push` (seconds), so silently taking it at scale is
+       * exactly what makes the suite non-deterministic. Say so.
+       */
+      const reason = err instanceof Error ? err.message : String(err);
+      const stderr =
+        typeof err === "object" && err !== null && "stderr" in err
+          ? String((err as { stderr?: unknown }).stderr ?? "")
+          : "";
+      console.error(
+        `[prisma-push] template clone FAILED for ${dbName}; falling back to a full db push. ` +
+          `This path is slow and is the usual cause of hook timeouts. ` +
+          `reason: ${reason.split("\n")[0]} ${stderr.split("\n").slice(0, 2).join(" ")}`.trim()
+      );
+      lockedSession(
+        `DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`,
+        `CREATE DATABASE "${dbName}"`
+      );
       dbUrl = `${TEST_PG_BASE}/${dbName}`;
     }
   }

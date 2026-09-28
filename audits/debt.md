@@ -17,16 +17,33 @@
   They run green against Postgres, but the alias is a shim over a retired
   driver. Migrate them to `tests/harness/dispatch-rig.ts` (worker-scoped
   DBs) and delete the alias. Mechanical; do it file-by-file, not in one PR.
-  **UPGRADED to flaky, 2026-09-28.** These files are now the suite's only
-  source of non-determinism: full-suite runs on the same commit produced
-  0, 2, 9 and 9 failing files, always alias-backed ones, always a
-  `beforeAll` hook timing out at 30s (then a teardown TypeError because
-  `tmpRoot` was never assigned). They pass reliably in isolation and the
-  container is nowhere near its limits (6 of 300 connections, 0 leftover
-  `test_rig%` databases), so this is per-file DB setup contending under
-  parallel load, not resource exhaustion. Consequence: a green run no
-  longer proves anything, and CI will flake for the same reason. Raise
-  the priority — this now blocks trusting the gate.
+  **FLAKY LOCALLY — root cause found 2026-09-28: host resource
+  exhaustion, not the test code.** Full-suite runs on one unchanged
+  commit produced 0, 2, 9, 9, 31, 16, 4, 1, 0, 1, 10, 5 and 1 failing
+  files. The decisive error is
+  `[vitest-pool]: Failed to start forks worker for test files ...`:
+  the OS cannot spawn a worker, which orphans the rig databases of
+  in-flight files — hence the companion symptoms
+  `database "test_rig_..." does not exist` and 30s timeouts.
+  Host state during these runs: 32GB machine with 0.1-0.3GB free
+  (Docker's VM alone ~5GB, several `claude` processes ~2GB, Chrome,
+  Steam); one measurement run was killed outright by the OS for low
+  memory. Postgres itself was never the constraint (6 of 300
+  connections, 0 leftover `test_rig%` databases).
+  Three hypotheses were tested and DISPROVEN, so nobody repeats them:
+   1. advisory-lock scope — real latent bug, fixed (see below), but not
+      the cause: failures continued after the fix.
+   2. template-clone falling back to a full `prisma db push` — the
+      fallback never fires; instrumentation added, it logs nothing.
+   3. two files deriving the same database name — all 45 alias-backed
+      files hash to distinct names.
+  Mitigations landed: `maxWorkers: 4` in vitest.config.ts (12 unbounded
+  forks is what triggered the OOM kill) and the DROP+CREATE now share one
+  locked psql session. Real fix is unchanged and now higher priority:
+  migrate these 45 files to the worker-scoped rig so per-file `execSync`
+  psql/prisma subprocesses stop multiplying with the file count.
+  **Trust CI, not a local run, until then** — the dedicated runner's
+  `test` job passes cleanly.
 
 - **[1.0.D2]** (2026-09-15, release test-audit) — **PARTIALLY CLOSED
   2026-09-28.** `dispatch.test.ts` and `playbook.test.ts` are deleted:

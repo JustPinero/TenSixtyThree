@@ -791,7 +791,7 @@ export function OverseerChat({
             <h2 className="text-lg font-bold font-mono text-cyan uppercase tracking-[0.15em]">
               {overseerName}
             </h2>
-            <p className="text-[10px] font-mono text-space-500 uppercase tracking-wider">
+            <p className="text-[10px] font-mono text-muted uppercase tracking-wider">
               {streaming
                 ? "Responding..."
                 : "Fleet Dispatcher — Sprint Planning"}
@@ -830,7 +830,7 @@ export function OverseerChat({
                 className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
                   conversationMode
                     ? "border-cyan text-cyan"
-                    : "border-space-600 text-space-500 hover:text-text"
+                    : "border-space-600 text-muted hover:text-text"
                 }`}
               >
                 <svg
@@ -856,7 +856,7 @@ export function OverseerChat({
               className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
                 ttsEnabled
                   ? "border-cyan text-cyan"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
@@ -882,7 +882,7 @@ export function OverseerChat({
                 className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
                   voiceEnabled
                     ? "border-cyan text-cyan"
-                    : "border-space-600 text-space-500 hover:text-text"
+                    : "border-space-600 text-muted hover:text-text"
                 }`}
               >
                 <svg
@@ -902,7 +902,7 @@ export function OverseerChat({
           </div>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className="text-[10px] font-mono text-space-500">
+          <p className="text-[10px] font-mono text-muted">
             {conversationMode
               ? "Conversation Mode — speak, pause, I\u2019ll respond. Esc to stop."
               : voiceEnabled
@@ -930,7 +930,7 @@ export function OverseerChat({
       >
         {messages.length === 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-mono text-space-500">
+            <p className="text-xs font-mono text-muted">
               Describe your priorities for today. Examples:
             </p>
             <div className="space-y-1">
@@ -964,7 +964,7 @@ export function OverseerChat({
             }`}
           >
             <span
-              className={`${fullPage ? "text-xs" : "text-[10px]"} uppercase text-space-500 block mb-0.5`}
+              className={`${fullPage ? "text-xs" : "text-[10px]"} uppercase text-muted block mb-0.5`}
             >
               {msg.role === "user" ? "you" : "delamain"}
             </span>
@@ -1092,7 +1092,7 @@ export function OverseerChat({
                 : "What should we work on today?"
           }
           disabled={streaming}
-          className={`flex-1 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-space-500 focus:outline-none disabled:opacity-50`}
+          className={`flex-1 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none disabled:opacity-50`}
         />
         <button
           onClick={sendMessage}

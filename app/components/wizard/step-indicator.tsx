@@ -23,7 +23,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                       ? "border-success bg-success/10 text-success"
                       : isCurrent
                         ? "border-cyan bg-cyan/10 text-cyan pulse-healthy"
-                        : "border-space-600 bg-space-800 text-space-500"
+                        : "border-space-600 bg-space-800 text-muted"
                   }
                 `}
               >
@@ -34,7 +34,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                   isCurrent
                     ? "text-cyan"
                     : isFuture
-                      ? "text-space-500"
+                      ? "text-muted"
                       : "text-text"
                 }`}
               >

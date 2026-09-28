@@ -21,19 +21,19 @@ export function LaunchStep({ state }: LaunchStepProps) {
 
       <div className="space-y-3">
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Project:</span>
+          <span className="text-muted w-32">Project:</span>
           <span className="text-text-bright">{state.projectName}</span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Slug:</span>
+          <span className="text-muted w-32">Slug:</span>
           <span className="text-cyan">{toSlug(state.projectName)}</span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Type:</span>
+          <span className="text-muted w-32">Type:</span>
           <span className="text-text">{state.projectType}</span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">GitHub:</span>
+          <span className="text-muted w-32">GitHub:</span>
           <span className="text-text">
             {state.createGithubRepo
               ? `Yes (${state.isPrivate ? "private" : "public"})`
@@ -41,23 +41,23 @@ export function LaunchStep({ state }: LaunchStepProps) {
           </span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Autonomy:</span>
+          <span className="text-muted w-32">Autonomy:</span>
           <span className="text-text">{state.autonomyMode}</span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">PR Workflow:</span>
+          <span className="text-muted w-32">PR Workflow:</span>
           <span className="text-text">
             {state.prWorkflowEnabled ? "Enabled" : "Disabled"}
           </span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Agent Teams:</span>
+          <span className="text-muted w-32">Agent Teams:</span>
           <span className="text-text">
             {state.agentTeamsEnabled ? "Enabled" : "Disabled"}
           </span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono">
-          <span className="text-space-500 w-32">Kickoff:</span>
+          <span className="text-muted w-32">Kickoff:</span>
           <span className="text-text">
             {state.kickoffContent
               ? `${state.kickoffContent.length} chars`

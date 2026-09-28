@@ -27,14 +27,14 @@ const healthColors: Record<string, string> = {
   healthy: "text-success",
   warning: "text-amber",
   blocked: "text-danger",
-  idle: "text-space-500",
+  idle: "text-muted",
 };
 
 const statusColors: Record<string, string> = {
   building: "text-cyan",
   deployed: "text-amber",
-  paused: "text-space-500",
-  archived: "text-space-500",
+  paused: "text-muted",
+  archived: "text-muted",
 };
 
 function ProgressBar({ score, details }: { score: number; details: string }) {
@@ -158,7 +158,7 @@ export default function RoadmapPage() {
               className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
                 sortBy === s
                   ? "border-cyan text-cyan"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               {s}
@@ -173,7 +173,7 @@ export default function RoadmapPage() {
               className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
                 filterStatus === s
                   ? "border-cyan text-cyan"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               {s || "all"}
@@ -240,7 +240,7 @@ export default function RoadmapPage() {
                     {p.health}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-space-500">
+                <td className="px-3 py-2 text-muted">
                   {formatTimeAgo(p.lastActivityAt)}
                 </td>
               </tr>

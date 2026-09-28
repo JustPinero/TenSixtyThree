@@ -40,7 +40,7 @@ export function DispatchResults({ results, onDismiss }: DispatchResultsProps) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-[10px] font-mono text-space-500 hover:text-text transition-colors"
+          className="text-[10px] font-mono text-muted hover:text-text transition-colors"
         >
           Dismiss
         </button>

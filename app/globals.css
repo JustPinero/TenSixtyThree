@@ -34,6 +34,7 @@
   --text-primary: #e4e8ee;
   --text-secondary: #c5ccd8;
   --text-dim: #6b7394;
+  --muted: #78809e;
   --scanline-opacity: 0.015;
   --noise-opacity: 0.012;
   --shadow-color: rgba(0, 0, 0, 0.5);
@@ -54,18 +55,19 @@
   --cyan: #1a8a99;
   --cyan-dim: #2d7a87;
   --cyan-glow: rgba(26, 138, 153, 0.25);
-  --amber: #c49030;
+  --amber: #b9882d;
   --amber-glow: rgba(196, 144, 48, 0.25);
   --danger: #d93d49;
   --danger-glow: rgba(217, 61, 73, 0.25);
   --info: #5a6aad;
   --accent: #9b4dbd;
   --accent-glow: rgba(155, 77, 189, 0.25);
-  --success: #3baa52;
+  --success: #39a550;
   --success-glow: rgba(59, 170, 82, 0.25);
   --text-primary: #1a1e2e;
   --text-secondary: #3d4460;
   --text-dim: #8891a8;
+  --muted: #6d7486;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(0, 0, 0, 0.08);
@@ -98,6 +100,7 @@
   --text-primary: #d2f0d2;
   --text-secondary: #a8d4a8;
   --text-dim: #567a56;
+  --muted: #658665;
   --scanline-opacity: 0.06;
   --noise-opacity: 0.02;
   --shadow-color: rgba(0, 0, 0, 0.6);
@@ -130,6 +133,7 @@
   --text-primary: #f0e4d2;
   --text-secondary: #d4c4ac;
   --text-dim: #8a785e;
+  --muted: #988871;
   --scanline-opacity: 0;
   --noise-opacity: 0.02;
   --shadow-color: rgba(0, 0, 0, 0.5);
@@ -147,21 +151,22 @@
   --border-dim: #d6e2f2;
   --border-default: #bcd0ea;
   --border-bright: #9fbce0;
-  --cyan: #5aa5e8;
+  --cyan: #5195d2;
   --cyan-dim: #4285c4;
   --cyan-glow: rgba(90, 165, 232, 0.3);
-  --amber: #eab04d;
+  --amber: #b7893c;
   --amber-glow: rgba(234, 176, 77, 0.3);
   --danger: #e8607a;
   --danger-glow: rgba(232, 96, 122, 0.3);
   --info: #8f7fe0;
-  --accent: #e88ac2;
+  --accent: #c877a7;
   --accent-glow: rgba(232, 138, 194, 0.3);
-  --success: #55bd7f;
+  --success: #49a26d;
   --success-glow: rgba(85, 189, 127, 0.3);
   --text-primary: #22304a;
   --text-secondary: #45567a;
   --text-dim: #8a97b5;
+  --muted: #6a748b;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(90, 130, 190, 0.15);
@@ -194,6 +199,7 @@
   --text-primary: #262c3a;
   --text-secondary: #454d62;
   --text-dim: #8b8874;
+  --muted: #767463;
   --scanline-opacity: 0;
   --noise-opacity: 0.015;
   --shadow-color: rgba(90, 80, 50, 0.12);
@@ -226,6 +232,7 @@
   --text-primary: #2e2418;
   --text-secondary: #4f4232;
   --text-dim: #8d7f66;
+  --muted: #796d58;
   --scanline-opacity: 0;
   --noise-opacity: 0.01;
   --shadow-color: rgba(80, 60, 30, 0.12);
@@ -246,7 +253,7 @@
   --cyan: #3e6b4a;
   --cyan-dim: #31543b;
   --cyan-glow: rgba(62, 107, 74, 0.25);
-  --amber: #c08a3e;
+  --amber: #b5823b;
   --amber-glow: rgba(192, 138, 62, 0.25);
   --danger: #b95744;
   --danger-glow: rgba(185, 87, 68, 0.25);
@@ -258,6 +265,7 @@
   --text-primary: #23291f;
   --text-secondary: #414b3a;
   --text-dim: #7f8a74;
+  --muted: #6b7461;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(50, 70, 40, 0.1);
@@ -278,7 +286,7 @@
   --cyan: #1f6ff2;
   --cyan-dim: #1856bd;
   --cyan-glow: rgba(31, 111, 242, 0.25);
-  --amber: #d98f2b;
+  --amber: #c58227;
   --amber-glow: rgba(217, 143, 43, 0.25);
   --danger: #e0433e;
   --danger-glow: rgba(224, 67, 62, 0.25);
@@ -290,6 +298,7 @@
   --text-primary: #16202e;
   --text-secondary: #3a4a5e;
   --text-dim: #84929f;
+  --muted: #6b7681;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(30, 60, 110, 0.1);
@@ -310,7 +319,7 @@
   --cyan: #2f6fd8;
   --cyan-dim: #2458ad;
   --cyan-glow: rgba(47, 111, 216, 0.3);
-  --amber: #f2a71b;
+  --amber: #c08515;
   --amber-glow: rgba(242, 167, 27, 0.3);
   --danger: #e8483f;
   --danger-glow: rgba(232, 72, 63, 0.3);
@@ -322,6 +331,7 @@
   --text-primary: #2a2118;
   --text-secondary: #4c4030;
   --text-dim: #93856c;
+  --muted: #80745e;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(120, 90, 30, 0.14);
@@ -354,6 +364,7 @@
   --text-primary: #1c1c20;
   --text-secondary: #46464c;
   --text-dim: #94949c;
+  --muted: #73737a;
   --scanline-opacity: 0;
   --noise-opacity: 0;
   --shadow-color: rgba(0, 0, 0, 0.06);
@@ -386,11 +397,50 @@
   --text-primary: #ece4f4;
   --text-secondary: #cdc0dc;
   --text-dim: #77689a;
+  --muted: #8679a5;
   --scanline-opacity: 0.02;
   --noise-opacity: 0.015;
   --shadow-color: rgba(0, 0, 0, 0.55);
   --glass-bg: rgba(23, 16, 33, 0.85);
   --glass-border: rgba(155, 93, 229, 0.12);
+}
+
+
+/* Phase 61.5 — no-JS / pre-boot fallback: honor the OS light
+   preference instead of flashing the dark default. Mirrors the
+   SUNNY pack; lib/theme-boot.test.ts guards the two from drifting. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #e8eaef;
+    --bg-panel: #ffffff;
+    --bg-panel-hover: #f8f9fb;
+    --bg-inset: #eef0f4;
+    --border-dim: #dde0e6;
+    --border-default: #c8ccd4;
+    --border-bright: #b0b5c0;
+    --cyan: #1a8a99;
+    --cyan-dim: #2d7a87;
+    --cyan-glow: rgba(26, 138, 153, 0.25);
+    --amber: #b9882d;
+    --amber-glow: rgba(196, 144, 48, 0.25);
+    --danger: #d93d49;
+    --danger-glow: rgba(217, 61, 73, 0.25);
+    --info: #5a6aad;
+    --accent: #9b4dbd;
+    --accent-glow: rgba(155, 77, 189, 0.25);
+    --success: #39a550;
+    --success-glow: rgba(59, 170, 82, 0.25);
+    --text-primary: #1a1e2e;
+    --text-secondary: #3d4460;
+    --text-dim: #8891a8;
+    --muted: #6d7486;
+    --scanline-opacity: 0;
+    --noise-opacity: 0;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(26, 138, 153, 0.15);
+  }
 }
 
 /* ─── Tailwind theme bridge ─── */
@@ -410,6 +460,16 @@
   --color-success: var(--success);
   --color-text: var(--text-secondary);
   --color-text-bright: var(--text-primary);
+  /* Phase 61.1 — these four were USED but never declared, so Tailwind
+     emitted no CSS for them and 99 elements rendered at the inherited
+     body color. --muted is the AA-compliant replacement for the old
+     --text-dim (which fails 4.5:1 in all 12 packs) and for
+     text-muted (a BORDER token that was being used as text). */
+  --color-muted: var(--muted);
+  --color-text-dim: var(--muted);
+  --color-space-400: var(--muted);
+  --color-space-300: var(--text-secondary);
+  --color-emerald: var(--success);
 }
 
 /* ═══════════════════════════════════════════════════════════

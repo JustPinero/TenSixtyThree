@@ -118,7 +118,7 @@ export default function TemplatesPage() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Template name"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
           />
           <input
             type="text"
@@ -127,13 +127,13 @@ export default function TemplatesPage() {
               setForm({ ...form, description: e.target.value })
             }
             placeholder="Description"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
           />
           <textarea
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
             placeholder="Template content (markdown)"
-            className="w-full h-64 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none resize-none"
+            className="w-full h-64 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none resize-none"
           />
           <div className="flex gap-2">
             <button
@@ -148,7 +148,7 @@ export default function TemplatesPage() {
                 setEditing(null);
                 setCreating(false);
               }}
-              className="px-4 py-2 text-sm font-mono border border-space-600 text-space-500 hover:text-text transition-colors"
+              className="px-4 py-2 text-sm font-mono border border-space-600 text-muted hover:text-text transition-colors"
             >
               Cancel
             </button>
@@ -173,7 +173,7 @@ export default function TemplatesPage() {
                     DEFAULT
                   </span>
                 )}
-                <span className="text-[10px] font-mono text-space-500 border border-space-600 px-1">
+                <span className="text-[10px] font-mono text-muted border border-space-600 px-1">
                   {t.projectType}
                 </span>
               </div>
@@ -200,7 +200,7 @@ export default function TemplatesPage() {
                 </button>
               </div>
             </div>
-            <p className="text-xs font-mono text-space-500">{t.description}</p>
+            <p className="text-xs font-mono text-muted">{t.description}</p>
           </div>
         ))}
       </div>

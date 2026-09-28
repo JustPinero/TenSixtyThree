@@ -45,7 +45,7 @@ export function ScanButton({ onScanComplete }: ScanButtonProps) {
           border transition-all duration-150
           ${
             scanning
-              ? "border-space-500 text-space-500 cursor-wait"
+              ? "border-space-500 text-muted cursor-wait"
               : "border-cyan text-cyan hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(65,166,181,0.15)]"
           }
         `}

@@ -36,10 +36,10 @@ export function NameStep({ state, onChange }: NameStepProps) {
           value={state.projectName}
           onChange={(e) => onChange({ projectName: e.target.value })}
           placeholder="My Awesome Project"
-          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
         />
         {state.projectName && (
-          <p className="text-xs font-mono text-space-500 mt-1">
+          <p className="text-xs font-mono text-muted mt-1">
             slug: {toSlug(state.projectName)}
           </p>
         )}
@@ -57,7 +57,7 @@ export function NameStep({ state, onChange }: NameStepProps) {
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                 state.projectType === type.value
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text hover:border-space-500"
+                  : "border-space-600 text-muted hover:text-text hover:border-space-500"
               }`}
             >
               {type.label}

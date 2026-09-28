@@ -55,7 +55,7 @@ export function DispatchRecommendations() {
           type="button"
           data-testid="dismiss-recommendations"
           onClick={() => setDismissed(true)}
-          className="text-xs font-mono text-space-500 hover:text-text uppercase tracking-wider"
+          className="text-xs font-mono text-muted hover:text-text uppercase tracking-wider"
           aria-label="Dismiss recommendations"
         >
           Dismiss

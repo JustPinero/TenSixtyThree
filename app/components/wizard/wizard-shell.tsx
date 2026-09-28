@@ -116,14 +116,14 @@ export function WizardShell({ steps, onLaunch }: WizardShellProps) {
           disabled={currentStep === 0}
           className={`px-4 py-2 text-sm font-mono border transition-colors ${
             currentStep === 0
-              ? "border-space-600 text-space-500 cursor-not-allowed"
+              ? "border-space-600 text-muted cursor-not-allowed"
               : "border-space-500 text-text hover:text-text-bright hover:border-text"
           }`}
         >
           Back
         </button>
 
-        <span className="text-xs font-mono text-space-500">
+        <span className="text-xs font-mono text-muted">
           Step {currentStep + 1} of {steps.length}
         </span>
 
@@ -132,7 +132,7 @@ export function WizardShell({ steps, onLaunch }: WizardShellProps) {
           disabled={!canProceed() || launching}
           className={`px-4 py-2 text-sm font-mono border transition-all ${
             !canProceed() || launching
-              ? "border-space-600 text-space-500 cursor-not-allowed"
+              ? "border-space-600 text-muted cursor-not-allowed"
               : isLastStep
                 ? "border-success text-success hover:bg-success/10"
                 : "border-cyan text-cyan hover:bg-cyan/10"

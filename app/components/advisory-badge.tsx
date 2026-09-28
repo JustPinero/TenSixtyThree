@@ -10,7 +10,7 @@ export function AdvisoryBadge({ hasAdvisory, isRead }: AdvisoryBadgeProps) {
     <span
       className={`text-[10px] font-mono px-1.5 py-0.5 border ${
         isRead
-          ? "border-space-600 text-space-500"
+          ? "border-space-600 text-muted"
           : "border-amber/40 text-amber pulse-warning"
       }`}
       title={isRead ? "Advisory read" : "Unread advisory"}

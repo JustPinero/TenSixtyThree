@@ -40,7 +40,7 @@ export function GithubStep({ state, onChange }: GithubStepProps) {
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                 state.isPrivate
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               Private
@@ -50,13 +50,13 @@ export function GithubStep({ state, onChange }: GithubStepProps) {
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                 !state.isPrivate
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               Public
             </button>
           </div>
-          <p className="text-xs font-mono text-space-500">
+          <p className="text-xs font-mono text-muted">
             Requires gh CLI authenticated. Run `gh auth login` if needed.
           </p>
         </div>

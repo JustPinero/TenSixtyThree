@@ -50,7 +50,7 @@ function Toggle({
       </button>
       <div>
         <span className="text-sm font-mono text-text-bright">{label}</span>
-        <p className="text-xs font-mono text-space-500 mt-0.5">
+        <p className="text-xs font-mono text-muted mt-0.5">
           {description}
         </p>
       </div>
@@ -83,7 +83,7 @@ export function ConfigStep({ state, onChange }: ConfigStepProps) {
               <span className="text-sm font-mono font-bold text-text-bright">
                 {mode.label}
               </span>
-              <p className="text-xs font-mono text-space-500 mt-0.5">
+              <p className="text-xs font-mono text-muted mt-0.5">
                 {mode.desc}
               </p>
             </button>

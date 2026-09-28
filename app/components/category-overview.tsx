@@ -38,7 +38,7 @@ export function CategoryOverview({ categories }: CategoryOverviewProps) {
             {cat.count}
           </div>
           {cat.recent && (
-            <p className="text-[10px] font-mono text-space-500 truncate mt-1">
+            <p className="text-[10px] font-mono text-muted truncate mt-1">
               Latest: {cat.recent}
             </p>
           )}

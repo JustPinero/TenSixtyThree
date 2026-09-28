@@ -1,3 +1,4 @@
+import { themeBootScript } from "@/lib/theme-boot";
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Sidebar } from "./components/sidebar";
@@ -39,8 +40,16 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full`}
-      data-theme="dark"
+      suppressHydrationWarning
     >
+      <head>
+        {/* Phase 61.5 — stamp the stored pack BEFORE first paint. Without
+            this the page renders as dark cyberpunk and then swaps, on
+            every navigation, for anyone not using the default pack. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: themeBootScript() }}
+        />
+      </head>
       <body className="h-full flex scanlines">
         <ThemeProvider>
           <Sidebar />

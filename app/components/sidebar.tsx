@@ -288,14 +288,10 @@ export function Sidebar() {
         className={`
           fixed top-0 left-0 z-50 h-full w-56 flex flex-col transition-transform duration-200
           lg:translate-x-0 lg:static lg:z-auto
+          bg-linear-to-b from-space-800 via-space-850 to-space-900
+          border-r border-space-600 shadow-[2px_0_12px_var(--shadow-color)]
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
-        style={{
-          background:
-            "linear-gradient(180deg, #111620 0%, #0c1018 50%, #080b11 100%)",
-          borderRight: "1px solid #242a3d",
-          boxShadow: "2px 0 12px rgba(0, 0, 0, 0.4)",
-        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4">
@@ -356,16 +352,13 @@ export function Sidebar() {
         <ReminderWidget />
 
         {/* Footer */}
-        <div
-          className="flex items-center gap-2 px-4 py-3"
-          style={{ borderTop: "1px solid #1a1e2e" }}
-        >
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-space-600">
           <img
             src="/delamain.jpg"
             alt="Delamain"
             className="w-4 h-4 rounded-full opacity-60"
           />
-          <p className="text-xs font-mono text-space-500 uppercase tracking-widest">
+          <p className="text-xs font-mono text-muted uppercase tracking-widest">
             Delamain v1
           </p>
         </div>

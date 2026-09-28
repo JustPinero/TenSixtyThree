@@ -127,7 +127,7 @@ export default function KnowledgePage() {
             disabled={harvesting}
             className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider border transition-colors ${
               harvesting
-                ? "border-space-500 text-space-500 cursor-wait"
+                ? "border-space-500 text-muted cursor-wait"
                 : "border-accent text-accent hover:bg-accent/10"
             }`}
           >
@@ -146,7 +146,7 @@ export default function KnowledgePage() {
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search lessons..."
-          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none transition-colors"
+          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none transition-colors"
         />
       </div>
 
@@ -166,7 +166,7 @@ export default function KnowledgePage() {
 
       {/* Search results label */}
       {searchResults && (
-        <div className="mb-4 text-xs font-mono text-space-500">
+        <div className="mb-4 text-xs font-mono text-muted">
           {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}{" "}
           for &quot;{searchQuery}&quot;
         </div>
@@ -174,7 +174,7 @@ export default function KnowledgePage() {
 
       {/* Lessons */}
       {loading ? (
-        <div className="text-sm font-mono text-space-500">Loading...</div>
+        <div className="text-sm font-mono text-muted">Loading...</div>
       ) : displayLessons.length === 0 ? (
         <div className="p-6 border border-space-600 bg-space-800 text-center">
           <p className="text-sm font-mono text-text">

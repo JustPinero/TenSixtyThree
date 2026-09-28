@@ -257,7 +257,7 @@ function IntegrationsPanel() {
       </div>
 
       {loading ? (
-        <p className="text-xs font-mono text-space-500">
+        <p className="text-xs font-mono text-muted">
           Checking CLI auth status...
         </p>
       ) : (
@@ -281,7 +281,7 @@ function IntegrationsPanel() {
                   <span className="text-sm font-mono text-text-bright">
                     {s.label}
                   </span>
-                  <span className="text-xs font-mono text-space-500 ml-2">
+                  <span className="text-xs font-mono text-muted ml-2">
                     {!s.installed
                       ? "not installed"
                       : s.authenticated
@@ -297,7 +297,7 @@ function IntegrationsPanel() {
                   disabled={launching === s.service}
                   className={`px-3 py-1 text-xs font-mono border transition-colors ${
                     launching === s.service
-                      ? "border-space-500 text-space-500 cursor-wait"
+                      ? "border-space-500 text-muted cursor-wait"
                       : "border-cyan text-cyan hover:bg-cyan/10"
                   }`}
                 >
@@ -312,7 +312,7 @@ function IntegrationsPanel() {
               )}
 
               {!s.installed && (
-                <span className="text-[10px] font-mono text-space-500 uppercase tracking-wider">
+                <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
                   Not Found
                 </span>
               )}
@@ -350,7 +350,7 @@ function NotificationsPanel() {
         <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
           Notifications
         </h2>
-        <p className="text-xs font-mono text-space-500">
+        <p className="text-xs font-mono text-muted">
           Desktop notifications not supported in this browser.
         </p>
       </div>
@@ -367,7 +367,7 @@ function NotificationsPanel() {
           <span className="text-sm font-mono text-text-bright">
             Desktop Notifications
           </span>
-          <p className="text-[10px] font-mono text-space-500 mt-0.5">
+          <p className="text-[10px] font-mono text-muted mt-0.5">
             {permission === "granted"
               ? "Get notified when sessions end, blockers are detected, or reminders trigger"
               : permission === "denied"
@@ -410,7 +410,7 @@ function SoundsPanel() {
         <span className="text-sm font-mono text-text-bright">
           Delamain Sound Effects
         </span>
-        <p className="text-[10px] font-mono text-space-500 mt-0.5">
+        <p className="text-[10px] font-mono text-muted mt-0.5">
           Chimes when Delamain starts and finishes responding, alerts on
           blockers
         </p>
@@ -453,7 +453,7 @@ function AutomationPanel() {
           <span className="text-sm font-mono text-text-bright">
             Auto-Dispatch (Continue)
           </span>
-          <p className="text-[10px] font-mono text-space-500 mt-0.5">
+          <p className="text-[10px] font-mono text-muted mt-0.5">
             When Delamain suggests only &quot;continue&quot; on healthy
             projects, execute immediately without waiting for approval
           </p>
@@ -525,7 +525,7 @@ function ModelPanel() {
         <div className="flex items-center justify-between">
           <div>
             <span className="text-sm font-mono text-text-bright">Service</span>
-            <p className="text-[10px] font-mono text-space-500 mt-0.5">
+            <p className="text-[10px] font-mono text-muted mt-0.5">
               The AI provider behind the Overseer, wizard, and project chat
             </p>
           </div>
@@ -546,7 +546,7 @@ function ModelPanel() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-mono text-text-bright">Model</span>
-              <p className="text-[10px] font-mono text-space-500 mt-0.5">
+              <p className="text-[10px] font-mono text-muted mt-0.5">
                 {note ?? "Chat model for all conversational surfaces"}
               </p>
             </div>
@@ -564,7 +564,7 @@ function ModelPanel() {
             </select>
           </div>
         )}
-        <p className="text-[10px] font-mono text-space-500">
+        <p className="text-[10px] font-mono text-muted">
           Also settable via CASCADE_AI_SERVICE / CASCADE_CHAT_MODEL env vars;
           this setting overrides both.
         </p>
@@ -620,7 +620,7 @@ function BrainsPanel() {
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
         Brains
       </h2>
-      <p className="text-[10px] font-mono text-space-500 mb-3">
+      <p className="text-[10px] font-mono text-muted mb-3">
         Repos that hold the personal layer: memory, playbook, lessons. The
         Playbook page write-throughs to the first connected brain.
       </p>
@@ -637,18 +637,18 @@ function BrainsPanel() {
                   {b.valid ? "● connected" : "● missing"}
                 </span>
               </span>
-              <p className="text-[10px] font-mono text-space-500">{b.path}</p>
+              <p className="text-[10px] font-mono text-muted">{b.path}</p>
             </div>
             <button
               onClick={() => remove(b.id)}
-              className="text-xs font-mono text-space-500 hover:text-red-400"
+              className="text-xs font-mono text-muted hover:text-red-400"
             >
               disconnect
             </button>
           </div>
         ))}
         {brains.length === 0 && (
-          <p className="text-xs font-mono text-space-500">
+          <p className="text-xs font-mono text-muted">
             No brains connected.
           </p>
         )}
@@ -721,9 +721,9 @@ function OverseerPanel() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             placeholder="Overseer"
-            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
           />
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             Your AI dispatcher&apos;s name. Appears in chat, sidebar, and
             briefings.
           </p>
@@ -748,10 +748,10 @@ function OverseerPanel() {
               onChange={(e) => setPortraitIdle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="/delamain.jpg"
-              className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+              className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
             />
           </div>
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             Path or URL of the portrait shown when the Overseer is silent.
           </p>
         </div>
@@ -785,15 +785,15 @@ function OverseerPanel() {
                   onChange={(e) => setPortraitTalking(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
                   placeholder="/delamain-talking.jpg"
-                  className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+                  className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
                 />
               </div>
-              <p className="text-[10px] font-mono text-space-500 mt-1">
+              <p className="text-[10px] font-mono text-muted mt-1">
                 Shown while the Overseer is generating a response.
               </p>
             </>
           ) : (
-            <p className="text-[10px] font-mono text-space-500">
+            <p className="text-[10px] font-mono text-muted">
               The idle portrait will be shown for both states.
             </p>
           )}
@@ -883,7 +883,7 @@ function VoicePanel() {
               Enable voice output
             </span>
           </label>
-          <p className="text-[10px] font-mono text-space-500 mt-1 ml-6">
+          <p className="text-[10px] font-mono text-muted mt-1 ml-6">
             Delamain speaks responses aloud after streaming completes. Uses your
             browser&apos;s built-in voices — no network call.
           </p>
@@ -907,7 +907,7 @@ function VoicePanel() {
               </option>
             ))}
           </select>
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             Available voices come from your OS / browser. Quality and count vary
             by platform.
           </p>
@@ -926,7 +926,7 @@ function VoicePanel() {
             onChange={(e) => setRate(parseFloat(e.target.value))}
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             How fast Delamain speaks. 1.0 is normal speed.
           </p>
         </div>
@@ -944,7 +944,7 @@ function VoicePanel() {
             onChange={(e) => setPitch(parseFloat(e.target.value))}
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             Vocal pitch. 1.0 is the voice&apos;s natural tone.
           </p>
         </div>
@@ -983,7 +983,7 @@ function VoicePanel() {
               </span>
             </label>
           </div>
-          <p className="text-[10px] font-mono text-space-500 mt-2">
+          <p className="text-[10px] font-mono text-muted mt-2">
             How the mic button behaves. Conversation Mode (chat-screen toggle)
             overrides this when active.
           </p>
@@ -1007,7 +1007,7 @@ function VoicePanel() {
             }
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-space-500 mt-1">
+          <p className="text-[10px] font-mono text-muted mt-1">
             How long to wait after you stop speaking before Conversation Mode
             auto-submits. Shorter = snappier; longer = more pause-tolerant.
           </p>

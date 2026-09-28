@@ -33,7 +33,7 @@ export default function PlaybookPage() {
   }
 
   if (loading) {
-    return <div className="text-sm font-mono text-space-500">Loading...</div>;
+    return <div className="text-sm font-mono text-muted">Loading...</div>;
   }
 
   return (

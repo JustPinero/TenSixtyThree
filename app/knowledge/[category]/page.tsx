@@ -58,7 +58,7 @@ export default function CategoryPage() {
       </div>
 
       {loading ? (
-        <div className="text-sm font-mono text-space-500">Loading...</div>
+        <div className="text-sm font-mono text-muted">Loading...</div>
       ) : lessons.length === 0 ? (
         <div className="p-6 border border-space-600 bg-space-800 text-center">
           <p className="text-sm font-mono text-text">

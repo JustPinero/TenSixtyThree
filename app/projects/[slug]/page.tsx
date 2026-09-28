@@ -139,7 +139,7 @@ function DispatchPanel({
           disabled={harvesting}
           className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
             harvesting
-              ? "border-space-500 text-space-500 cursor-wait"
+              ? "border-space-500 text-muted cursor-wait"
               : "border-accent text-accent hover:bg-accent/10"
           } disabled:opacity-50`}
         >
@@ -157,7 +157,7 @@ function DispatchPanel({
             }
           }}
           placeholder="Custom command..."
-          className="flex-1 px-3 py-1.5 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-info focus:outline-none"
+          className="flex-1 px-3 py-1.5 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-info focus:outline-none"
         />
         <button
           onClick={() => dispatch("custom", customPrompt)}
@@ -204,7 +204,7 @@ function DeployStatusPanel({ project }: { project: Project }) {
     deployed: "text-success",
     building: "text-amber",
     failed: "text-danger",
-    unknown: "text-space-500",
+    unknown: "text-muted",
   };
 
   return (
@@ -214,18 +214,18 @@ function DeployStatusPanel({ project }: { project: Project }) {
       </h2>
       <div className="space-y-2 text-xs font-mono">
         <div className="flex justify-between">
-          <span className="text-space-500">Platform</span>
+          <span className="text-muted">Platform</span>
           <span className="text-text">{deployStatus.platform}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-space-500">Status</span>
+          <span className="text-muted">Status</span>
           <span className={stateColors[deployStatus.state] || "text-text"}>
             {deployStatus.state}
           </span>
         </div>
         {deployStatus.url && (
           <div className="flex justify-between">
-            <span className="text-space-500">URL</span>
+            <span className="text-muted">URL</span>
             <span className="text-info truncate ml-2">{deployStatus.url}</span>
           </div>
         )}
@@ -279,7 +279,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
   if (!loaded) {
     return (
       <div className="p-4 border border-space-600 bg-space-800">
-        <p className="text-xs font-mono text-space-500">Loading...</p>
+        <p className="text-xs font-mono text-muted">Loading...</p>
       </div>
     );
   }
@@ -290,7 +290,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
         <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider">
           Remaining Work
         </h2>
-        <p className="text-xs font-mono text-space-500">No requests found</p>
+        <p className="text-xs font-mono text-muted">No requests found</p>
       </div>
     );
   }
@@ -309,7 +309,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
   const statusColor = (status: WorkRequest["status"]) => {
     switch (status) {
       case "done":
-        return "text-space-500 line-through";
+        return "text-muted line-through";
       case "current":
         return "text-cyan font-bold";
       case "upcoming":
@@ -350,7 +350,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
                 <span className={phase.isCurrent ? "text-cyan" : "text-text"}>
                   {phase.label}
                 </span>
-                <span className="text-space-500">
+                <span className="text-muted">
                   {doneCount}/{phase.requests.length}
                 </span>
               </button>
@@ -365,7 +365,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
                       <span className="w-4 text-center">
                         {statusIcon(req.status)}
                       </span>
-                      <span className="text-space-500 w-8">{req.number}</span>
+                      <span className="text-muted w-8">{req.number}</span>
                       <span className={statusColor(req.status)}>
                         {req.title}
                       </span>
@@ -409,9 +409,9 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
         Session History
       </h2>
       {!loaded ? (
-        <p className="text-xs font-mono text-space-500">Loading...</p>
+        <p className="text-xs font-mono text-muted">Loading...</p>
       ) : sessions.length === 0 ? (
-        <p className="text-xs font-mono text-space-500">
+        <p className="text-xs font-mono text-muted">
           No sessions recorded yet
         </p>
       ) : (
@@ -427,7 +427,7 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
                 <span className="text-xs font-mono text-info">
                   {s.timestamp.replace("T", " ")}
                 </span>
-                <span className="text-[10px] font-mono text-space-500">
+                <span className="text-[10px] font-mono text-muted">
                   {expanded === s.filename ? "collapse" : "expand"}
                 </span>
               </button>
@@ -484,7 +484,7 @@ export default function ProjectDetailPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-sm font-mono text-space-500">Loading...</div>;
+    return <div className="text-sm font-mono text-muted">Loading...</div>;
   }
 
   if (!project) {
@@ -508,7 +508,7 @@ export default function ProjectDetailPage() {
           <h1 className="text-2xl font-bold font-mono text-text-bright">
             {project.name}
           </h1>
-          <p className="text-xs font-mono text-space-500">{project.path}</p>
+          <p className="text-xs font-mono text-muted">{project.path}</p>
         </div>
       </div>
 
@@ -535,20 +535,20 @@ export default function ProjectDetailPage() {
           </h2>
           <div className="space-y-2 text-xs font-mono">
             <div className="flex justify-between">
-              <span className="text-space-500">Status</span>
+              <span className="text-muted">Status</span>
               <span className="text-text-bright">{project.status}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-space-500">Phase</span>
+              <span className="text-muted">Phase</span>
               <span className="text-text">{project.currentPhase}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-space-500">Autonomy</span>
+              <span className="text-muted">Autonomy</span>
               <span className="text-text">{project.autonomyMode}</span>
             </div>
             {/* 55.2 — share this project into the active org */}
             <div className="flex justify-between items-center gap-2">
-              <span className="text-space-500">Org</span>
+              <span className="text-muted">Org</span>
               <button
                 onClick={async () => {
                   const res = await fetch("/api/orgs/projects", {
@@ -569,7 +569,7 @@ export default function ProjectDetailPage() {
             </div>
             {/* 53.4 — per-project assistant persona */}
             <div className="flex justify-between items-center gap-2">
-              <label htmlFor="project-assistant" className="text-space-500">
+              <label htmlFor="project-assistant" className="text-muted">
                 Assistant
               </label>
               <div className="flex items-center gap-2">
@@ -611,7 +611,7 @@ export default function ProjectDetailPage() {
             </div>
             {project.githubRepo && (
               <div className="flex justify-between">
-                <span className="text-space-500">GitHub</span>
+                <span className="text-muted">GitHub</span>
                 <span className="text-info">{project.githubRepo}</span>
               </div>
             )}
@@ -624,13 +624,13 @@ export default function ProjectDetailPage() {
             Environment Variables
           </h2>
           {!envStatus ? (
-            <p className="text-xs font-mono text-space-500">Loading...</p>
+            <p className="text-xs font-mono text-muted">Loading...</p>
           ) : !envStatus.authenticated ? (
             <p className="text-xs font-mono text-amber">
               1Password CLI not authenticated
             </p>
           ) : envStatus.vars.length === 0 ? (
-            <p className="text-xs font-mono text-space-500">
+            <p className="text-xs font-mono text-muted">
               No .env.example found
             </p>
           ) : (
@@ -675,7 +675,7 @@ export default function ProjectDetailPage() {
             Audit History
           </h2>
           {project.auditSnapshots.length === 0 ? (
-            <p className="text-xs font-mono text-space-500">No audits yet</p>
+            <p className="text-xs font-mono text-muted">No audits yet</p>
           ) : (
             <div className="space-y-1">
               {project.auditSnapshots.map((a) => (
@@ -686,7 +686,7 @@ export default function ProjectDetailPage() {
                   <span className="text-text">{a.auditType}</span>
                   <div className="flex gap-3">
                     <span className="text-info">{a.grade || "—"}</span>
-                    <span className="text-space-500">
+                    <span className="text-muted">
                       {new Date(a.capturedAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -711,12 +711,12 @@ export default function ProjectDetailPage() {
             Recent Activity
           </h2>
           {project.activityEvents.length === 0 ? (
-            <p className="text-xs font-mono text-space-500">No activity yet</p>
+            <p className="text-xs font-mono text-muted">No activity yet</p>
           ) : (
             <div className="space-y-1">
               {project.activityEvents.slice(0, 10).map((e) => (
                 <div key={e.id} className="text-xs font-mono">
-                  <span className="text-space-500">[{e.eventType}]</span>{" "}
+                  <span className="text-muted">[{e.eventType}]</span>{" "}
                   <span className="text-text">{e.summary}</span>
                 </div>
               ))}

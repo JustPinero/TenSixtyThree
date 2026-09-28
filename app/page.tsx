@@ -82,7 +82,7 @@ function ResumeAllButton({
       title="Dispatch Claude to all building projects"
       className={`px-4 py-2 text-sm font-mono uppercase tracking-wider border transition-all ${
         launching
-          ? "border-space-500 text-space-500 cursor-wait"
+          ? "border-space-500 text-muted cursor-wait"
           : "border-success text-success hover:bg-success/10 hover:shadow-[0_0_12px_rgba(100,212,118,0.15)]"
       }`}
     >
@@ -127,7 +127,7 @@ function HarvestAllButton() {
         title="Extract lessons from all project histories"
         className={`px-4 py-2 text-sm font-mono uppercase tracking-wider border transition-all ${
           harvesting
-            ? "border-space-500 text-space-500 cursor-wait"
+            ? "border-space-500 text-muted cursor-wait"
             : "border-accent text-accent hover:bg-accent/10 hover:shadow-[0_0_12px_rgba(187,154,247,0.15)]"
         }`}
       >
@@ -147,7 +147,7 @@ export default function DashboardPage() {
     <div id="tour-fleet">
     <Suspense
       fallback={
-        <div className="text-sm font-mono text-space-500">Loading...</div>
+        <div className="text-sm font-mono text-muted">Loading...</div>
       }
     >
       <DashboardContent />

@@ -71,7 +71,7 @@ export function TemplateStep({ state, onChange }: TemplateStepProps) {
                 </span>
               )}
             </div>
-            <p className="text-xs font-mono text-space-500">{t.description}</p>
+            <p className="text-xs font-mono text-muted">{t.description}</p>
             <span
               role="button"
               tabIndex={0}

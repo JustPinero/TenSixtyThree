@@ -147,7 +147,7 @@ export default function TasksPage() {
               if (e.key === "Enter") addTask();
             }}
             placeholder="Add a task..."
-            className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none"
+            className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
           />
           <button
             onClick={addTask}
@@ -195,7 +195,7 @@ export default function TasksPage() {
           className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
             showDone
               ? "border-cyan text-cyan"
-              : "border-space-600 text-space-500 hover:text-text"
+              : "border-space-600 text-muted hover:text-text"
           }`}
         >
           {showDone ? "Showing all" : "Hide done"}
@@ -208,7 +208,7 @@ export default function TasksPage() {
               className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
                 filterCategory === cat
                   ? "border-cyan text-cyan"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               {cat || "all"}
@@ -219,10 +219,10 @@ export default function TasksPage() {
 
       {/* Task List */}
       {loading ? (
-        <p className="text-sm font-mono text-space-500">Loading...</p>
+        <p className="text-sm font-mono text-muted">Loading...</p>
       ) : tasks.length === 0 ? (
         <div className="p-8 border border-space-600 bg-space-800 text-center">
-          <p className="text-sm font-mono text-space-500">
+          <p className="text-sm font-mono text-muted">
             No tasks yet. Add one above or let Claude sessions create them
             with [HUMAN TODO] tags.
           </p>
@@ -238,7 +238,7 @@ export default function TasksPage() {
                 <span className="text-xs font-mono font-bold text-text-bright uppercase tracking-wider">
                   {projectName}
                 </span>
-                <span className="text-[10px] font-mono text-space-500 ml-2">
+                <span className="text-[10px] font-mono text-muted ml-2">
                   {projectTasks.filter((t) => t.status === "pending").length}{" "}
                   pending
                 </span>
@@ -270,7 +270,7 @@ export default function TasksPage() {
                       <span
                         className={`text-sm font-mono ${
                           task.status === "done"
-                            ? "text-space-500 line-through"
+                            ? "text-muted line-through"
                             : "text-text-bright"
                         }`}
                       >

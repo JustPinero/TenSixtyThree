@@ -135,14 +135,14 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
           {messages.length > 0 && (
             <button
               onClick={() => setMessages([])}
-              className="text-[10px] font-mono text-space-500 hover:text-danger transition-colors"
+              className="text-[10px] font-mono text-muted hover:text-danger transition-colors"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setExpanded(false)}
-            className="text-[10px] font-mono text-space-500 hover:text-text transition-colors"
+            className="text-[10px] font-mono text-muted hover:text-text transition-colors"
           >
             Minimize
           </button>
@@ -153,7 +153,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
       <div ref={scrollRef} className="h-72 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-mono text-space-500">
+            <p className="text-xs font-mono text-muted">
               Chat with Claude about this project. Claude has full context:
               CLAUDE.md, handoff, debt log, current request, and knowledge base.
             </p>
@@ -188,7 +188,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
                 : "text-text pl-3 border-l-2 border-accent/30"
             }`}
           >
-            <span className="text-[10px] uppercase text-space-500 block mb-0.5">
+            <span className="text-[10px] uppercase text-muted block mb-0.5">
               {msg.role === "user" ? "you" : "claude"}
             </span>
             <div className="whitespace-pre-wrap leading-relaxed">
@@ -213,7 +213,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Ask Claude about this project..."
           disabled={streaming}
-          className="flex-1 px-3 py-2.5 text-sm font-mono bg-transparent text-text-bright placeholder:text-space-500 focus:outline-none disabled:opacity-50"
+          className="flex-1 px-3 py-2.5 text-sm font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none disabled:opacity-50"
         />
         <button
           onClick={sendMessage}

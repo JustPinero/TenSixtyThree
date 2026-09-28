@@ -174,14 +174,14 @@ export function ProjectTile({ project }: ProjectTileProps) {
       <div className="flex items-center justify-between text-xs font-mono">
         <span
           className={
-            project.openDebtCount > 0 ? "text-amber" : "text-space-500"
+            project.openDebtCount > 0 ? "text-amber" : "text-muted"
           }
         >
           {project.openDebtCount > 0
             ? `${project.openDebtCount} debt`
             : "no debt"}
         </span>
-        <span className="text-space-500">
+        <span className="text-muted">
           {formatTimeAgo(project.lastActivityAt)}
         </span>
       </div>
@@ -194,7 +194,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
               ? "text-amber"
               : hasActiveSession
                 ? "text-cyan"
-                : "text-space-500"
+                : "text-muted"
           }`}
         >
           {isDeployed

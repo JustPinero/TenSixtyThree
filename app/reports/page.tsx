@@ -110,7 +110,7 @@ export default function ReportsPage() {
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                 reportType === "single"
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               Single Project
@@ -120,7 +120,7 @@ export default function ReportsPage() {
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                 reportType === "cross-project"
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text"
+                  : "border-space-600 text-muted hover:text-text"
               }`}
             >
               Cross-Project
@@ -163,7 +163,7 @@ export default function ReportsPage() {
       {markdown && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono text-space-500">
+            <span className="text-xs font-mono text-muted">
               Report generated
             </span>
             <div className="flex gap-3">

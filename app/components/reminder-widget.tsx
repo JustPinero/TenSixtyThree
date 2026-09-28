@@ -57,16 +57,13 @@ export function ReminderWidget() {
       >
         <div className="flex items-center gap-2">
           {triggered.length > 0 ? (
-            <div
-              className="w-2 h-2 rounded-full bg-amber pulse-warning"
-              style={{ boxShadow: "0 0 6px rgba(224, 175, 104, 0.5)" }}
-            />
+            <div className="w-2 h-2 rounded-full bg-amber pulse-warning shadow-[0_0_6px_var(--amber-glow)]" />
           ) : (
             <div className="w-2 h-2 rounded-full bg-space-500" />
           )}
           <span
             className={
-              triggered.length > 0 ? "text-amber" : "text-space-500"
+              triggered.length > 0 ? "text-amber" : "text-muted"
             }
           >
             Reminders
@@ -74,7 +71,7 @@ export function ReminderWidget() {
         </div>
         <span
           className={`text-[10px] font-mono ${
-            triggered.length > 0 ? "text-amber" : "text-space-500"
+            triggered.length > 0 ? "text-amber" : "text-muted"
           }`}
         >
           {triggered.length > 0
@@ -96,13 +93,13 @@ export function ReminderWidget() {
                 <p className="text-amber leading-relaxed">{r.message}</p>
                 <button
                   onClick={() => dismiss(r.id)}
-                  className="text-space-500 hover:text-text flex-shrink-0"
+                  className="text-muted hover:text-text flex-shrink-0"
                 >
                   x
                 </button>
               </div>
               {r.projectSlug && (
-                <p className="text-space-500 mt-0.5">{r.projectSlug}</p>
+                <p className="text-muted mt-0.5">{r.projectSlug}</p>
               )}
             </div>
           ))}
@@ -115,12 +112,12 @@ export function ReminderWidget() {
                 <p className="text-text-dim leading-relaxed">{r.message}</p>
                 <button
                   onClick={() => dismiss(r.id)}
-                  className="text-space-500 hover:text-text flex-shrink-0"
+                  className="text-muted hover:text-text flex-shrink-0"
                 >
                   x
                 </button>
               </div>
-              <p className="text-space-500 mt-0.5">
+              <p className="text-muted mt-0.5">
                 {r.conditionType}: {r.conditionValue}
               </p>
             </div>

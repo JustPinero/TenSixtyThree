@@ -15,7 +15,7 @@ export default function TeamPage() {
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider mb-2">
           Organizations
         </h1>
-        <p className="text-sm font-mono text-space-500">
+        <p className="text-sm font-mono text-muted">
           Organizations, shared projects, and the team feed are hosted
           features. Sign in to use them — local single-operator mode runs
           without an account.

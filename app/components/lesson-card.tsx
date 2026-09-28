@@ -12,7 +12,7 @@ interface LessonCardProps {
 const severityConfig: Record<string, { color: string; label: string }> = {
   critical: { color: "text-danger border-danger/40", label: "CRITICAL" },
   important: { color: "text-amber border-amber/40", label: "IMPORTANT" },
-  "nice-to-know": { color: "text-space-500 border-space-600", label: "INFO" },
+  "nice-to-know": { color: "text-muted border-space-600", label: "INFO" },
 };
 
 export function LessonCard({
@@ -44,7 +44,7 @@ export function LessonCard({
         {preview}
       </p>
 
-      <div className="flex items-center gap-3 text-[10px] font-mono text-space-500">
+      <div className="flex items-center gap-3 text-[10px] font-mono text-muted">
         {sourceProject && <span>{sourceProject}</span>}
         {sourcePhase && (
           <span>{sourcePhase.replace(/-/g, " ")}</span>

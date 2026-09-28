@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import { resolveThemeKey, type ThemeKey } from "@/lib/theme-registry";
+import { THEME_STORAGE_KEY } from "@/lib/theme-boot";
 
 type Theme = ThemeKey;
 
@@ -25,7 +26,7 @@ export function useTheme() {
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "cyberpunk";
   // Phase 53 — resolveThemeKey migrates pre-pack values ("dark"/"light").
-  return resolveThemeKey(localStorage.getItem("cascade-theme"));
+  return resolveThemeKey(localStorage.getItem(THEME_STORAGE_KEY));
 }
 
 function subscribeToTheme(callback: () => void) {
@@ -46,7 +47,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   const handleSetTheme = useCallback((newTheme: Theme) => {
-    localStorage.setItem("cascade-theme", newTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
     // Trigger re-render via storage event
     window.dispatchEvent(new Event("storage"));

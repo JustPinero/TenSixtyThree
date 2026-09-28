@@ -138,7 +138,7 @@ export function ActivityFeed({
   if (loading) {
     return (
       <div className="p-4 border border-space-600 bg-space-900 font-mono text-xs">
-        <div className="text-space-500 animate-pulse">
+        <div className="text-muted animate-pulse">
           Loading activity feed...
         </div>
       </div>
@@ -159,7 +159,7 @@ export function ActivityFeed({
               className={`px-1.5 py-0.5 text-[10px] font-mono uppercase ${
                 filterType === null
                   ? "text-cyan border-b border-cyan"
-                  : "text-space-500 hover:text-text"
+                  : "text-muted hover:text-text"
               }`}
             >
               All
@@ -171,7 +171,7 @@ export function ActivityFeed({
                 className={`px-1.5 py-0.5 text-[10px] font-mono uppercase ${
                   filterType === type
                     ? "text-cyan border-b border-cyan"
-                    : "text-space-500 hover:text-text"
+                    : "text-muted hover:text-text"
                 }`}
               >
                 {eventTypeLabels[type] || type}
@@ -184,7 +184,7 @@ export function ActivityFeed({
       {/* Events */}
       <div className="max-h-64 overflow-y-auto">
         {displayedEvents.length === 0 ? (
-          <div className="px-3 py-4 text-xs font-mono text-space-500">
+          <div className="px-3 py-4 text-xs font-mono text-muted">
             No activity recorded yet.
           </div>
         ) : (
@@ -193,7 +193,7 @@ export function ActivityFeed({
               key={event.id}
               className="flex items-start gap-2 px-3 py-1.5 text-xs font-mono border-b border-space-800 last:border-b-0 hover:bg-space-800/50"
             >
-              <span className="text-space-500 flex-shrink-0 w-12">
+              <span className="text-muted flex-shrink-0 w-12">
                 {formatTimestamp(event.createdAt)}
               </span>
               <span

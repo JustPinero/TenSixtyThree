@@ -11,7 +11,7 @@ export function ReviewStep({ state, onChange }: ReviewStepProps) {
       <h2 className="text-lg font-bold font-mono text-text-bright">
         Review Kickoff Prompt
       </h2>
-      <p className="text-xs font-mono text-space-500">
+      <p className="text-xs font-mono text-muted">
         Edit the generated kickoff prompt before launching.
       </p>
 

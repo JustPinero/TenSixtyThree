@@ -55,9 +55,9 @@ export function DashboardFilters({
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
           placeholder="Search projects..."
-          className="w-full px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-space-500 focus:border-cyan focus:outline-none transition-colors"
+          className="w-full px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none transition-colors"
         />
-        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-space-500 border border-space-600 px-1.5 py-0.5">
+        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted border border-space-600 px-1.5 py-0.5">
           /
         </kbd>
       </div>
@@ -76,7 +76,7 @@ export function DashboardFilters({
               ${
                 filters.status === opt.value
                   ? "border-cyan text-cyan bg-cyan/8"
-                  : "border-space-600 text-space-500 hover:text-text hover:border-space-500"
+                  : "border-space-600 text-muted hover:text-text hover:border-space-500"
               }
             `}
           >
@@ -99,7 +99,7 @@ export function DashboardFilters({
           ${
             filters.groupBy === "status"
               ? "border-accent text-accent bg-accent/8"
-              : "border-space-600 text-space-500 hover:text-text hover:border-space-500"
+              : "border-space-600 text-muted hover:text-text hover:border-space-500"
           }
         `}
       >

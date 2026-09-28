@@ -120,3 +120,84 @@ describe("AC3 — requireSession honors AUTH_REQUIRED", () => {
     if (result.ok) expect(result.session?.user.email).toBe("ok@t.dev");
   });
 });
+
+/**
+ * Phase 57.1 — Better Auth prefixes its cookie with `__Secure-` whenever
+ * the base URL is https (node_modules/better-auth/dist/cookies: the
+ * prefix is chosen from baseURL's protocol). The hosted deploy has been
+ * https since day one, so the browser sent
+ * `__Secure-better-auth.session_token` while these helpers matched only
+ * the bare name — every requireSession route 401'd a real signed-in
+ * account. middleware.ts already checked both names, so pages loaded and
+ * only the data calls failed.
+ */
+describe("57.1 — __Secure- cookie prefix (hosted)", () => {
+  function headersWithRaw(cookie: string): Headers {
+    const h = new Headers();
+    h.set("cookie", cookie);
+    return h;
+  }
+
+  async function seedSession(token: string) {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const user = await rig.prisma.user.create({
+      data: { email: "secure@t.dev", name: "S", emailVerified: true },
+    });
+    await rig.prisma.session.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 3600_000),
+      },
+    });
+  }
+
+  it("resolves a session sent under the __Secure- prefixed name", async () => {
+    await seedSession("tok_secure");
+    const session = await getServerSession(
+      rig!.prisma,
+      headersWithRaw("__Secure-better-auth.session_token=tok_secure"),
+    );
+    expect(session?.user.email).toBe("secure@t.dev");
+  });
+
+  it("still resolves the unprefixed name (local http dev, demo sessions)", async () => {
+    await seedSession("tok_plain");
+    const session = await getServerSession(
+      rig!.prisma,
+      headersWithRaw("better-auth.session_token=tok_plain"),
+    );
+    expect(session?.user.email).toBe("secure@t.dev");
+  });
+
+  it("prefers the __Secure- cookie when a stale unprefixed one is also sent", async () => {
+    await seedSession("tok_secure");
+    const session = await getServerSession(
+      rig!.prisma,
+      headersWithRaw(
+        "better-auth.session_token=tok_stale; __Secure-better-auth.session_token=tok_secure",
+      ),
+    );
+    expect(session?.user.email).toBe("secure@t.dev");
+  });
+
+  it("strips the signature suffix under either name", async () => {
+    await seedSession("tok_secure");
+    const session = await getServerSession(
+      rig!.prisma,
+      headersWithRaw(
+        "__Secure-better-auth.session_token=tok_secure.s1gn4tur3",
+      ),
+    );
+    expect(session?.user.email).toBe("secure@t.dev");
+  });
+
+  it("ignores a cookie whose name merely ends with the session name", async () => {
+    await seedSession("tok_secure");
+    const session = await getServerSession(
+      rig!.prisma,
+      headersWithRaw("evil-better-auth.session_token=tok_secure"),
+    );
+    expect(session).toBeNull();
+  });
+});

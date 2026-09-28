@@ -10,6 +10,17 @@ import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 
 const SESSION_COOKIE = "better-auth.session_token";
 
+/**
+ * 57.1 — match the name Better Auth itself would use. It adds the
+ * `__Secure-` prefix whenever its baseURL is https, so on the hosted
+ * deploy a demo cookie written under the bare name is a second, divergent
+ * convention. One name, chosen the same way, for both session kinds.
+ */
+function sessionCookieName(): string {
+  const https = (process.env.BETTER_AUTH_URL ?? "").startsWith("https://");
+  return https ? `__Secure-${SESSION_COOKIE}` : SESSION_COOKIE;
+}
+
 export async function POST(request: NextRequest) {
   const limited = checkRateLimit(getRateLimitKey(request, "demo"), 3, 3600_000);
   if (limited) return limited;
@@ -22,10 +33,14 @@ export async function POST(request: NextRequest) {
   const demo = await seedDemo(prisma);
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, `${demo.sessionToken}.demo`, {
+  const cookieName = sessionCookieName();
+  res.cookies.set(cookieName, `${demo.sessionToken}.demo`, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // __Secure- is only legal on a secure origin; keep them consistent.
+    secure:
+      cookieName.startsWith("__Secure-") ||
+      process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 2 * 3600,
   });

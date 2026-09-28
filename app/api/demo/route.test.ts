@@ -48,3 +48,37 @@ describe("POST /api/demo", () => {
     expect((await route.POST(post("9.9.9.9, 203.0.113.5"))).status).toBe(429);
   });
 });
+
+describe("57.1 — demo cookie name matches Better Auth's own convention", () => {
+  it("uses the __Secure- prefix when BETTER_AUTH_URL is https", async () => {
+    const prev = process.env.BETTER_AUTH_URL;
+    process.env.BETTER_AUTH_URL = "https://www.tensixtythree.com";
+    try {
+      rig = await createDispatchRig({ fakeTimers: false });
+      const route = await load(rig);
+      const res = await route.POST(post());
+      const cookie = res.headers.get("set-cookie") ?? "";
+      expect(cookie).toContain("__Secure-better-auth.session_token=");
+      expect(cookie.toLowerCase()).toContain("secure");
+    } finally {
+      if (prev === undefined) delete process.env.BETTER_AUTH_URL;
+      else process.env.BETTER_AUTH_URL = prev;
+    }
+  });
+
+  it("uses the bare name on local http dev", async () => {
+    const prev = process.env.BETTER_AUTH_URL;
+    process.env.BETTER_AUTH_URL = "http://localhost:3000";
+    try {
+      rig = await createDispatchRig({ fakeTimers: false });
+      const route = await load(rig);
+      const res = await route.POST(post());
+      const cookie = res.headers.get("set-cookie") ?? "";
+      expect(cookie).toContain("better-auth.session_token=");
+      expect(cookie).not.toContain("__Secure-");
+    } finally {
+      if (prev === undefined) delete process.env.BETTER_AUTH_URL;
+      else process.env.BETTER_AUTH_URL = prev;
+    }
+  });
+});

@@ -22,20 +22,37 @@ export interface ServerSession {
 }
 
 const SESSION_COOKIE = "better-auth.session_token";
+/**
+ * Better Auth adds the `__Secure-` prefix whenever its baseURL is https,
+ * which the hosted deploy always is. Matching only the bare name made
+ * every requireSession route 401 a genuinely signed-in account: the edge
+ * middleware accepted the prefixed cookie so pages rendered, then every
+ * data call failed. Both names are accepted; prefixed wins, mirroring
+ * Better Auth's own getCookie lookup order.
+ */
+const SECURE_SESSION_COOKIE = `__Secure-${SESSION_COOKIE}`;
 
 function tokenFromHeaders(headers: Headers): string | null {
   const cookie = headers.get("cookie");
   if (!cookie) return null;
+
+  let fallback: string | null = null;
   for (const part of cookie.split(";")) {
-    const [name, ...rest] = part.trim().split("=");
-    if (name === SESSION_COOKIE) {
-      // Better Auth signs cookies as `${token}.${signature}` — the DB stores
-      // the bare token, so strip any signature suffix.
-      const raw = decodeURIComponent(rest.join("="));
-      return raw.split(".")[0] || null;
-    }
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const name = trimmed.slice(0, eq);
+    if (name !== SESSION_COOKIE && name !== SECURE_SESSION_COOKIE) continue;
+
+    // Better Auth signs cookies as `${token}.${signature}` — the DB stores
+    // the bare token, so strip any signature suffix.
+    const raw = decodeURIComponent(trimmed.slice(eq + 1));
+    const token = raw.split(".")[0] || null;
+    if (!token) continue;
+    if (name === SECURE_SESSION_COOKIE) return token;
+    fallback = fallback ?? token;
   }
-  return null;
+  return fallback;
 }
 
 export async function getServerSession(

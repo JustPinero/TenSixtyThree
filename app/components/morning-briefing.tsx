@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getOverseerSettings } from "@/lib/overseer-settings";
+import { Markdown } from "./ui/markdown";
 
 interface BriefingData {
   briefing: string;
@@ -115,9 +116,10 @@ export function MorningBriefing() {
           Dismiss
         </button>
       </div>
-      <div className="p-4 text-sm font-mono text-text leading-relaxed whitespace-pre-wrap">
-        {briefing.briefing}
-      </div>
+      <Markdown
+        source={briefing.briefing}
+        className="p-4 text-sm font-mono text-text leading-relaxed"
+      />
     </div>
   );
 }

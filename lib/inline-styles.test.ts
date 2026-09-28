@@ -24,7 +24,13 @@ const ALLOWED: Record<string, string> = {
   "app/components/demo-tour.tsx":
     "spotlight rect + bubble position from getBoundingClientRect",
   "app/settings/page.tsx": "theme-pack preview swatch hex from THEME_PACKS",
+  "app/global-error.tsx":
+    "replaces the root layout on a layout-level throw: no ThemeProvider, " +
+    "and globals.css may not have loaded, so Tailwind classes cannot be relied on",
 };
+
+/** Files exempt from the no-hex rule, for the reason given in ALLOWED. */
+const HEX_EXEMPT = new Set(["app/settings/page.tsx", "app/global-error.tsx"]);
 
 function tsxFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -58,8 +64,7 @@ describe("inline styles", () => {
     const offenders: string[] = [];
     for (const f of tsxFiles(path.join(ROOT, "app"))) {
       const rel = path.relative(ROOT, f);
-      // settings renders registry-supplied preview swatches by design.
-      if (rel === "app/settings/page.tsx") continue;
+      if (HEX_EXEMPT.has(rel)) continue;
       const src = readFileSync(f, "utf-8");
       for (const m of src.matchAll(/#[0-9a-fA-F]{6}\b/g)) {
         offenders.push(`${rel}: ${m[0]}`);

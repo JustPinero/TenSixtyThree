@@ -695,10 +695,14 @@ function OverseerPanel() {
       </h2>
       <div className="space-y-3">
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="text-sm font-mono text-text-bright block mb-2">
+          <label
+            htmlFor="overseer-name"
+            className="text-sm font-mono text-text-bright block mb-2"
+          >
             Name
           </label>
           <input
+            id="overseer-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -713,7 +717,10 @@ function OverseerPanel() {
         </div>
 
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="text-sm font-mono text-text-bright block mb-2">
+          <label
+            htmlFor="overseer-portrait-idle"
+            className="text-sm font-mono text-text-bright block mb-2"
+          >
             Idle Portrait
           </label>
           <div className="flex gap-3 items-start">
@@ -726,6 +733,7 @@ function OverseerPanel() {
               />
             </div>
             <input
+              id="overseer-portrait-idle"
               type="text"
               value={portraitIdle}
               onChange={(e) => setPortraitIdle(e.target.value)}
@@ -873,10 +881,14 @@ function VoicePanel() {
         </div>
 
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="text-sm font-mono text-text-bright block mb-2">
+          <label
+            htmlFor="overseer-voice"
+            className="text-sm font-mono text-text-bright block mb-2"
+          >
             Voice
           </label>
           <select
+            id="overseer-voice"
             value={voiceURI ?? ""}
             onChange={(e) =>
               setVoiceURI(e.target.value === "" ? null : e.target.value)
@@ -933,10 +945,13 @@ function VoicePanel() {
         </div>
 
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="text-sm font-mono text-text-bright block mb-2">
+          <span
+            id="mic-mode-label"
+            className="text-sm font-mono text-text-bright block mb-2"
+          >
             Mic Input Mode
-          </label>
-          <div className="space-y-2">
+          </span>
+          <div role="radiogroup" aria-labelledby="mic-mode-label" className="space-y-2">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="radio"

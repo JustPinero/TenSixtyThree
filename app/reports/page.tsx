@@ -101,10 +101,13 @@ export default function ReportsPage() {
 
       <div className="flex flex-wrap items-end gap-4 mb-6">
         <div>
-          <label className="block text-xs font-mono text-text mb-1 uppercase tracking-wider">
+          <span
+            id="report-type-label"
+            className="block text-xs font-mono text-text mb-1 uppercase tracking-wider"
+          >
             Report Type
-          </label>
-          <div className="flex gap-2">
+          </span>
+          <div role="group" aria-labelledby="report-type-label" className="flex gap-2">
             <button
               onClick={() => setReportType("single")}
               className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
@@ -130,10 +133,14 @@ export default function ReportsPage() {
 
         {reportType === "single" && (
           <div>
-            <label className="block text-xs font-mono text-text mb-1 uppercase tracking-wider">
+            <label
+              htmlFor="report-project"
+              className="block text-xs font-mono text-text mb-1 uppercase tracking-wider"
+            >
               Project
             </label>
             <select
+              id="report-project"
               value={selectedSlug}
               onChange={(e) => setSelectedSlug(e.target.value)}
               className="px-3 py-1.5 text-xs font-mono bg-space-800 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring"

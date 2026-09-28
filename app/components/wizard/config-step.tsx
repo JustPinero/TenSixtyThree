@@ -58,10 +58,17 @@ export function ConfigStep({ state, onChange }: ConfigStepProps) {
       </h2>
 
       <div>
-        <label className="block text-xs font-mono text-text mb-3 uppercase tracking-wider">
+        <span
+          id="wizard-autonomy-label"
+          className="block text-xs font-mono text-text mb-3 uppercase tracking-wider"
+        >
           Autonomy Mode
-        </label>
-        <div className="space-y-2">
+        </span>
+        <div
+          role="group"
+          aria-labelledby="wizard-autonomy-label"
+          className="space-y-2"
+        >
           {autonomyModes.map((mode) => (
             <button
               key={mode.value}

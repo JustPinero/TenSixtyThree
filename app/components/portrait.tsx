@@ -37,6 +37,9 @@ export function Portrait({
   }
 
   return (
+    /* onError is a load-failure fallback (swap to DefaultPortrait), not a
+       mouse/keyboard interaction; the rule does not distinguish them. */
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <img
       src={src}
       alt={alt}

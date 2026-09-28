@@ -28,10 +28,14 @@ export function NameStep({ state, onChange }: NameStepProps) {
       </h2>
 
       <div>
-        <label className="block text-xs font-mono text-text mb-2 uppercase tracking-wider">
+        <label
+          htmlFor="wizard-project-name"
+          className="block text-xs font-mono text-text mb-2 uppercase tracking-wider"
+        >
           Project Name
         </label>
         <input
+          id="wizard-project-name"
           type="text"
           value={state.projectName}
           onChange={(e) => onChange({ projectName: e.target.value })}
@@ -46,10 +50,17 @@ export function NameStep({ state, onChange }: NameStepProps) {
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-text mb-2 uppercase tracking-wider">
+        <span
+          id="wizard-project-type-label"
+          className="block text-xs font-mono text-text mb-2 uppercase tracking-wider"
+        >
           Project Type
-        </label>
-        <div className="flex gap-2">
+        </span>
+        <div
+          role="group"
+          aria-labelledby="wizard-project-type-label"
+          className="flex gap-2"
+        >
           {projectTypes.map((type) => (
             <button
               key={type.value}

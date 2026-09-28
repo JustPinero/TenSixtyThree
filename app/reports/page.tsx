@@ -136,7 +136,7 @@ export default function ReportsPage() {
             <select
               value={selectedSlug}
               onChange={(e) => setSelectedSlug(e.target.value)}
-              className="px-3 py-1.5 text-xs font-mono bg-space-800 border border-space-600 text-text-bright focus:border-cyan focus:outline-none"
+              className="px-3 py-1.5 text-xs font-mono bg-space-800 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring"
             >
               <option value="">Select project...</option>
               {projects.map((p) => (

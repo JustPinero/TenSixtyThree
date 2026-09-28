@@ -36,7 +36,7 @@ export function NameStep({ state, onChange }: NameStepProps) {
           value={state.projectName}
           onChange={(e) => onChange({ projectName: e.target.value })}
           placeholder="My Awesome Project"
-          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
         />
         {state.projectName && (
           <p className="text-xs font-mono text-muted mt-1">

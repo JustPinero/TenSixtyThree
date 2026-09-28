@@ -1092,7 +1092,7 @@ export function OverseerChat({
                 : "What should we work on today?"
           }
           disabled={streaming}
-          className={`flex-1 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none disabled:opacity-50`}
+          className={`flex-1 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50`}
         />
         <button
           onClick={sendMessage}

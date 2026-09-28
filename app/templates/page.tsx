@@ -118,7 +118,7 @@ export default function TemplatesPage() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Template name"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
           />
           <input
             type="text"
@@ -127,13 +127,13 @@ export default function TemplatesPage() {
               setForm({ ...form, description: e.target.value })
             }
             placeholder="Description"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
           />
           <textarea
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
             placeholder="Template content (markdown)"
-            className="w-full h-64 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none resize-none"
+            className="w-full h-64 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring resize-none"
           />
           <div className="flex gap-2">
             <button

@@ -213,7 +213,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Ask Claude about this project..."
           disabled={streaming}
-          className="flex-1 px-3 py-2.5 text-sm font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none disabled:opacity-50"
+          className="flex-1 px-3 py-2.5 text-sm font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50"
         />
         <button
           onClick={sendMessage}

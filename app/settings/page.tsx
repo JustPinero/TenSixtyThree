@@ -18,6 +18,7 @@ import { Portrait } from "@/app/components/portrait";
 // Phase 53 — theme cards come from the pack registry.
 import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
+import { Toggle } from "@/app/components/ui/toggle";
 
 interface AuthStatus {
   service: string;
@@ -375,21 +376,17 @@ function NotificationsPanel() {
                 : "Click to enable browser notification permission"}
           </p>
         </div>
-        <button
-          onClick={handleToggle}
+        <Toggle
+          label="Browser notifications"
+          checked={enabled && permission === "granted"}
+          onChange={handleToggle}
           disabled={permission === "denied"}
-          className={`w-10 h-5 rounded-full transition-colors relative ${
-            enabled && permission === "granted" ? "bg-cyan" : "bg-space-600"
-          } ${permission === "denied" ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          <div
-            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-              enabled && permission === "granted"
-                ? "translate-x-5"
-                : "translate-x-0.5"
-            }`}
-          />
-        </button>
+          disabledReason={
+            permission === "denied"
+              ? "Blocked — enable notifications in your browser settings"
+              : undefined
+          }
+        />
       </div>
     </div>
   );
@@ -415,18 +412,11 @@ function SoundsPanel() {
           blockers
         </p>
       </div>
-      <button
-        onClick={handleToggle}
-        className={`w-10 h-5 rounded-full transition-colors relative ${
-          enabled ? "bg-cyan" : "bg-space-600"
-        }`}
-      >
-        <div
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-            enabled ? "translate-x-5" : "translate-x-0.5"
-          }`}
-        />
-      </button>
+      <Toggle
+        label="Delamain sound effects"
+        checked={enabled}
+        onChange={handleToggle}
+      />
     </div>
   );
 }
@@ -458,18 +448,11 @@ function AutomationPanel() {
             projects, execute immediately without waiting for approval
           </p>
         </div>
-        <button
-          onClick={handleToggle}
-          className={`w-10 h-5 rounded-full transition-colors relative ${
-            autoDispatch ? "bg-cyan" : "bg-space-600"
-          }`}
-        >
-          <div
-            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-              autoDispatch ? "translate-x-5" : "translate-x-0.5"
-            }`}
-          />
-        </button>
+        <Toggle
+          label="Auto-dispatch (continue)"
+          checked={autoDispatch}
+          onChange={handleToggle}
+        />
       </div>
     </div>
   );
@@ -721,7 +704,7 @@ function OverseerPanel() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             placeholder="Overseer"
-            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
           />
           <p className="text-[10px] font-mono text-muted mt-1">
             Your AI dispatcher&apos;s name. Appears in chat, sidebar, and
@@ -748,7 +731,7 @@ function OverseerPanel() {
               onChange={(e) => setPortraitIdle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="/delamain.jpg"
-              className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+              className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
             />
           </div>
           <p className="text-[10px] font-mono text-muted mt-1">
@@ -785,7 +768,7 @@ function OverseerPanel() {
                   onChange={(e) => setPortraitTalking(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
                   placeholder="/delamain-talking.jpg"
-                  className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+                  className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
                 />
               </div>
               <p className="text-[10px] font-mono text-muted mt-1">
@@ -898,7 +881,7 @@ function VoicePanel() {
             onChange={(e) =>
               setVoiceURI(e.target.value === "" ? null : e.target.value)
             }
-            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none"
+            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring"
           >
             <option value="">Browser default</option>
             {voices.map((v) => (

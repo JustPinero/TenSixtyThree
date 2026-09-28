@@ -1,4 +1,5 @@
 import type { WizardState } from "./wizard-shell";
+import { Toggle } from "@/app/components/ui/toggle";
 
 interface ConfigStepProps {
   state: WizardState;
@@ -23,7 +24,7 @@ const autonomyModes = [
   },
 ];
 
-function Toggle({
+function ToggleRow({
   enabled,
   onToggle,
   label,
@@ -36,18 +37,9 @@ function Toggle({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <button
-        onClick={onToggle}
-        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 ${
-          enabled ? "bg-cyan" : "bg-space-600"
-        }`}
-      >
-        <div
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-text-bright transition-transform ${
-            enabled ? "translate-x-5" : "translate-x-0.5"
-          }`}
-        />
-      </button>
+      <div className="flex-shrink-0 mt-0.5">
+        <Toggle label={label} checked={enabled} onChange={onToggle} />
+      </div>
       <div>
         <span className="text-sm font-mono text-text-bright">{label}</span>
         <p className="text-xs font-mono text-muted mt-0.5">
@@ -92,7 +84,7 @@ export function ConfigStep({ state, onChange }: ConfigStepProps) {
       </div>
 
       <div className="space-y-4">
-        <Toggle
+        <ToggleRow
           enabled={state.prWorkflowEnabled}
           onToggle={() =>
             onChange({ prWorkflowEnabled: !state.prWorkflowEnabled })
@@ -100,7 +92,7 @@ export function ConfigStep({ state, onChange }: ConfigStepProps) {
           label="PR Workflow"
           description="Create a pull request for each request. Enables code review before merge."
         />
-        <Toggle
+        <ToggleRow
           enabled={state.agentTeamsEnabled}
           onToggle={() =>
             onChange({ agentTeamsEnabled: !state.agentTeamsEnabled })

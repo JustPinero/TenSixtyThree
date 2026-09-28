@@ -147,7 +147,7 @@ export default function TasksPage() {
               if (e.key === "Enter") addTask();
             }}
             placeholder="Add a task..."
-            className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none"
+            className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
           />
           <button
             onClick={addTask}
@@ -161,7 +161,7 @@ export default function TasksPage() {
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text focus:border-cyan focus:outline-none"
+            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text focus:border-cyan focus:outline-none focus-ring"
           >
             {Object.entries(categoryLabels).map(([k, v]) => (
               <option key={k} value={k}>
@@ -172,7 +172,7 @@ export default function TasksPage() {
           <select
             value={newPriority}
             onChange={(e) => setNewPriority(e.target.value)}
-            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text focus:border-cyan focus:outline-none"
+            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text focus:border-cyan focus:outline-none focus-ring"
           >
             <option value="high">High</option>
             <option value="normal">Normal</option>
@@ -183,7 +183,7 @@ export default function TasksPage() {
             value={newProject}
             onChange={(e) => setNewProject(e.target.value)}
             placeholder="project slug (optional)"
-            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text placeholder:text-space-600 focus:border-cyan focus:outline-none w-48"
+            className="px-2 py-1 text-xs font-mono bg-space-900 border border-space-600 text-text placeholder:text-space-600 focus:border-cyan focus:outline-none focus-ring w-48"
           />
         </div>
       </div>

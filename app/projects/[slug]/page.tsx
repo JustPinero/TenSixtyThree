@@ -157,7 +157,7 @@ function DispatchPanel({
             }
           }}
           placeholder="Custom command..."
-          className="flex-1 px-3 py-1.5 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-info focus:outline-none"
+          className="flex-1 px-3 py-1.5 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-info focus:outline-none focus-ring"
         />
         <button
           onClick={() => dispatch("custom", customPrompt)}

@@ -164,7 +164,7 @@ export function ClaudeChatStep({ state, onChange }: ClaudeChatStepProps) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Describe your project..."
           disabled={streaming}
-          className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none disabled:opacity-50"
+          className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring disabled:opacity-50"
         />
         <button
           onClick={sendMessage}

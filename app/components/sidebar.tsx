@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, useEffect } from "react";
 import { NavLink } from "./nav-link";
 import { ReminderWidget } from "./reminder-widget";
 import { AttentionBadge } from "./attention-badge";
@@ -264,20 +264,35 @@ export function Sidebar() {
     return { portraitSrc: s.portraitIdle, assistantName: s.name };
   }, [overseerVersion]);
 
+  // Phase 62.4 — without this the open drawer is a keyboard trap: the
+  // only dismiss affordance was a click on the scrim.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
+
   return (
     <>
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed top-3 left-3 z-40 p-2 rounded bg-space-700 border border-space-500 text-text-bright lg:hidden"
+        className="fixed top-3 left-3 z-40 p-2 rounded bg-space-700 border border-space-500 text-text-bright lg:hidden focus-ring"
         aria-label="Open navigation"
+        aria-expanded={mobileOpen}
+        aria-controls="sidebar-nav"
       >
         <MenuIcon />
       </button>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay — a pointer convenience only; Escape is the
+          keyboard path (a focusable scrim would just be a dead stop). */}
       {mobileOpen && (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
@@ -285,6 +300,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        id="sidebar-nav"
         className={`
           fixed top-0 left-0 z-50 h-full w-56 flex flex-col transition-transform duration-200
           lg:translate-x-0 lg:static lg:z-auto

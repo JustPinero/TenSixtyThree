@@ -1,4 +1,5 @@
 import type { WizardState } from "./wizard-shell";
+import { Toggle } from "@/app/components/ui/toggle";
 
 interface GithubStepProps {
   state: WizardState;
@@ -13,20 +14,11 @@ export function GithubStep({ state, onChange }: GithubStepProps) {
       </h2>
 
       <div className="flex items-center gap-3">
-        <button
-          onClick={() =>
-            onChange({ createGithubRepo: !state.createGithubRepo })
-          }
-          className={`relative w-10 h-5 rounded-full transition-colors ${
-            state.createGithubRepo ? "bg-cyan" : "bg-space-600"
-          }`}
-        >
-          <div
-            className={`absolute top-0.5 w-4 h-4 rounded-full bg-text-bright transition-transform ${
-              state.createGithubRepo ? "translate-x-5" : "translate-x-0.5"
-            }`}
-          />
-        </button>
+        <Toggle
+          label="Create a GitHub repository"
+          checked={state.createGithubRepo}
+          onChange={(next) => onChange({ createGithubRepo: next })}
+        />
         <span className="text-sm font-mono text-text">
           Create GitHub repository
         </span>

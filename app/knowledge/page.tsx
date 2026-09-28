@@ -146,7 +146,7 @@ export default function KnowledgePage() {
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search lessons..."
-          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none transition-colors"
+          className="w-full max-w-md px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring transition-colors"
         />
       </div>
 

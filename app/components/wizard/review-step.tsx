@@ -18,7 +18,7 @@ export function ReviewStep({ state, onChange }: ReviewStepProps) {
       <textarea
         value={state.kickoffContent}
         onChange={(e) => onChange({ kickoffContent: e.target.value })}
-        className="w-full h-80 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none resize-none"
+        className="w-full h-80 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring resize-none"
         placeholder="Paste or type your kickoff prompt here..."
       />
 

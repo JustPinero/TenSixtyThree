@@ -555,6 +555,51 @@ body::before {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   REDUCED MOTION (Phase 62.5)
+   ═══════════════════════════════════════════════════════════ */
+
+/*
+ * The fleet dashboard animates continuously (health pulses, background
+ * grid drift, 3D tile hover). Respect the OS setting: stop movement but
+ * keep every status COLOR, so the signal survives without the motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation: none !important;
+    transition-duration: 0.001ms !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FOCUS (Phase 62.1)
+   ═══════════════════════════════════════════════════════════ */
+
+/*
+ * Every control that suppresses the native outline must carry
+ * `focus-ring`. focus-VISIBLE (not :focus) so pointer users never see it
+ * while keyboard users always do. Uses --cyan, which the per-pack
+ * contrast guard keeps at >=3:1 against panel backgrounds.
+ */
+.focus-ring:focus-visible,
+.focus-ring:focus-visible:focus {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Inputs sit inside bordered wrappers; inset the ring so it stays visible. */
+input.focus-ring:focus-visible,
+textarea.focus-ring:focus-visible {
+  outline-offset: -1px;
+}
+
+/* ═══════════════════════════════════════════════════════════
    GLOW EFFECTS
    ═══════════════════════════════════════════════════════════ */
 

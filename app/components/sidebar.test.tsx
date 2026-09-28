@@ -124,3 +124,41 @@ describe("Sidebar theme quick-switcher (53.5)", () => {
     expect(select!.querySelectorAll("option").length).toBeGreaterThanOrEqual(12);
   });
 });
+
+describe("mobile drawer keyboard access (Phase 62.4)", () => {
+  function openDrawer(container: HTMLElement) {
+    const opener = container.querySelector(
+      'button[aria-label="Open navigation"]',
+    ) as HTMLButtonElement;
+    act(() => {
+      opener.click();
+    });
+    return opener;
+  }
+
+  it("the scrim is hidden from assistive tech (it is a click target only)", () => {
+    const { container } = render(<Sidebar />);
+    openDrawer(container);
+    const scrim = container.querySelector(".fixed.inset-0");
+    expect(scrim, "no scrim rendered").not.toBeNull();
+    expect(scrim!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("Escape closes the drawer, so keyboard users are not trapped", () => {
+    const { container } = render(<Sidebar />);
+    openDrawer(container);
+    expect(container.querySelector(".fixed.inset-0")).not.toBeNull();
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    expect(container.querySelector(".fixed.inset-0")).toBeNull();
+  });
+
+  it("exposes the drawer state on the opener", () => {
+    const { container } = render(<Sidebar />);
+    const opener = openDrawer(container);
+    expect(opener.getAttribute("aria-expanded")).toBe("true");
+  });
+})

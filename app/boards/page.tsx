@@ -337,7 +337,9 @@ export default function BoardsPage() {
           }
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-3 overflow-x-auto pb-4">
+          {/* Phase 63.5 — stack on phones; side-by-side columns forced
+              horizontal scrolling for every card on a narrow screen. */}
+          <div className="flex flex-col lg:flex-row gap-3 lg:overflow-x-auto pb-4">
             {columns.map((col) => (
               <DroppableColumn
                 key={col.id}

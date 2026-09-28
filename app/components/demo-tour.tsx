@@ -9,6 +9,7 @@ import { applyThemePack } from "@/lib/theme-pack-apply";
 import { getOverseerSettings } from "@/lib/overseer-settings";
 import { speak } from "@/lib/speak";
 import { Portrait } from "./portrait";
+import { tourBubblePosition } from "@/lib/tour-position";
 
 /**
  * 54.6 — the persona-guided demo tour. Hand-rolled spotlight: a fixed
@@ -175,12 +176,14 @@ function TourInner() {
     setState(value);
   };
 
-  const bubbleTop = rect
-    ? Math.min(rect.top + rect.height + 12, window.innerHeight - 220)
-    : 120;
-  const bubbleLeft = rect
-    ? Math.min(Math.max(rect.left, 16), window.innerWidth - 360)
-    : 120;
+  // Phase 63.5 — clamped in a pure helper; the old inline min/max
+  // produced a negative left below 376px (bubble off-screen on phones).
+  const bubble = tourBubblePosition(
+    rect,
+    typeof window === "undefined"
+      ? { width: 1440, height: 900 }
+      : { width: window.innerWidth, height: window.innerHeight },
+  );
 
   return (
     <>
@@ -199,8 +202,8 @@ function TourInner() {
       <div
         role="dialog"
         aria-label={`Tour: ${step.title}`}
-        className="fixed z-50 w-80 bg-space-800 border border-cyan glow-border p-3"
-        style={{ top: bubbleTop, left: bubbleLeft }}
+        className="fixed z-50 bg-space-800 border border-cyan glow-border p-3"
+        style={{ top: bubble.top, left: bubble.left, width: bubble.width }}
       >
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded border border-space-600 overflow-hidden shrink-0 delamain-talking">

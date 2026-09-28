@@ -17,8 +17,26 @@
   They run green against Postgres, but the alias is a shim over a retired
   driver. Migrate them to `tests/harness/dispatch-rig.ts` (worker-scoped
   DBs) and delete the alias. Mechanical; do it file-by-file, not in one PR.
+  **UPGRADED to flaky, 2026-09-28.** These files are now the suite's only
+  source of non-determinism: full-suite runs on the same commit produced
+  0, 2, 9 and 9 failing files, always alias-backed ones, always a
+  `beforeAll` hook timing out at 30s (then a teardown TypeError because
+  `tmpRoot` was never assigned). They pass reliably in isolation and the
+  container is nowhere near its limits (6 of 300 connections, 0 leftover
+  `test_rig%` databases), so this is per-file DB setup contending under
+  parallel load, not resource exhaustion. Consequence: a green run no
+  longer proves anything, and CI will flake for the same reason. Raise
+  the priority — this now blocks trusting the gate.
 
-- **[1.0.D2]** (2026-09-15, release test-audit) `app/api/__tests__/*.test.ts`
+- **[1.0.D2]** (2026-09-15, release test-audit) — **PARTIALLY CLOSED
+  2026-09-28.** `dispatch.test.ts` and `playbook.test.ts` are deleted:
+  both were tautologies (build a local `Set`, assert membership; assert
+  `typeof 12345 !== "string"`; round-trip a file through Node's `fs`).
+  The two real assertions in `dispatch.test.ts` called `lib/validators`,
+  which already has its own 12-test suite. The remaining 8 files exercise
+  Prisma and, in two cases, a real lib module; they are redundant rather
+  than tautological, and fold into [1.0.D1]'s rig migration.
+  Original entry: `app/api/__tests__/*.test.ts`
   (10 files: activity, dispatch, feature-proposals, knowledge, playbook,
   projects, reminders, reports, templates, webhook) are largely tautological
   — they mock the module under test and assert the mock. Real coverage for

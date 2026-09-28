@@ -11,9 +11,12 @@ import { test, expect } from "@playwright/test";
 test.describe("smokes", () => {
   test("dashboard renders without throwing", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/cascade/i);
-    // The sidebar h1 says "Cascade"; the main heading says "Dashboard".
-    // Use the main heading specifically — sidebar h1 is on every page.
+    // Phase 57.2 — was /cascade/i. The product is TenSixtyThree; the
+    // assertion predated the rename and CI had been dead since July, so
+    // nothing caught it. Match the product name, not the old codename.
+    await expect(page).toHaveTitle(/tensixtythree/i);
+    // The sidebar h1 is the wordmark; the main heading says "Dashboard".
+    // Use the main heading specifically — the sidebar h1 is on every page.
     await expect(
       page.getByRole("heading", { level: 1, name: /dashboard/i })
     ).toBeVisible();
@@ -21,7 +24,7 @@ test.describe("smokes", () => {
 
   test("Overseer chat page renders without throwing", async ({ page }) => {
     await page.goto("/delamain");
-    await expect(page).toHaveTitle(/cascade.*delamain/i);
+    await expect(page).toHaveTitle(/tensixtythree.*delamain/i);
     // The page-level h2 says "Overseer".
     await expect(
       page.getByRole("heading", { level: 2, name: /overseer/i })

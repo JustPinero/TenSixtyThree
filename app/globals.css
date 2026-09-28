@@ -7,6 +7,13 @@
 @theme inline {
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-jetbrains-mono);
+  /*
+   * Phase 63.2 — the readable floor. 89 declarations sat at 8-11px as
+   * arbitrary values with no token; dense telemetry genuinely needs a
+   * small step, but it needs ONE, and it must not go below 11px.
+   */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.45;
 }
 
 /* ─── CYBERPUNK (Default) — legacy alias: dark ─── */
@@ -574,6 +581,38 @@ body::before {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FORM PRIMITIVES (Phase 63.1)
+   ═══════════════════════════════════════════════════════════ */
+
+/*
+ * The field recipe below was duplicated VERBATIM across 13 files. That
+ * is why the focus and contrast defects needed 19 separate edits each —
+ * and therefore never got made. Sizing stays in utilities (px-3 py-2,
+ * text-sm); everything themeable lives here, once.
+ */
+.input {
+  font-family: var(--font-mono);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease;
+}
+.input::placeholder {
+  color: var(--muted);
+}
+.input:focus {
+  border-color: var(--cyan);
+}
+.input:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -1px;
+}
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ═══════════════════════════════════════════════════════════

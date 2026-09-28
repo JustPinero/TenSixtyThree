@@ -58,7 +58,7 @@ function TicketCard({
     >
       <p className="text-xs font-mono text-text-bright">{ticket.title}</p>
       <p
-        className={`text-[10px] font-mono uppercase ${PRIORITY_COLOR[ticket.priority] ?? "text-text-dim"}`}
+        className={`text-micro font-mono uppercase ${PRIORITY_COLOR[ticket.priority] ?? "text-text-dim"}`}
       >
         {ticket.priority}
         {ticket.linearIssueId && <span className="ml-2 text-info">linear</span>}

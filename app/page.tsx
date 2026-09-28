@@ -134,7 +134,7 @@ function HarvestAllButton() {
         {harvesting ? "Harvesting..." : "Harvest All"}
       </button>
       {result && (
-        <div className="absolute top-full right-0 mt-1 px-3 py-1.5 text-[10px] font-mono text-text bg-space-800 border border-space-600 whitespace-nowrap z-10">
+        <div className="absolute top-full right-0 mt-1 px-3 py-1.5 text-micro font-mono text-text bg-space-800 border border-space-600 whitespace-nowrap z-10">
           {result}
         </div>
       )}

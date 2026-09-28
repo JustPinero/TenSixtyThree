@@ -345,7 +345,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span
-                          className={`text-[10px] font-mono uppercase tracking-wider border border-current px-1.5 py-0.5 ${meta?.color ?? "text-text-dim"}`}
+                          className={`text-micro font-mono uppercase tracking-wider border border-current px-1.5 py-0.5 ${meta?.color ?? "text-text-dim"}`}
                         >
                           {meta?.label ?? post.type}
                         </span>

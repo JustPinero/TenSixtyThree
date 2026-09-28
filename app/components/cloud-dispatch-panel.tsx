@@ -171,13 +171,13 @@ export function CloudDispatchPanel({
           )}
           <ul className="space-y-1 max-h-48 overflow-y-auto">
             {run.events.slice(-30).map((event) => (
-              <li key={event.id} className="text-[11px] font-mono text-text">
+              <li key={event.id} className="text-micro font-mono text-text">
                 {event.summary}
               </li>
             ))}
             {run.events.length === 0 &&
               !["completed", "failed"].includes(run.dispatch.status) && (
-                <li className="text-[11px] font-mono text-text-dim">
+                <li className="text-micro font-mono text-text-dim">
                   Waiting for the runner…
                 </li>
               )}

@@ -8,7 +8,7 @@ export function AdvisoryBadge({ hasAdvisory, isRead }: AdvisoryBadgeProps) {
 
   return (
     <span
-      className={`text-[10px] font-mono px-1.5 py-0.5 border ${
+      className={`text-micro font-mono px-1.5 py-0.5 border ${
         isRead
           ? "border-space-600 text-muted"
           : "border-amber/40 text-amber pulse-warning"

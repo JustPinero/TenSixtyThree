@@ -30,7 +30,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                 {isComplete ? ">" : i + 1}
               </div>
               <span
-                className={`text-[9px] font-mono mt-1 text-center ${
+                className={`text-micro font-mono mt-1 text-center ${
                   isCurrent
                     ? "text-cyan"
                     : isFuture

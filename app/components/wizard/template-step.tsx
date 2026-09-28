@@ -66,7 +66,7 @@ export function TemplateStep({ state, onChange }: TemplateStepProps) {
                 {t.name}
               </span>
               {t.isDefault && (
-                <span className="text-[10px] font-mono text-cyan border border-cyan/40 px-1">
+                <span className="text-micro font-mono text-cyan border border-cyan/40 px-1">
                   DEFAULT
                 </span>
               )}
@@ -86,7 +86,7 @@ export function TemplateStep({ state, onChange }: TemplateStepProps) {
                   setPreview(preview === t.content ? null : t.content);
                 }
               }}
-              className="text-[10px] font-mono text-info mt-2 hover:text-cyan cursor-pointer inline-block"
+              className="text-micro font-mono text-info mt-2 hover:text-cyan cursor-pointer inline-block"
             >
               {preview === t.content ? "Hide preview" : "Preview"}
             </span>

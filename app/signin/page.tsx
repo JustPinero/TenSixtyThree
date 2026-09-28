@@ -206,7 +206,7 @@ export default function SignInPage() {
               >
                 {busy ? "Checking..." : "Sign in"}
               </button>
-              <p className="text-[11px] font-mono text-text-dim">
+              <p className="text-micro font-mono text-text-dim">
                 No password yet? Sign in with an email code first — you&apos;ll
                 be prompted to create one.
               </p>

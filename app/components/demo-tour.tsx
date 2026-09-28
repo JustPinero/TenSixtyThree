@@ -73,7 +73,7 @@ function ThemePicker({ onPicked }: { onPicked: () => void }) {
               <p className="text-sm font-mono font-bold text-text-bright">
                 {pack.persona.name}
               </p>
-              <p className="text-[10px] font-mono text-text-dim">
+              <p className="text-micro font-mono text-text-dim">
                 {pack.label}
               </p>
             </button>
@@ -234,7 +234,7 @@ function TourInner() {
           >
             {stepIndex === TOUR_STEPS.length - 1 ? "Finish" : "Next"}
           </button>
-          <span className="text-[10px] font-mono text-text-dim">
+          <span className="text-micro font-mono text-text-dim">
             {stepIndex + 1}/{TOUR_STEPS.length}
           </span>
           <button

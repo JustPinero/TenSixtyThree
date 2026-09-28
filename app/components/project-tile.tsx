@@ -82,7 +82,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
         </h3>
         <div className="flex items-center gap-2">
           {project.unreadAuditCount && project.unreadAuditCount > 0 ? (
-            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-mono font-bold bg-accent/20 text-accent border border-accent/40 rounded-full pulse-warning">
+            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-micro font-mono font-bold bg-accent/20 text-accent border border-accent/40 rounded-full pulse-warning">
               {project.unreadAuditCount}
             </span>
           ) : null}
@@ -108,7 +108,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
                   {project.currentPhase.replace(/-/g, " ").replace(/phase /, "P")}
                 </span>
                 <span
-                  className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 border border-success/40 bg-success/10 text-success"
+                  className="text-micro font-mono uppercase tracking-wider px-1.5 py-0.5 border border-success/40 bg-success/10 text-success"
                   title={`Phase progress score: ${display.score}%`}
                 >
                   ✓ {display.label}
@@ -122,7 +122,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
                 <span className="text-xs font-mono text-info">
                   {project.currentPhase.replace(/-/g, " ").replace(/phase /, "P")}
                 </span>
-                <span className="text-[10px] font-mono text-space-400">
+                <span className="text-micro font-mono text-space-400">
                   {display.score}%
                 </span>
               </div>
@@ -154,7 +154,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
             return (
               <span
                 key={badge}
-                className={`text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 border ${style.color}`}
+                className={`text-micro font-mono uppercase tracking-wider px-1.5 py-0.5 border ${style.color}`}
               >
                 {style.label}
               </span>
@@ -165,7 +165,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
 
       {/* Blocked-on-human indicator */}
       {(project.pendingHumanTasks ?? 0) > 0 && (
-        <div className="text-[10px] font-mono text-amber mb-2">
+        <div className="text-micro font-mono text-amber mb-2">
           {project.pendingHumanTasks} task{(project.pendingHumanTasks ?? 0) > 1 ? "s" : ""} waiting on you
         </div>
       )}
@@ -189,7 +189,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
       {/* Status badge */}
       <div className="mt-3 pt-3 border-t border-space-600/50 flex items-center justify-between">
         <span
-          className={`text-[10px] font-mono uppercase tracking-widest ${
+          className={`text-micro font-mono uppercase tracking-widest ${
             isDeployed
               ? "text-amber"
               : hasActiveSession
@@ -204,7 +204,7 @@ export function ProjectTile({ project }: ProjectTileProps) {
               : project.status}
         </span>
         {project.currentRequest && !hasActiveSession && (
-          <span className="text-[10px] font-mono text-info">
+          <span className="text-micro font-mono text-info">
             {project.currentRequest}
           </span>
         )}

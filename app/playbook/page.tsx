@@ -83,7 +83,7 @@ export default function PlaybookPage() {
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        className="w-full h-[500px] px-4 py-3 text-sm font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring resize-none leading-relaxed"
+        className="w-full h-[500px] px-4 py-3 text-sm font-mono input resize-none leading-relaxed"
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "s") {
             e.preventDefault();

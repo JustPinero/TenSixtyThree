@@ -57,7 +57,7 @@ export function DashboardFilters({
           placeholder="Search projects..."
           className="w-full px-3 py-2 text-sm font-mono bg-space-800 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring transition-colors"
         />
-        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted border border-space-600 px-1.5 py-0.5">
+        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-micro font-mono text-muted border border-space-600 px-1.5 py-0.5">
           /
         </kbd>
       </div>

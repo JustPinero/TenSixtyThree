@@ -28,7 +28,7 @@ export function GapSuggestions({ suggestions }: GapSuggestionsProps) {
           key={s.category}
           className={`p-2 border text-xs font-mono ${priorityColors[s.priority]}`}
         >
-          <span className="text-[10px] uppercase">[{s.priority}]</span>{" "}
+          <span className="text-micro uppercase">[{s.priority}]</span>{" "}
           {s.suggestion}
         </div>
       ))}

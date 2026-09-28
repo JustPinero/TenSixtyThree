@@ -66,9 +66,9 @@ function ProgressBar({ score, details }: { score: number; details: string }) {
           style={{ width: `${Math.min(score, 100)}%` }}
         />
       </div>
-      <span className="text-[10px] font-mono text-space-400 w-8">{score}%</span>
+      <span className="text-micro font-mono text-space-400 w-8">{score}%</span>
       {parsed && (
-        <span className="text-[10px] font-mono text-space-600 hidden lg:inline">
+        <span className="text-micro font-mono text-space-600 hidden lg:inline">
           P{parsed.phases?.score ?? 0} T{parsed.tests?.score ?? 0} R
           {parsed.readiness?.score ?? 0}
         </span>
@@ -155,7 +155,7 @@ export default function RoadmapPage() {
             <button
               key={s}
               onClick={() => setSortBy(s as typeof sortBy)}
-              className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
+              className={`px-2 py-1 text-micro font-mono uppercase border transition-colors ${
                 sortBy === s
                   ? "border-cyan text-cyan"
                   : "border-space-600 text-muted hover:text-text"
@@ -170,7 +170,7 @@ export default function RoadmapPage() {
             <button
               key={s || "all"}
               onClick={() => setFilterStatus(s)}
-              className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
+              className={`px-2 py-1 text-micro font-mono uppercase border transition-colors ${
                 filterStatus === s
                   ? "border-cyan text-cyan"
                   : "border-space-600 text-muted hover:text-text"

@@ -156,7 +156,7 @@ export function ActivityFeed({
           <div className="flex gap-1">
             <button
               onClick={() => setFilterType(null)}
-              className={`px-1.5 py-0.5 text-[10px] font-mono uppercase ${
+              className={`px-1.5 py-0.5 text-micro font-mono uppercase ${
                 filterType === null
                   ? "text-cyan border-b border-cyan"
                   : "text-muted hover:text-text"
@@ -168,7 +168,7 @@ export function ActivityFeed({
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
-                className={`px-1.5 py-0.5 text-[10px] font-mono uppercase ${
+                className={`px-1.5 py-0.5 text-micro font-mono uppercase ${
                   filterType === type
                     ? "text-cyan border-b border-cyan"
                     : "text-muted hover:text-text"

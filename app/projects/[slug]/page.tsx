@@ -157,7 +157,7 @@ function DispatchPanel({
             }
           }}
           placeholder="Custom command..."
-          className="flex-1 px-3 py-1.5 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-info focus:outline-none focus-ring"
+          className="flex-1 px-3 py-1.5 text-xs font-mono input focus:border-info"
         />
         <button
           onClick={() => dispatch("custom", customPrompt)}
@@ -323,7 +323,7 @@ function RemainingWorkPanel({ slug }: { slug: string }) {
         <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider">
           Remaining Work
         </h2>
-        <span className="text-[10px] font-mono text-space-400">
+        <span className="text-micro font-mono text-space-400">
           {work.completedRequests}/{work.totalRequests} done
           {work.remainingRequests > 0 &&
             ` \u2022 ${work.remainingRequests} remaining`}
@@ -427,7 +427,7 @@ function SessionHistoryPanel({ slug }: { slug: string }) {
                 <span className="text-xs font-mono text-info">
                   {s.timestamp.replace("T", " ")}
                 </span>
-                <span className="text-[10px] font-mono text-muted">
+                <span className="text-micro font-mono text-muted">
                   {expanded === s.filename ? "collapse" : "expand"}
                 </span>
               </button>

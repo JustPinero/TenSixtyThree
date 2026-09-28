@@ -34,7 +34,7 @@ export function LessonCard({
           {title}
         </h3>
         <span
-          className={`text-[10px] font-mono px-1.5 py-0.5 border ${sev.color} flex-shrink-0`}
+          className={`text-micro font-mono px-1.5 py-0.5 border ${sev.color} flex-shrink-0`}
         >
           {sev.label}
         </span>
@@ -44,7 +44,7 @@ export function LessonCard({
         {preview}
       </p>
 
-      <div className="flex items-center gap-3 text-[10px] font-mono text-muted">
+      <div className="flex items-center gap-3 text-micro font-mono text-muted">
         {sourceProject && <span>{sourceProject}</span>}
         {sourcePhase && (
           <span>{sourcePhase.replace(/-/g, " ")}</span>
@@ -57,7 +57,7 @@ export function LessonCard({
           {tags.slice(0, 5).map((tag) => (
             <span
               key={tag}
-              className="text-[10px] font-mono px-1.5 py-0.5 bg-space-700 text-info"
+              className="text-micro font-mono px-1.5 py-0.5 bg-space-700 text-info"
             >
               {tag}
             </span>

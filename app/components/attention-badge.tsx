@@ -39,7 +39,7 @@ export function AttentionBadge() {
   return (
     <Link
       href="/tasks"
-      className="flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-[10px] font-mono font-bold bg-danger/20 text-danger border border-danger/40 rounded-full pulse-warning"
+      className="flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-micro font-mono font-bold bg-danger/20 text-danger border border-danger/40 rounded-full pulse-warning"
       title={`${count} item${count > 1 ? "s" : ""} need your attention`}
     >
       {count}

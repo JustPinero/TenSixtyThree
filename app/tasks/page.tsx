@@ -147,7 +147,7 @@ export default function TasksPage() {
               if (e.key === "Enter") addTask();
             }}
             placeholder="Add a task..."
-            className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+            className="flex-1 px-3 py-2 text-sm font-mono input"
           />
           <button
             onClick={addTask}
@@ -192,7 +192,7 @@ export default function TasksPage() {
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setShowDone(!showDone)}
-          className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
+          className={`px-2 py-1 text-micro font-mono uppercase border transition-colors ${
             showDone
               ? "border-cyan text-cyan"
               : "border-space-600 text-muted hover:text-text"
@@ -205,7 +205,7 @@ export default function TasksPage() {
             <button
               key={cat || "all"}
               onClick={() => setFilterCategory(cat)}
-              className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
+              className={`px-2 py-1 text-micro font-mono uppercase border transition-colors ${
                 filterCategory === cat
                   ? "border-cyan text-cyan"
                   : "border-space-600 text-muted hover:text-text"
@@ -238,7 +238,7 @@ export default function TasksPage() {
                 <span className="text-xs font-mono font-bold text-text-bright uppercase tracking-wider">
                   {projectName}
                 </span>
-                <span className="text-[10px] font-mono text-muted ml-2">
+                <span className="text-micro font-mono text-muted ml-2">
                   {projectTasks.filter((t) => t.status === "pending").length}{" "}
                   pending
                 </span>
@@ -278,18 +278,18 @@ export default function TasksPage() {
                       </span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span
-                          className={`text-[10px] font-mono ${
+                          className={`text-micro font-mono ${
                             categoryColors[task.category] || "text-space-400"
                           }`}
                         >
                           {categoryLabels[task.category] || task.category}
                         </span>
                         {task.priority === "high" && (
-                          <span className="text-[10px] font-mono text-danger">
+                          <span className="text-micro font-mono text-danger">
                             HIGH
                           </span>
                         )}
-                        <span className="text-[10px] font-mono text-space-600">
+                        <span className="text-micro font-mono text-space-600">
                           via {task.createdBy}
                         </span>
                       </div>

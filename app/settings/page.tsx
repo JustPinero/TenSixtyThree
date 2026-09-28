@@ -251,7 +251,7 @@ function IntegrationsPanel() {
             setLoading(true);
             fetchStatuses();
           }}
-          className="px-2 py-1 text-[10px] font-mono uppercase border border-space-600 text-space-400 hover:text-text hover:border-space-500 transition-colors"
+          className="px-2 py-1 text-micro font-mono uppercase border border-space-600 text-space-400 hover:text-text hover:border-space-500 transition-colors"
         >
           Refresh
         </button>
@@ -307,13 +307,13 @@ function IntegrationsPanel() {
               )}
 
               {s.installed && s.authenticated && (
-                <span className="text-[10px] font-mono text-success uppercase tracking-wider">
+                <span className="text-micro font-mono text-success uppercase tracking-wider">
                   Connected
                 </span>
               )}
 
               {!s.installed && (
-                <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
+                <span className="text-micro font-mono text-muted uppercase tracking-wider">
                   Not Found
                 </span>
               )}
@@ -368,7 +368,7 @@ function NotificationsPanel() {
           <span className="text-sm font-mono text-text-bright">
             Desktop Notifications
           </span>
-          <p className="text-[10px] font-mono text-muted mt-0.5">
+          <p className="text-micro font-mono text-muted mt-0.5">
             {permission === "granted"
               ? "Get notified when sessions end, blockers are detected, or reminders trigger"
               : permission === "denied"
@@ -407,7 +407,7 @@ function SoundsPanel() {
         <span className="text-sm font-mono text-text-bright">
           Delamain Sound Effects
         </span>
-        <p className="text-[10px] font-mono text-muted mt-0.5">
+        <p className="text-micro font-mono text-muted mt-0.5">
           Chimes when Delamain starts and finishes responding, alerts on
           blockers
         </p>
@@ -443,7 +443,7 @@ function AutomationPanel() {
           <span className="text-sm font-mono text-text-bright">
             Auto-Dispatch (Continue)
           </span>
-          <p className="text-[10px] font-mono text-muted mt-0.5">
+          <p className="text-micro font-mono text-muted mt-0.5">
             When Delamain suggests only &quot;continue&quot; on healthy
             projects, execute immediately without waiting for approval
           </p>
@@ -508,7 +508,7 @@ function ModelPanel() {
         <div className="flex items-center justify-between">
           <div>
             <span className="text-sm font-mono text-text-bright">Service</span>
-            <p className="text-[10px] font-mono text-muted mt-0.5">
+            <p className="text-micro font-mono text-muted mt-0.5">
               The AI provider behind the Overseer, wizard, and project chat
             </p>
           </div>
@@ -529,7 +529,7 @@ function ModelPanel() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-mono text-text-bright">Model</span>
-              <p className="text-[10px] font-mono text-muted mt-0.5">
+              <p className="text-micro font-mono text-muted mt-0.5">
                 {note ?? "Chat model for all conversational surfaces"}
               </p>
             </div>
@@ -547,7 +547,7 @@ function ModelPanel() {
             </select>
           </div>
         )}
-        <p className="text-[10px] font-mono text-muted">
+        <p className="text-micro font-mono text-muted">
           Also settable via CASCADE_AI_SERVICE / CASCADE_CHAT_MODEL env vars;
           this setting overrides both.
         </p>
@@ -603,7 +603,7 @@ function BrainsPanel() {
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
         Brains
       </h2>
-      <p className="text-[10px] font-mono text-muted mb-3">
+      <p className="text-micro font-mono text-muted mb-3">
         Repos that hold the personal layer: memory, playbook, lessons. The
         Playbook page write-throughs to the first connected brain.
       </p>
@@ -616,15 +616,15 @@ function BrainsPanel() {
             <div>
               <span className="text-sm font-mono text-text-bright">
                 {b.name}{" "}
-                <span className={b.valid ? "text-cyan" : "text-red-400"}>
+                <span className={b.valid ? "text-cyan" : "text-danger"}>
                   {b.valid ? "● connected" : "● missing"}
                 </span>
               </span>
-              <p className="text-[10px] font-mono text-muted">{b.path}</p>
+              <p className="text-micro font-mono text-muted">{b.path}</p>
             </div>
             <button
               onClick={() => remove(b.id)}
-              className="text-xs font-mono text-muted hover:text-red-400"
+              className="text-xs font-mono text-muted hover:text-danger"
             >
               disconnect
             </button>
@@ -657,7 +657,7 @@ function BrainsPanel() {
           Connect
         </button>
       </form>
-      {error && <p className="text-xs font-mono text-red-400 mt-2">{error}</p>}
+      {error && <p className="text-xs font-mono text-danger mt-2">{error}</p>}
     </div>
   );
 }
@@ -708,9 +708,9 @@ function OverseerPanel() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             placeholder="Overseer"
-            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+            className="w-full px-3 py-1.5 text-sm font-mono input"
           />
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             Your AI dispatcher&apos;s name. Appears in chat, sidebar, and
             briefings.
           </p>
@@ -739,10 +739,10 @@ function OverseerPanel() {
               onChange={(e) => setPortraitIdle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="/delamain.jpg"
-              className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+              className="flex-1 px-3 py-1.5 text-sm font-mono input"
             />
           </div>
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             Path or URL of the portrait shown when the Overseer is silent.
           </p>
         </div>
@@ -776,15 +776,15 @@ function OverseerPanel() {
                   onChange={(e) => setPortraitTalking(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
                   placeholder="/delamain-talking.jpg"
-                  className="flex-1 px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+                  className="flex-1 px-3 py-1.5 text-sm font-mono input"
                 />
               </div>
-              <p className="text-[10px] font-mono text-muted mt-1">
+              <p className="text-micro font-mono text-muted mt-1">
                 Shown while the Overseer is generating a response.
               </p>
             </>
           ) : (
-            <p className="text-[10px] font-mono text-muted">
+            <p className="text-micro font-mono text-muted">
               The idle portrait will be shown for both states.
             </p>
           )}
@@ -874,7 +874,7 @@ function VoicePanel() {
               Enable voice output
             </span>
           </label>
-          <p className="text-[10px] font-mono text-muted mt-1 ml-6">
+          <p className="text-micro font-mono text-muted mt-1 ml-6">
             Delamain speaks responses aloud after streaming completes. Uses your
             browser&apos;s built-in voices — no network call.
           </p>
@@ -893,7 +893,7 @@ function VoicePanel() {
             onChange={(e) =>
               setVoiceURI(e.target.value === "" ? null : e.target.value)
             }
-            className="w-full px-3 py-1.5 text-sm font-mono bg-space-900 border border-space-600 text-text-bright focus:border-cyan focus:outline-none focus-ring"
+            className="w-full px-3 py-1.5 text-sm font-mono input"
           >
             <option value="">Browser default</option>
             {voices.map((v) => (
@@ -902,7 +902,7 @@ function VoicePanel() {
               </option>
             ))}
           </select>
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             Available voices come from your OS / browser. Quality and count vary
             by platform.
           </p>
@@ -921,7 +921,7 @@ function VoicePanel() {
             onChange={(e) => setRate(parseFloat(e.target.value))}
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             How fast Delamain speaks. 1.0 is normal speed.
           </p>
         </div>
@@ -939,7 +939,7 @@ function VoicePanel() {
             onChange={(e) => setPitch(parseFloat(e.target.value))}
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             Vocal pitch. 1.0 is the voice&apos;s natural tone.
           </p>
         </div>
@@ -981,7 +981,7 @@ function VoicePanel() {
               </span>
             </label>
           </div>
-          <p className="text-[10px] font-mono text-muted mt-2">
+          <p className="text-micro font-mono text-muted mt-2">
             How the mic button behaves. Conversation Mode (chat-screen toggle)
             overrides this when active.
           </p>
@@ -1005,7 +1005,7 @@ function VoicePanel() {
             }
             className="w-full accent-cyan"
           />
-          <p className="text-[10px] font-mono text-muted mt-1">
+          <p className="text-micro font-mono text-muted mt-1">
             How long to wait after you stop speaking before Conversation Mode
             auto-submits. Shorter = snappier; longer = more pause-tolerant.
           </p>
@@ -1098,7 +1098,7 @@ export default function SettingsPage() {
                   {t.label}
                 </span>
                 {theme === t.key && (
-                  <span className="text-[10px] font-mono text-cyan border border-cyan/40 px-1.5 py-0.5">
+                  <span className="text-micro font-mono text-cyan border border-cyan/40 px-1.5 py-0.5">
                     ACTIVE
                   </span>
                 )}
@@ -1106,7 +1106,7 @@ export default function SettingsPage() {
               <p className="text-xs font-mono text-text-dim mb-1.5">
                 {t.description}
               </p>
-              <p className="text-[10px] font-mono text-text-dim uppercase tracking-wider">
+              <p className="text-micro font-mono text-text-dim uppercase tracking-wider">
                 with {t.persona.name}
               </p>
             </button>

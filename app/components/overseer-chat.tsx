@@ -791,7 +791,7 @@ export function OverseerChat({
             <h2 className="text-lg font-bold font-mono text-cyan uppercase tracking-[0.15em]">
               {overseerName}
             </h2>
-            <p className="text-[10px] font-mono text-muted uppercase tracking-wider">
+            <p className="text-micro font-mono text-muted uppercase tracking-wider">
               {streaming
                 ? "Responding..."
                 : "Fleet Dispatcher — Sprint Planning"}
@@ -827,7 +827,7 @@ export function OverseerChat({
                     ? "Conversation Mode on — Esc to stop"
                     : "Hands-free conversation (best with headphones)"
                 }
-                className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
                   conversationMode
                     ? "border-cyan text-cyan"
                     : "border-space-600 text-muted hover:text-text"
@@ -853,7 +853,7 @@ export function OverseerChat({
                   ? "Mute Delamain (TTS on)"
                   : "Have Delamain speak responses (TTS off)"
               }
-              className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
                 ttsEnabled
                   ? "border-cyan text-cyan"
                   : "border-space-600 text-muted hover:text-text"
@@ -879,7 +879,7 @@ export function OverseerChat({
                     ? "Voice input on — click the mic to speak"
                     : "Enable voice input"
                 }
-                className={`flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase border transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
                   voiceEnabled
                     ? "border-cyan text-cyan"
                     : "border-space-600 text-muted hover:text-text"
@@ -902,7 +902,7 @@ export function OverseerChat({
           </div>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className="text-[10px] font-mono text-muted">
+          <p className="text-micro font-mono text-muted">
             {conversationMode
               ? "Conversation Mode — speak, pause, I\u2019ll respond. Esc to stop."
               : voiceEnabled
@@ -912,7 +912,7 @@ export function OverseerChat({
           {/* Phase 21 — listening indicator. Red dot + chat-bubble
               icon. Visible whenever the mic is actually transcribing. */}
           {listening ? (
-            <span className="flex items-center gap-1.5 text-[10px] font-mono text-danger">
+            <span className="flex items-center gap-1.5 text-micro font-mono text-danger">
               <span className="w-2 h-2 rounded-full bg-danger pulse-blocked" />
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                 <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2h-3l-3 3-3-3H4a2 2 0 01-2-2V5z" />
@@ -946,7 +946,7 @@ export function OverseerChat({
                     setInput(s);
                     inputRef.current?.focus();
                   }}
-                  className="block text-[10px] font-mono text-info hover:text-cyan transition-colors text-left"
+                  className="block text-micro font-mono text-info hover:text-cyan transition-colors text-left"
                 >
                   &quot;{s}&quot;
                 </button>
@@ -964,7 +964,7 @@ export function OverseerChat({
             }`}
           >
             <span
-              className={`${fullPage ? "text-xs" : "text-[10px]"} uppercase text-muted block mb-0.5`}
+              className={`${fullPage ? "text-xs" : "text-micro"} uppercase text-muted block mb-0.5`}
             >
               {msg.role === "user" ? "you" : "delamain"}
             </span>
@@ -987,12 +987,12 @@ export function OverseerChat({
       {/* Pending Actions */}
       {pendingActions && pendingActions.length > 0 && (
         <div className="mx-3 mb-3 p-2 border border-success/30 bg-success/5">
-          <p className="text-[10px] font-mono text-success mb-2">
+          <p className="text-micro font-mono text-success mb-2">
             Ready to dispatch {pendingActions.length} project
             {pendingActions.length > 1 ? "s" : ""}:
           </p>
           {pendingActions.map((a, i) => (
-            <p key={i} className="text-[10px] font-mono text-text">
+            <p key={i} className="text-micro font-mono text-text">
               {a.project} → {a.action}
               {a.prompt ? `: ${a.prompt.slice(0, 60)}` : ""}
             </p>
@@ -1000,7 +1000,7 @@ export function OverseerChat({
           <button
             onClick={executeActions}
             disabled={dispatching}
-            className="mt-2 px-3 py-1 text-[10px] font-mono border border-success text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
+            className="mt-2 px-3 py-1 text-micro font-mono border border-success text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
           >
             {dispatching ? "Dispatching..." : "Execute Sprint"}
           </button>

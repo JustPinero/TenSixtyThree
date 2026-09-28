@@ -142,7 +142,7 @@ export function ClaudeChatStep({ state, onChange }: ClaudeChatStepProps) {
                 : "text-text pl-4 border-l border-accent/30"
             }`}
           >
-            <span className="text-[10px] uppercase text-muted block mb-0.5">
+            <span className="text-micro uppercase text-muted block mb-0.5">
               {msg.role === "user" ? "you" : "claude"}
             </span>
             <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -164,7 +164,7 @@ export function ClaudeChatStep({ state, onChange }: ClaudeChatStepProps) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Describe your project..."
           disabled={streaming}
-          className="flex-1 px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring disabled:opacity-50"
+          className="flex-1 px-3 py-2 text-sm font-mono input disabled:opacity-50"
         />
         <button
           onClick={sendMessage}

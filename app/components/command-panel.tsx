@@ -135,14 +135,14 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
           {messages.length > 0 && (
             <button
               onClick={() => setMessages([])}
-              className="text-[10px] font-mono text-muted hover:text-danger transition-colors"
+              className="text-micro font-mono text-muted hover:text-danger transition-colors"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setExpanded(false)}
-            className="text-[10px] font-mono text-muted hover:text-text transition-colors"
+            className="text-micro font-mono text-muted hover:text-text transition-colors"
           >
             Minimize
           </button>
@@ -171,7 +171,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
                     setInput(suggestion);
                     inputRef.current?.focus();
                   }}
-                  className="text-[10px] font-mono px-2 py-1 border border-space-600 text-info hover:border-info/40 hover:text-cyan transition-colors"
+                  className="text-micro font-mono px-2 py-1 border border-space-600 text-info hover:border-info/40 hover:text-cyan transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -188,7 +188,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
                 : "text-text pl-3 border-l-2 border-accent/30"
             }`}
           >
-            <span className="text-[10px] uppercase text-muted block mb-0.5">
+            <span className="text-micro uppercase text-muted block mb-0.5">
               {msg.role === "user" ? "you" : "claude"}
             </span>
             <div className="whitespace-pre-wrap leading-relaxed">

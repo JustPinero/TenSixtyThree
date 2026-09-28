@@ -53,7 +53,7 @@ export function ReminderWidget() {
     <div className="mx-3 mb-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider hover:bg-space-700/50 transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1.5 text-micro font-mono uppercase tracking-wider hover:bg-space-700/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           {triggered.length > 0 ? (
@@ -70,7 +70,7 @@ export function ReminderWidget() {
           </span>
         </div>
         <span
-          className={`text-[10px] font-mono ${
+          className={`text-micro font-mono ${
             triggered.length > 0 ? "text-amber" : "text-muted"
           }`}
         >
@@ -87,7 +87,7 @@ export function ReminderWidget() {
           {triggered.map((r) => (
             <div
               key={r.id}
-              className="px-2 py-1.5 text-[10px] font-mono border-l-2 border-amber bg-amber/5"
+              className="px-2 py-1.5 text-micro font-mono border-l-2 border-amber bg-amber/5"
             >
               <div className="flex items-start justify-between gap-1">
                 <p className="text-amber leading-relaxed">{r.message}</p>
@@ -106,7 +106,7 @@ export function ReminderWidget() {
           {pending.map((r) => (
             <div
               key={r.id}
-              className="px-2 py-1.5 text-[10px] font-mono border-l-2 border-space-600"
+              className="px-2 py-1.5 text-micro font-mono border-l-2 border-space-600"
             >
               <div className="flex items-start justify-between gap-1">
                 <p className="text-text-dim leading-relaxed">{r.message}</p>

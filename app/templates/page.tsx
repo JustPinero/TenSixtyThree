@@ -118,7 +118,7 @@ export default function TemplatesPage() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Template name"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+            className="w-full px-3 py-2 text-sm font-mono input"
           />
           <input
             type="text"
@@ -127,13 +127,13 @@ export default function TemplatesPage() {
               setForm({ ...form, description: e.target.value })
             }
             placeholder="Description"
-            className="w-full px-3 py-2 text-sm font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring"
+            className="w-full px-3 py-2 text-sm font-mono input"
           />
           <textarea
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
             placeholder="Template content (markdown)"
-            className="w-full h-64 px-3 py-2 text-xs font-mono bg-space-900 border border-space-600 text-text-bright placeholder:text-muted focus:border-cyan focus:outline-none focus-ring resize-none"
+            className="w-full h-64 px-3 py-2 text-xs font-mono input resize-none"
           />
           <div className="flex gap-2">
             <button
@@ -169,11 +169,11 @@ export default function TemplatesPage() {
                   {t.name}
                 </span>
                 {t.isDefault && (
-                  <span className="text-[10px] font-mono text-cyan border border-cyan/40 px-1">
+                  <span className="text-micro font-mono text-cyan border border-cyan/40 px-1">
                     DEFAULT
                   </span>
                 )}
-                <span className="text-[10px] font-mono text-muted border border-space-600 px-1">
+                <span className="text-micro font-mono text-muted border border-space-600 px-1">
                   {t.projectType}
                 </span>
               </div>
@@ -181,20 +181,20 @@ export default function TemplatesPage() {
                 {!t.isDefault && (
                   <button
                     onClick={() => handleSetDefault(t.id)}
-                    className="text-[10px] font-mono text-info hover:text-cyan"
+                    className="text-micro font-mono text-info hover:text-cyan"
                   >
                     Set default
                   </button>
                 )}
                 <button
                   onClick={() => startEdit(t)}
-                  className="text-[10px] font-mono text-text hover:text-cyan"
+                  className="text-micro font-mono text-text hover:text-cyan"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(t.id)}
-                  className="text-[10px] font-mono text-danger hover:text-danger/80"
+                  className="text-micro font-mono text-danger hover:text-danger/80"
                 >
                   Delete
                 </button>

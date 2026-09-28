@@ -70,6 +70,16 @@ describe("CI workflow", () => {
     expect(CI).not.toMatch(/file:\.\//);
   });
 
+  it("the playwright web server does not hardcode a SQLite URL either", () => {
+    // The first fix missed this: playwright.config.ts set the dev
+    // server's DATABASE_URL to file:./test-e2e.db, so the e2e job booted
+    // the app against a retired engine and every request hit
+    // ECONNREFUSED through the pg adapter.
+    const pw = readFileSync(path.join(ROOT, "playwright.config.ts"), "utf-8");
+    expect(pw).not.toMatch(/DATABASE_URL:\s*"file:/);
+    expect(pw).toMatch(/process\.env\.DATABASE_URL/);
+  });
+
   it("covers every gate validate.sh runs", () => {
     const gates: [string, RegExp][] = [
       ["lint", /pnpm lint/],

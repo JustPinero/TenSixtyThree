@@ -29,7 +29,13 @@ export default defineConfig({
     env: process.env.CI
       ? {
           ANTHROPIC_API_KEY: "sk-ant-ci-fake-key-not-used-by-smoke-specs",
-          DATABASE_URL: "file:./test-e2e.db",
+          // Phase 57.2 — this used to hardcode `file:./test-e2e.db`.
+          // SQLite was retired in Phase 51, so the dev server booted with
+          // a file URL against the pg adapter and every request died with
+          // ECONNREFUSED. Inherit the workflow's DATABASE_URL instead.
+          DATABASE_URL:
+            process.env.DATABASE_URL ??
+            "postgresql://tensixtythree:tensixtythree@127.0.0.1:51063/tensixtythree",
         }
       : undefined,
     timeout: 120_000,

@@ -33,10 +33,19 @@ describe("quarantine surfacing", () => {
 
   it("[41.D8] drain of a missing spool is a clean no-op", async () => {
     dir = mkdtempSync(join(tmpdir(), "q-"));
-    const result = await drainWebhookSpool({
+    /*
+     * This previously passed ONE argument cast `as never`.
+     * drainWebhookSpool(prisma, opts) takes two, so the options object
+     * landed in the `prisma` slot, `opts` defaulted to {}, and spoolPath
+     * fell back to resolveSpoolPath() — the developer's REAL spool at
+     * ~/.cascade/webhook-spool.jsonl. The test passed only while that
+     * file happened to be empty; once it held 26 entries it reported
+     * ingested=26 and consumed them. The cast hid the mismatch.
+     */
+    const result = await drainWebhookSpool({} as never, {
       spoolPath: join(dir, "never-created.jsonl"),
-      ingest: async () => ({ ok: true }),
-    } as never);
+      ingest: async () => ({ ok: true, dispatchId: null }),
+    });
     expect(result.ingested).toBe(0);
     expect(result.skipped).toBe(0);
   });

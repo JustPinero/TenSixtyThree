@@ -1,3 +1,8 @@
+/**
+ * [1.0.D1] migrated off the SQLite compat alias to the worker-scoped rig.
+ * The alias path spawned two `execSync` psql processes per file; the rig
+ * clones the template over an in-process pg connection instead.
+ */
 import {
   describe,
   it,
@@ -8,9 +13,10 @@ import {
   vi,
 } from "vitest";
 import fs from "fs";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import path from "path";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { PrismaClient } from "@/app/generated/prisma/client";
 import {
   pushTestSchema,
   gitInitWithAuthor,
@@ -27,8 +33,6 @@ import { computeHealth } from "@/lib/health-engine";
 const TEST_DIR = path.resolve(__dirname, "../.test-publish-safety");
 
 // Isolated throwaway DB — never dev.db (test rules).
-const TEST_DB_PATH = path.resolve(__dirname, "../prisma/test-publish-safety.db");
-const TEST_DB_URL = `file:${TEST_DB_PATH}`;
 
 // Fake secrets built by runtime concatenation so this test file never
 // matches the secret patterns itself (in the pre-commit scan or when
@@ -39,21 +43,20 @@ const FAKE_PG_URL =
 const FAKE_SUPABASE_TOKEN = "sbp" + "_" + "0123456789abcdef0123456789abcdef";
 const FAKE_SENTRY_TOKEN = "sntrys" + "_" + "eyJpYXQiOjE3MDAwMDAwMDAuMDAwfQ";
 
+let rig: DispatchRig | null = null;
 let prisma: PrismaClient;
 
 beforeAll(async () => {
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
 
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-  const adapter = new PrismaBetterSqlite3({ url: TEST_DB_URL });
-  prisma = new PrismaClient({ adapter });
-  pushTestSchema(TEST_DB_URL);
+  rig = await createDispatchRig({ fakeTimers: false });
+  prisma = rig.prisma;
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+  await rig?.dispose();
+  rig = null;
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
 });
 

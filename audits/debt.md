@@ -44,6 +44,29 @@
   psql/prisma subprocesses stop multiplying with the file count.
   **Trust CI, not a local run, until then** — the dedicated runner's
   `test` job passes cleanly.
+  **2026-10-16: 29 of 45 files migrated.** The rig clones the template
+  over an in-process pg connection, so each migrated file removes two
+  `execSync` psql spawns — ~58 fewer process spawns so far, which is the
+  pressure that produced `Failed to start forks worker`. 16 files remain;
+  they hold the TEST_DB_PATH const in a shape the mechanical transform
+  would not touch safely, so they need hand migration. A transform that
+  anchors new imports to "the last line starting with import" WILL break
+  files whose last import spans several lines — anchor to the first
+  single-line import instead (that mistake cost one revert).
+
+- **[1.0.D14]** (2026-10-16) `lib/webhook-quarantine.test.ts` called
+  `drainWebhookSpool` with ONE argument cast `as never`; the real
+  signature is `(prisma, opts)`, so the options landed in the `prisma`
+  slot, `opts` defaulted to `{}`, and `spoolPath` fell back to
+  `resolveSpoolPath()` — the developer's REAL `~/.cascade/webhook-spool.jsonl`.
+  It passed for as long as that file was empty; once it held 26 entries
+  the test drained and consumed them (the file is gone; no `.quarantine`
+  or `.draining-*` remained, so the rotation completed). Fixed, and
+  `CASCADE_WEBHOOK_SPOOL` is now pinned suite-wide in vitest.config.ts so
+  no test can reach the real path. **Lesson: an `as never`/`as unknown as`
+  cast in a test can silently redirect it at production state** — the
+  coding standard that bans those casts exists for this. Sweep the suite
+  for other casts that paper over an arity/shape mismatch.
 
 - **[1.0.D2]** (2026-09-15, release test-audit) — **PARTIALLY CLOSED
   2026-09-28.** `dispatch.test.ts` and `playbook.test.ts` are deleted:

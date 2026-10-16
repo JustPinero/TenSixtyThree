@@ -38,6 +38,13 @@ export default defineConfig({
       PROJECTS_DIR: "/p",
       // [42.D1] keep webhook tests in open mode regardless of the real machine secret
       CASCADE_WEBHOOK_SECRET_PATH: "/p/nonexistent-webhook-secret",
+      /*
+       * A test calling drainWebhookSpool with the wrong arity fell back to
+       * resolveSpoolPath() and DRAINED THE DEVELOPER'S REAL SPOOL
+       * (~/.cascade/webhook-spool.jsonl, 26 entries, consumed). The test
+       * is fixed, but no test should be able to reach that file at all.
+       */
+      CASCADE_WEBHOOK_SPOOL: "/p/nonexistent-webhook-spool.jsonl",
     },
   },
   resolve: {

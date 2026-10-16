@@ -37,7 +37,7 @@ vi.mock("@/lib/project-import", () => ({
   })),
 }));
 
-import { drainWebhookSpool } from "./webhook-spool";
+import { drainWebhookSpool, resolveSpoolPath } from "./webhook-spool";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 
@@ -195,5 +195,32 @@ describe("drainWebhookSpool — idempotent ingestion", () => {
     // Dispatcher dedups on idempotencyKey — one outcome, not two.
     const outcomes = await rig.getDispatchOutcomes("alpha");
     expect(outcomes).toHaveLength(1);
+  });
+});
+
+/**
+ * Regression guard: a test must never be able to reach the real spool.
+ * `drainWebhookSpool(prisma, opts)` takes two arguments; a call passing a
+ * single options object (cast to satisfy the compiler) silently put those
+ * options in the `prisma` slot and let spoolPath fall back to
+ * resolveSpoolPath() — the developer's own ~/.cascade/webhook-spool.jsonl,
+ * which it then drained of 26 real entries.
+ */
+describe("spool path isolation", () => {
+  it("the suite pins CASCADE_WEBHOOK_SPOOL away from the real file", () => {
+    const pinned = process.env.CASCADE_WEBHOOK_SPOOL;
+    expect(pinned, "vitest.config.ts must pin this").toBeTruthy();
+    expect(pinned).not.toContain(".cascade/webhook-spool.jsonl");
+    expect(resolveSpoolPath()).toBe(pinned);
+  });
+
+  it("resolveSpoolPath only falls back to the home directory when unpinned", () => {
+    const prev = process.env.CASCADE_WEBHOOK_SPOOL;
+    delete process.env.CASCADE_WEBHOOK_SPOOL;
+    try {
+      expect(resolveSpoolPath()).toContain(".cascade");
+    } finally {
+      if (prev !== undefined) process.env.CASCADE_WEBHOOK_SPOOL = prev;
+    }
   });
 });

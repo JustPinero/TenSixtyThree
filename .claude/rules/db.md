@@ -1,3 +1,12 @@
+---
+paths:
+  - "prisma/**"
+  - "lib/db.ts"
+  - "lib/**/*rig*"
+  - "tests/harness/**"
+  - "**/*.test.ts"
+  - "scripts/**"
+---
 # Prisma + Postgres Rules (Phase 51 — hosted foundation)
 
 - The database is **Postgres** everywhere: local dev + tests run against the

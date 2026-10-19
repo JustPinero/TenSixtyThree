@@ -17,6 +17,15 @@ import type { PrismaClient } from "@/app/generated/prisma/client";
 export const DEFAULT_CHAT_MODEL = "claude-sonnet-5";
 export const DEFAULT_AI_SERVICE = "claude";
 
+/**
+ * Cheap, fast model for background work with no user waiting on it:
+ * briefing generation, retroactive harvest, chat-history compression, the
+ * Anthropic feature check. Four call sites each hardcoded
+ * `claude-haiku-4-5-20251001` — a date-suffixed guess (published IDs carry
+ * no suffix) that also meant a retirement required editing four files.
+ */
+export const UTILITY_MODEL = "claude-haiku-4-5";
+
 export const CHAT_MODEL_OPTIONS: ReadonlyArray<{
   id: string;
   label: string;
@@ -28,14 +37,19 @@ export const CHAT_MODEL_OPTIONS: ReadonlyArray<{
     note: "Default. Near-Opus quality at Sonnet cost.",
   },
   {
+    id: "claude-opus-5",
+    label: "Claude Opus 5",
+    note: "Most capable. Same price as Opus 4.8, current generation.",
+  },
+  {
     id: "claude-sonnet-4-6",
     label: "Claude Sonnet 4.6",
-    note: "Previous generation.",
+    note: "Previous generation; costs more than Sonnet 5.",
   },
   {
     id: "claude-opus-4-8",
     label: "Claude Opus 4.8",
-    note: "Most capable Opus tier; ~2x Sonnet cost.",
+    note: "Previous generation Opus; prefer Opus 5 at the same price.",
   },
   {
     id: "claude-haiku-4-5",

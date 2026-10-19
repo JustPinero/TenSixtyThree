@@ -7,6 +7,7 @@ import {
   type DetectorInput,
 } from "./anthropic-feature-detectors";
 import { loadCatalogFromMd, syncCatalogToDb } from "./anthropic-features-md";
+import { UTILITY_MODEL } from "@/lib/model-config";
 
 /**
  * Audit driver: connects detectors, the DB-backed feature catalog,
@@ -303,7 +304,7 @@ async function defaultClaudeConversion(rawText: string): Promise<string> {
     // 47.3 — structured outputs guarantee the {candidates:[...]} shape;
     // parseCandidatesJson still validates as defense in depth.
     const response = await postAnthropicWithRetry({
-        model: "claude-haiku-4-5-20251001",
+        model: UTILITY_MODEL,
         max_tokens: 2048,
         system: CONVERSION_SYSTEM_PROMPT,
         messages: [{ role: "user", content: rawText.slice(0, 30_000) }],

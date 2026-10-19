@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import { postAnthropicWithRetry } from "./anthropic-fetch";
 import type { AnthropicMessage } from "@/lib/overseer-tools";
+import { UTILITY_MODEL } from "@/lib/model-config";
 
 /**
  * Phase 12E — history compression safety net.
@@ -175,7 +176,7 @@ export async function compressMessagesForSession(
  * latency / cost.
  */
 export function defaultSummarizer(apiKey: string): MessageSummarizer {
-  const SUMMARIZER_MODEL = "claude-haiku-4-5-20251001";
+  const SUMMARIZER_MODEL = UTILITY_MODEL;
   return async (messages, options) => {
     const transcript = messages
       .map((m) => {

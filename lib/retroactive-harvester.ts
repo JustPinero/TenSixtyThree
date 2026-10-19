@@ -4,6 +4,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { categorize } from "./categorizer";
+import { UTILITY_MODEL } from "@/lib/model-config";
 
 export interface RetroHarvestResult {
   projectName: string;
@@ -203,7 +204,7 @@ async function extractLessonsWithClaude(
   // old regex-extraction fallback is gone. Root must be an object, hence the
   // { lessons: [...] } wrapper.
   const response = await postAnthropicWithRetry({
-      model: "claude-haiku-4-5-20251001",
+      model: UTILITY_MODEL,
       max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
       output_config: {

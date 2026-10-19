@@ -5,6 +5,7 @@ import { getSessionLogs } from "@/lib/session-reader";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { reconcileFleet, formatDriftSection } from "@/lib/fleet-reconciler";
 import { computeInfraVersion } from "@/lib/infra-version";
+import { UTILITY_MODEL } from "@/lib/model-config";
 
 /**
  * Timebox for per-repo `git fetch` during the briefing's reconciliation
@@ -191,7 +192,7 @@ ${driftSection ?? "No drift detected — DB matches reality."}
 ### Projects with v3.5 machinery remnants (shadow the plugin — migrate)
 ${infraSection ?? "None — all projects clean of v3.5 remnants."}`;
 
-    const BRIEFING_MODEL = "claude-haiku-4-5-20251001";
+    const BRIEFING_MODEL = UTILITY_MODEL;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
     const start = performance.now();

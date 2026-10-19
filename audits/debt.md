@@ -54,6 +54,21 @@
   files whose last import spans several lines — anchor to the first
   single-line import instead (that mistake cost one revert).
 
+- **[1.0.D15]** (2026-10-19) **Local runtime drifted away from CI and broke
+  the suite silently.** `engines.node` said only `">=20"` and there was no
+  `.nvmrc`, so this machine moved to Node 25.2.1. Under Node 25 jsdom's
+  `localStorage` resolves to a bare `{}` with no methods
+  (`localStorage.clear is not a function`), failing 25 tests across 4 files
+  (theme-pack-apply, theme-provider, sounds.theme, morning-briefing). CI,
+  pinned to Node 22, stayed green throughout — so from the outside nothing
+  was wrong. Proven by switching: all 25 pass on Node 22, all fail on 25.
+  Fixed with `.nvmrc` (22), `engines.node: ">=22 <23"`, and
+  `lib/runtime-pin.test.ts`, which fails when the running major, the
+  `.nvmrc` and CI's `node-version` disagree. **Open:** `pnpm` on the
+  machine is 9.15.9 while `packageManager` declares `pnpm@10.33.2` — the
+  same class of drift, not yet reconciled. Also worth deciding whether to
+  move to a jsdom that works on Node 25, since Node 22 goes end-of-life.
+
 - **[1.0.D14]** (2026-10-16) `lib/webhook-quarantine.test.ts` called
   `drainWebhookSpool` with ONE argument cast `as never`; the real
   signature is `(prisma, opts)`, so the options landed in the `prisma`

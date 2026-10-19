@@ -1,6 +1,6 @@
 # TenSixtyThree — AI-Powered Multi-Project Orchestration
 > Also answers to **1063** / **10-63** — same product, radio shorthand. Use interchangeably in requests and docs.
-Hosted (Railway) + local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. v1.0 features: fleet health + progress, local tmux dispatch AND a hosted cloud runner (Agent SDK, second Railway service: claim → clone → unprivileged agent session → branch → PR), knowledge harvesting + brain-sync, Stop-hook session feedback (webhook + spool + quarantine), dispatch outcomes + watchdog, morning briefings, invite-only auth (Better Auth: email code / password / OAuth, admin bootstrap), multi-org workspaces (shared projects, typed feed, member invites), kanban boards + milestones + Linear import, per-project tenancy, BYOK Anthropic keys, 12 theme packs with prebuilt assistant personas, and a public demo sandbox with a persona-guided tour.
+Hosted (Cloudflare edge -> Railway) + local-first Next.js dashboard with an AI dispatcher (the Overseer) that manages Claude Code sessions across projects. v1.0 features: fleet health + progress, local tmux dispatch AND a hosted cloud runner (Agent SDK, second Railway service: claim → clone → unprivileged agent session → branch → PR), knowledge harvesting + brain-sync, Stop-hook session feedback (webhook + spool + quarantine), dispatch outcomes + watchdog, morning briefings, invite-only auth (Better Auth: email code / password / OAuth, admin bootstrap), multi-org workspaces (shared projects, typed feed, member invites), kanban boards + milestones + Linear import, per-project tenancy, BYOK Anthropic keys, 12 theme packs with prebuilt assistant personas, and a public demo sandbox with a persona-guided tour.
 
 ## Stack & Commands
 Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgres (local: docker-compose.dev.yml) | Vitest + Playwright
@@ -18,6 +18,10 @@ Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgr
 - `lib/boards.ts`, `lib/linear-sync.ts` — kanban core + Linear import; `lib/demo.ts` — demo sandbox seed/sweep; `lib/crypto-box.ts` — AES-GCM for BYOK/Linear keys
 - `lib/theme-registry.ts` + `lib/persona-prompt.ts` — theme packs / assistant personas (reach the model's system prompt)
 - `lib/env-manifest.ts` — every env var, scoped; `/api/health` self-diagnoses hosted env
+- `infra/cloudflare/*` + `scripts/cloudflare-setup.ts` — the edge. Cloudflare is authoritative DNS + TLS and the Worker `tensixtythree-edge` proxies www -> the Railway origin (Railway never issued a cert for this zone). `pnpm infra:cloudflare` is the idempotent bring-up. Canonical host is **https://www.tensixtythree.com**; the railway.app URL is origin-only.
+- `lib/client-ip.ts` + `middleware.ts` — behind two proxies the last `x-forwarded-for` hop is Cloudflare, not the client. Rate limits and Better Auth read `x-client-ip`, which middleware pins; `cf-connecting-ip` is trusted only when the Worker presents `EDGE_SHARED_SECRET`.
+- `app/components/ui/*` — shared primitives (`Toggle`, `Markdown`). Use the `.input` and `.focus-ring` classes from globals.css rather than re-deriving field/focus recipes; `--muted` and `--text-micro` are the readable floors. Contrast is enforced per theme pack by `lib/theme-contrast.test.ts`.
+- `lib/model-config.ts` — `DEFAULT_CHAT_MODEL` and `UTILITY_MODEL`. **Never hardcode a model ID**; published IDs carry no date suffix.
 - **Postgres** everywhere: local dev via `docker compose -f docker-compose.dev.yml up -d` (container `tensixtythree-pg`, `127.0.0.1:51063`); hosted = Railway Postgres. No SQLite remains.
 - `pnpm dev` — start dev server
 - `pnpm build` — production build
@@ -28,9 +32,9 @@ Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgr
 - `pnpm start:runner` — run the cloud runner locally (needs `ANTHROPIC_API_KEY`, optional `GITHUB_TOKEN`)
 
 ## References
-@import references/architecture.md
-@import references/schema.md
-@import references/deployment-landmines.md
+@references/architecture.md
+@references/schema.md
+@references/deployment-landmines.md
 
 ## Action Loop
 Every request follows: **Prime → Plan → Red → Green → Validate**

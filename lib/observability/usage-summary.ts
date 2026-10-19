@@ -12,14 +12,32 @@
  */
 import type { PrismaClient } from "@/app/generated/prisma/client";
 
+/*
+ * USD per million tokens, Anthropic first-party rates.
+ *
+ * `claude-sonnet-5` was priced here at $3/$15 — Sonnet 4.6's rate. Sonnet 5
+ * is DEFAULT_CHAT_MODEL, so every cost figure overstated the default model
+ * by 50%. `claude-opus-5` was missing entirely and fell through to the
+ * fallback, understating it. lib/observability/usage-summary.test.ts now
+ * asserts that every entry in CHAT_MODEL_OPTIONS has a row here, so a newly
+ * selectable model cannot ship unpriced.
+ */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "claude-sonnet-5": { input: 3, output: 15 },
-  "claude-sonnet-4-6": { input: 3, output: 15 },
+  // Current generation
+  "claude-opus-5": { input: 5, output: 25 },
+  "claude-sonnet-5": { input: 2, output: 10 },
   "claude-haiku-4-5": { input: 1, output: 5 },
-  "claude-haiku-4-5-20251001": { input: 1, output: 5 },
+  // Previous generation — still served; keep so historical rows price right.
   "claude-opus-4-8": { input: 5, output: 25 },
+  "claude-sonnet-4-6": { input: 3, output: 15 },
+  // Dated alias of claude-haiku-4-5 that four call sites used to hardcode.
+  "claude-haiku-4-5-20251001": { input: 1, output: 5 },
 };
-const FALLBACK_PRICING = MODEL_PRICING["claude-sonnet-4-6"];
+/*
+ * An unknown model is flagged (`unknownModel: true`) and priced at the
+ * CURRENT default's rate rather than a retired model's.
+ */
+const FALLBACK_PRICING = MODEL_PRICING["claude-sonnet-5"];
 
 const CACHE_READ_MULT = 0.1;
 const CACHE_WRITE_5M_MULT = 1.25;

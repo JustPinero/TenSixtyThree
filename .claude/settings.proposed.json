@@ -1,0 +1,74 @@
+{
+  "_comment": "PROPOSED replacement for .claude/settings.json — review, then copy over it. Claude is blocked from editing settings itself (Self-Modification guard), which is correct: an agent should not rewrite its own permission boundary. Rationale per key is in .claude/settings.proposed.md.",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(chmod *)",
+      "Bash(scripts/validate.sh)",
+      "Bash(eslint *)",
+      "Bash(docker compose *)",
+      "Bash(docker start tensixtythree-pg)",
+      "Bash(pg_isready *)",
+      "Bash(railway status)",
+      "Bash(railway logs *)",
+      "Bash(railway variables *)",
+      "Bash(railway deployment list *)",
+      "Bash(gh run *)",
+      "Bash(gh pr view *)",
+      "Bash(gh issue view *)",
+      "Bash(op read *)",
+      "Bash(op item get *)",
+      "Bash(op whoami)"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(gh repo *)",
+      "Bash(op item delete *)",
+      "Bash(op item create *)",
+      "Bash(op item edit *)",
+      "Bash(railway up *)",
+      "Bash(railway redeploy *)",
+      "Bash(railway down *)",
+      "Bash(railway delete *)",
+      "Bash(git push *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "description": "ESLint --fix on edited TS/TSX. Replaces two prettier hooks that invoked an uninstalled package and matched only .tsx/.jsx.",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.ts|*.tsx) pnpm exec eslint --fix \"$f\" >/dev/null 2>&1 || true;; esac"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "description": "Advisory only (always exit 0): flag uncommitted source changes at turn end so the gate is not skipped.",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null || exit 0; if ! git diff --quiet -- lib app 2>/dev/null; then echo 'Uncommitted changes under lib/ or app/ — run scripts/validate.sh before calling it done.'; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

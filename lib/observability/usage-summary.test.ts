@@ -2,6 +2,7 @@
  * Phase 39 [P8] — usage summary aggregation + cost math.
  */
 import { describe, it, expect, vi } from "vitest";
+import { CHAT_MODEL_OPTIONS } from "@/lib/model-config";
 import { getUsageSummary, estimateEventCostUsd } from "./usage-summary";
 
 type EventRow = {
@@ -35,7 +36,50 @@ function row(overrides: Partial<EventRow> = {}): EventRow {
   };
 }
 
-describe("estimateEventCostUsd", () => {
+describe("estimateEventCostUsd — current-generation rates", () => {
+  /*
+   * The table priced claude-sonnet-5 at $3/$15 — Sonnet 4.6's rate, not
+   * Sonnet 5's ($2/$10). Sonnet 5 is DEFAULT_CHAT_MODEL, so every cost
+   * figure on the dashboard overstated the default model by 50%. Opus 5
+   * had no row at all and fell through to the Sonnet 4.6 fallback,
+   * understating it by 40% ($3/$15 charged as if, vs a real $5/$25).
+   */
+  it("prices Sonnet 5 (the default model) at $2/$10 per MTok", () => {
+    const cost = estimateEventCostUsd(
+      row({
+        model: "claude-sonnet-5",
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+      })
+    );
+    expect(cost.usd).toBeCloseTo(2 + 10, 6);
+    expect(cost.unknownModel).toBe(false);
+  });
+
+  it("prices Opus 5 at $5/$25 per MTok", () => {
+    const cost = estimateEventCostUsd(
+      row({
+        model: "claude-opus-5",
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+      })
+    );
+    expect(cost.usd).toBeCloseTo(5 + 25, 6);
+    expect(cost.unknownModel).toBe(false);
+  });
+
+  it("knows every model the app can actually be configured to use", () => {
+    for (const option of CHAT_MODEL_OPTIONS) {
+      const cost = estimateEventCostUsd(
+        row({ model: option.id, inputTokens: 1_000_000 })
+      );
+      expect(
+        cost.unknownModel,
+        `${option.id} is selectable but has no pricing row`
+      ).toBe(false);
+    }
+  });
+
   it("prices Sonnet 4.6 input and output at $3/$15 per MTok", () => {
     const cost = estimateEventCostUsd(
       row({ inputTokens: 1_000_000, outputTokens: 1_000_000 })
@@ -83,11 +127,13 @@ describe("estimateEventCostUsd", () => {
     expect(cost.usd).toBeCloseTo(3.75, 6);
   });
 
-  it("prices unknown models at Sonnet rates and flags them", () => {
+  it("prices unknown models at the CURRENT default's rate and flags them", () => {
+    // Was asserting $3 — Sonnet 4.6's rate. An unpriced model should be
+    // estimated against the model the app actually defaults to today.
     const cost = estimateEventCostUsd(
       row({ model: "claude-experimental-9", inputTokens: 1_000_000 })
     );
-    expect(cost.usd).toBeCloseTo(3, 6);
+    expect(cost.usd).toBeCloseTo(2, 6);
     expect(cost.unknownModel).toBe(true);
   });
 });

@@ -200,7 +200,8 @@ export async function exportAgentWork(args: {
   return { bundle };
 }
 
-const WORKFLOW_PREFIX = ".github/workflows/";
+/** Files GitHub Actions executes. */
+const CI_PATHS = [".github/workflows", ".github/actions"];
 
 /**
  * Runner uid, pristine clone only: fetch the bundle (data), refuse
@@ -222,31 +223,36 @@ export async function publishBundle(args: {
   await runGit([...G, "fetch", "--no-tags", args.bundle, `HEAD:${ref}`], {
     timeout: 120_000,
   });
-  const changed = (
+  // NUL-separated, unquoted, rename-free, limited by pathspec: no path
+  // quoting or rename trick can hide a CI file from this check.
+  const ciChanges = (
     await runGit(
       [
         ...G,
+        "-c",
+        "core.quotePath=false",
         "diff",
         "--no-ext-diff",
         "--no-textconv",
+        "--no-renames",
         "--name-only",
+        "-z",
         args.base,
         ref,
+        "--",
+        ...CI_PATHS,
       ],
       {},
     )
   )
-    .split("\n")
+    .split("\0")
     .filter(Boolean);
-  if (
-    !args.allowWorkflowChanges &&
-    changed.some((f) => f.startsWith(WORKFLOW_PREFIX))
-  ) {
+  if (!args.allowWorkflowChanges && ciChanges.length > 0) {
     return {
       pushed: false,
       branch: null,
       reason:
-        "Refused: the session changed CI workflow files (.github/workflows/)",
+        "Refused: the session changed CI files (.github/workflows/ or .github/actions/)",
     };
   }
   await runGit(

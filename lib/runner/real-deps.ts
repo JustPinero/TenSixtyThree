@@ -316,6 +316,10 @@ export function buildRealDeps(
           : null,
         dispatchId: args.dispatch.id,
       });
+      // Export ran as the agent uid (git may have run its filter drivers):
+      // kill anything it left behind before the runner reads the bundle,
+      // so nothing can swap the file or outlive the job.
+      if (agentUser) await killAgentProcesses(agentUser);
       if (!exported.bundle) return { pushed: false, branch: null };
       // The runner half: pristine clone + bundle data + token in env.
       return publishBundle({
@@ -381,6 +385,8 @@ export function buildRealDeps(
     },
 
     async cleanup(workdir: string): Promise<void> {
+      const agentUser = await getAgentUser();
+      if (agentUser) await killAgentProcesses(agentUser);
       const job = jobs.get(workdir);
       jobs.delete(workdir);
       // 65.3 — the whole job dir: pristine clone, checkout, HOME, bundle.

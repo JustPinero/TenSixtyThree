@@ -254,3 +254,36 @@ describe("pristine clone → agent worktree → bundle → publish", () => {
     ).rejects.toThrow(/regular file/);
   });
 });
+
+describe("CI-file check cannot be dodged (review 2)", () => {
+  for (const [label, rel] of [
+    ["unicode path (quoted by default)", ".github/workflows/évil.yml"],
+    ["composite action", ".github/actions/setup/action.yml"],
+  ] as const) {
+    it(`refuses ${label}`, async () => {
+      const jobDir = fs.mkdtempSync(path.join(root, "job-"));
+      const { pristine, base } = await pristineClone({
+        url: `file://${origin}`,
+        token: null,
+        dir: path.join(jobDir, "pristine"),
+      });
+      const workdir = path.join(jobDir, "work");
+      await agentWorktree({ pristine, workdir, publicUrl: "https://github.com/o/r.git" });
+      fs.mkdirSync(path.dirname(path.join(workdir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(workdir, rel), "x\n");
+      const outDir = path.join(jobDir, "out");
+      fs.mkdirSync(outDir);
+      const exported = await exportAgentWork({ workdir, base, outDir, runAs: null, dispatchId: "dq" });
+      const published = await publishBundle({
+        pristine,
+        bundle: exported.bundle!,
+        base,
+        branch: "cloud/dq",
+        remoteUrl: `file://${origin}`,
+        token: null,
+        allowWorkflowChanges: false,
+      });
+      expect(published.pushed).toBe(false);
+    });
+  }
+});

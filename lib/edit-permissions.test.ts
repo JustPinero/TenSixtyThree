@@ -112,3 +112,31 @@ describe("webhook (65.5)", () => {
     expect(row?.status).toBe("started");
   });
 });
+
+describe("sharing is the owner's call (review 3/4)", () => {
+  it("an org ADMIN of a shared org still cannot re-share into another org", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const r = rig;
+    const p = await world(r);
+    await r.prisma.member.updateMany({ where: { userId: "member", organizationId: "org" }, data: { role: "admin" } });
+    await r.prisma.session.update({ where: { token: "member" }, data: { activeOrganizationId: "other" } });
+    vi.doMock("@/lib/db", () => ({ prisma: r.prisma }));
+    const { POST } = await import("@/app/api/orgs/projects/route");
+    const res = await POST(req("/api/orgs/projects", "POST", "member", { projectId: p.id }));
+    expect(res.status).toBe(403);
+  });
+
+  it("an admin of some OTHER org cannot unshare from this org", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const r = rig;
+    const p = await world(r);
+    // member is a plain member of "org" (owner of "other"); acting in "org"
+    vi.doMock("@/lib/db", () => ({ prisma: r.prisma }));
+    const { DELETE } = await import("@/app/api/orgs/projects/route");
+    const res = await DELETE(req("/api/orgs/projects", "DELETE", "member", { projectId: p.id }));
+    expect(res.status).toBe(403);
+    expect(await r.prisma.orgProjectShare.count({ where: { organizationId: "org" } })).toBe(1);
+  });
+});

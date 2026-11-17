@@ -1,6 +1,7 @@
 /** 52.1 — hosted users enqueue cloud dispatches. */
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { randomBytes } from "node:crypto";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 
@@ -17,12 +18,16 @@ async function load(r: DispatchRig) {
 }
 
 async function makeSession(r: DispatchRig, token: string, isDemo = false) {
+  // 65.4 — non-admin cloud runs need the user's own key on file.
+  process.env.ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
+  const { seal } = await import("@/lib/crypto-box");
   const user = await r.prisma.user.create({
     data: {
       id: `u-${token}`,
       name: token,
       email: isDemo ? `${token}@demo.tensixtythree.local` : `${token}@x.dev`,
       isDemo,
+      anthropicKeyEnc: seal("sk-ant-" + "k".repeat(30)),
     },
   });
   await r.prisma.session.create({
@@ -63,7 +68,9 @@ describe("POST /api/dispatch/cloud", () => {
     const { dispatch } = await res.json();
     expect(dispatch.runtime).toBe("cloud");
     expect(dispatch.status).toBe("queued");
-    expect(dispatch.ownerUserId).toBe(me.id);
+    // 65.1 — the response is an allowlist; ownership is checked on the row.
+    const row = await rig.prisma.dispatch.findUnique({ where: { id: dispatch.id } });
+    expect(row?.ownerUserId).toBe(me.id);
     void project;
   });
 

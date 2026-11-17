@@ -1,7 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDispatchQueue } from "@/lib/dispatch-queue";
-import { requireUser } from "@/lib/access";
+import { requireUser, viewerUserId } from "@/lib/access";
+import { visibleProjectFilter } from "@/lib/project-access";
+import { PUBLIC_DISPATCH_SELECT, publicDispatch } from "@/lib/runner/public-dispatch";
 
 /**
  * Phase 38 [P2] — fleet status for the dashboard strip.
@@ -20,28 +22,24 @@ export async function GET(request: NextRequest) {
   const { running, pending } = queue.size();
 
   // 52.3 — recent cloud runs for the runner panel (and ops smoke checks).
+  // 64/65.1 — only runs on projects the caller can see; explicit fields.
+  const visible = {
+    project: await visibleProjectFilter(prisma, viewerUserId(access.viewer)),
+  };
   const recentCloud = await prisma.dispatch.findMany({
-    where: { runtime: "cloud" },
+    where: { runtime: "cloud", ...visible },
     orderBy: { enqueuedAt: "desc" },
     take: 5,
-    select: {
-      id: true,
-      projectSlug: true,
-      mode: true,
-      status: true,
-      costUsd: true,
-      runnerId: true,
-      errorMessage: true,
-      completedAt: true,
-    },
+    select: PUBLIC_DISPATCH_SELECT,
   });
 
   const now = new Date();
   const [queued, started, overdue] = await Promise.all([
-    prisma.dispatch.count({ where: { status: "queued" } }),
-    prisma.dispatch.count({ where: { status: "started" } }),
+    prisma.dispatch.count({ where: { status: "queued", ...visible } }),
+    prisma.dispatch.count({ where: { status: "started", ...visible } }),
     prisma.dispatch.count({
       where: {
+        ...visible,
         status: { in: ["queued", "started"] },
         expectedBy: { lt: now },
       },
@@ -51,10 +49,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(
     {
       queue: { running, pending, capacity: queue.capacity() },
-      recentCloud: recentCloud.map((d) => ({
-      ...d,
-      errorMessage: d.errorMessage?.slice(0, 300) ?? null,
-    })),
+      recentCloud: recentCloud.map(publicDispatch),
     dispatches: { queued, started, overdue },
     },
     { headers: { "Cache-Control": "no-store" } }

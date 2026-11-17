@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkWebhookSecret, WEBHOOK_SECRET_HEADER } from "@/lib/webhook-auth";
 import { prisma } from "@/lib/db";
 import { ingestSessionComplete } from "@/lib/webhook-ingest";
-import { jsonError } from "@/lib/access";
+import { isHosted, jsonError } from "@/lib/access";
 
 /**
  * POST /api/webhook/session-complete
@@ -36,6 +36,15 @@ import { jsonError } from "@/lib/access";
  * Body: { projectPath: string, idempotencyKey?: string }
  */
 export async function POST(request: NextRequest) {
+  // 65.5 — Stop hooks come from Claude sessions on the operator's own
+  // machine. The hosted app has no fleet filesystem and no secret file,
+  // so on hosted this endpoint was open; refuse it outright.
+  if (isHosted()) {
+    return NextResponse.json(
+      { error: "Only available when running TenSixtyThree locally", hostedUnsupported: true },
+      { status: 403 },
+    );
+  }
   // [42.D1] — shared-secret auth (open when no secret file is configured).
   const auth = checkWebhookSecret(request.headers?.get?.(WEBHOOK_SECRET_HEADER) ?? null);
   if (!auth.ok) {

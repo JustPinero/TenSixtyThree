@@ -15,9 +15,19 @@ import { hostname } from "node:os";
 import { prisma } from "../lib/db";
 import { runnerTick } from "../lib/runner/loop";
 import { buildRealDeps } from "../lib/runner/real-deps";
+import { parseRunnerConfig } from "../lib/runner/config";
+import { validateRunnerEnv } from "../lib/env-manifest";
+
+// 65.5 — refuse to boot on bad config instead of running uncapped.
+const envCheck = validateRunnerEnv(process.env);
+if (!envCheck.ok) {
+  console.error(`[runner] refusing to start — missing env: ${envCheck.missing.join(", ")}`);
+  process.exit(1);
+}
+const config = parseRunnerConfig();
 
 const RUNNER_ID = process.env.RUNNER_ID ?? `${hostname()}-${process.pid}`;
-const POLL_MS = Number(process.env.RUNNER_POLL_MS ?? 5000);
+const POLL_MS = config.pollMs;
 const once = process.argv.includes("--once");
 
 function startHealthServer() {

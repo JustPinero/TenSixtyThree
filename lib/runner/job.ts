@@ -10,6 +10,9 @@ import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
 import { foldRunnerMessages, type RunnerMessage } from "./lifecycle";
 import { composePr } from "./pr-body";
 import { heartbeat, finalizeIfOwned } from "./claim";
+import { cloudPermissionFor } from "./autonomy";
+import { canDispatchProject } from "../project-access";
+import { scrubSecrets } from "./scrub";
 
 const HEARTBEAT_MS = 5 * 60_000;
 
@@ -29,7 +32,7 @@ export interface RunnerDeps {
   pushBranch?: (args: {
     workdir: string;
     dispatch: Dispatch;
-  }) => Promise<{ pushed: boolean; branch: string | null }>;
+  }) => Promise<{ pushed: boolean; branch: string | null; reason?: string }>;
   /** 52.5 — open a PR for the pushed branch; returns its url. Optional;
    *  failures never fail the run (the branch is still on the remote). */
   openPullRequest?: (args: {
@@ -60,6 +63,23 @@ export async function runClaimedDispatch(
     return;
   }
 
+  // 65.4 — re-check at claim time: autonomy may have flipped to manual,
+  // or the owner may have lost the right to drive this project, while
+  // the row sat in the queue.
+  const permission = cloudPermissionFor(project.autonomyMode);
+  const stillAllowed =
+    dispatch.ownerUserId !== null &&
+    (await canDispatchProject(prisma, dispatch.ownerUserId, project.id));
+  if (!permission.allowed || !stillAllowed) {
+    await finalizeIfOwned(prisma, dispatch.id, dispatch.runnerId ?? "", {
+      status: "failed",
+      errorMessage: permission.allowed
+        ? "The dispatching user can no longer run this project"
+        : permission.reason,
+    });
+    return;
+  }
+
   let workdir: string | null = null;
   const messages: RunnerMessage[] = [];
   const runnerId = dispatch.runnerId ?? "";
@@ -78,11 +98,13 @@ export async function runClaimedDispatch(
           data: {
             projectId: dispatch.projectId,
             eventType: "session-complete",
-            summary: `[cloud ${dispatch.mode}] ${
-              message.type === "assistant"
-                ? message.text.slice(0, 180)
-                : `tool ${message.name}`
-            }`,
+            summary: scrubSecrets(
+              `[cloud ${dispatch.mode}] ${
+                message.type === "assistant"
+                  ? message.text.slice(0, 180)
+                  : `tool ${message.name}`
+              }`,
+            ),
             details: JSON.stringify({ dispatchId: dispatch.id }),
           },
         });
@@ -95,10 +117,21 @@ export async function runClaimedDispatch(
       try {
         const pushed = await deps.pushBranch({ workdir, dispatch });
         if (pushed.pushed) resultBranch = pushed.branch;
+        else if (pushed.reason) {
+          console.warn(`[runner] push skipped for ${dispatch.id}: ${pushed.reason}`);
+          await prisma.activityEvent.create({
+            data: {
+              projectId: dispatch.projectId,
+              eventType: "session-complete",
+              summary: scrubSecrets(`[cloud ${dispatch.mode}] ${pushed.reason}`),
+              details: JSON.stringify({ dispatchId: dispatch.id }),
+            },
+          });
+        }
       } catch (pushError) {
         console.warn(
           `[runner] push failed for ${dispatch.id}:`,
-          pushError instanceof Error ? pushError.message : pushError,
+          scrubSecrets(pushError instanceof Error ? pushError.message : String(pushError)),
         );
       }
     }
@@ -126,7 +159,7 @@ export async function runClaimedDispatch(
       } catch (prError) {
         console.warn(
           `[runner] PR failed for ${dispatch.id}:`,
-          prError instanceof Error ? prError.message : prError,
+          scrubSecrets(prError instanceof Error ? prError.message : String(prError)),
         );
       }
     }
@@ -156,7 +189,10 @@ export async function runClaimedDispatch(
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // 65.1 — git/SDK/fetch errors echo URLs and headers; scrub before storing.
+    const message = scrubSecrets(
+      error instanceof Error ? error.message : String(error),
+    );
     // Budget stops kill the process instead of yielding a result message —
     // salvage the spend so cost accounting stays honest (round-4 lesson).
     const budgetMatch = message.match(/Budget limit reached \(\$([\d.]+)/);

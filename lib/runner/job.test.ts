@@ -12,13 +12,18 @@ afterEach(async () => {
 });
 
 async function claimed(r: DispatchRig) {
+  // 65.4 — the claim-time check needs an owner who may still drive it.
+  await r.prisma.user.create({
+    data: { id: "owner", name: "o", email: "o@x.dev" },
+  });
   const project = await r.prisma.project.create({
-    data: { name: "P", slug: "p", path: "/p/p", githubRepo: "just/p" },
+    data: { name: "P", slug: "p", path: "/p/p", githubRepo: "just/p", ownerUserId: "owner" },
   });
   const dispatch = await r.prisma.dispatch.create({
     data: {
       projectId: project.id,
       projectSlug: "p",
+      ownerUserId: "owner",
       mode: "audit",
       runtime: "cloud",
       status: "started",
@@ -220,5 +225,38 @@ describe("PR step (52.5)", () => {
     expect(row?.status).toBe("completed");
     expect(row?.resultBranch).toBe("cloud/x");
     expect(row?.resultPrUrl).toBeNull();
+  });
+});
+
+describe("65.4 — claim-time re-check", () => {
+  it("a project flipped to manual while queued is failed without cloning", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch, project } = await claimed(rig);
+    await rig.prisma.project.update({ where: { id: project.id }, data: { autonomyMode: "manual" } });
+    const cloneRepo = vi.fn();
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo,
+      runAgent: async function* () {},
+      cleanup: async () => {},
+    });
+    expect(cloneRepo).not.toHaveBeenCalled();
+    const row = await rig.prisma.dispatch.findUnique({ where: { id: dispatch.id } });
+    expect(row?.status).toBe("failed");
+    expect(row?.errorMessage).toMatch(/manual/);
+  });
+
+  it("stored error text is scrubbed of credentials", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { dispatch } = await claimed(rig);
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: async () => {
+        throw new Error("fatal: https://x-access-token:ghp_" + "z".repeat(36) + "@github.com/just/p.git");
+      },
+      runAgent: async function* () {},
+      cleanup: async () => {},
+    });
+    const row = await rig.prisma.dispatch.findUnique({ where: { id: dispatch.id } });
+    expect(row?.errorMessage).not.toMatch(/ghp_|x-access-token:[^[]/);
+    expect(row?.errorMessage).toContain("github.com/just/p.git");
   });
 });

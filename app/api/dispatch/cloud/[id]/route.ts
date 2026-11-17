@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSignedIn } from "@/lib/access";
 import { canSeeProject } from "@/lib/project-access";
+import { PUBLIC_DISPATCH_SELECT, publicDispatch } from "@/lib/runner/public-dispatch";
 
 export async function GET(
   request: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
   const { id } = await params;
   const dispatch = await prisma.dispatch.findUnique({
     where: { id },
-    include: { outcome: true },
+    select: { ...PUBLIC_DISPATCH_SELECT, projectId: true, outcome: true },
   });
   if (
     !dispatch ||
@@ -38,6 +39,7 @@ export async function GET(
     select: { id: true, summary: true, createdAt: true },
   });
 
-  const { outcome, ...row } = dispatch;
-  return NextResponse.json({ dispatch: row, outcome, events });
+  const { outcome, projectId: _projectId, ...row } = dispatch;
+  void _projectId;
+  return NextResponse.json({ dispatch: publicDispatch(row), outcome, events });
 }

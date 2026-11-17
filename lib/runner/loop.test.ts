@@ -32,13 +32,18 @@ function fakeDeps() {
 describe("runnerTick", () => {
   it("claims and completes one queued cloud dispatch, returns true", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
+    // 65.4 — the claim-time check needs an owner who may still drive it.
+    await rig.prisma.user.create({
+      data: { id: "owner", name: "o", email: "o@x.dev" },
+    });
     const project = await rig.prisma.project.create({
-      data: { name: "P", slug: "p", path: "/p/p", githubRepo: "just/p" },
+      data: { name: "P", slug: "p", path: "/p/p", githubRepo: "just/p", ownerUserId: "owner" },
     });
     const dispatch = await rig.prisma.dispatch.create({
       data: {
         projectId: project.id,
         projectSlug: "p",
+        ownerUserId: "owner",
         mode: "continue",
         runtime: "cloud",
         status: "queued",

@@ -42,6 +42,7 @@ export function CloudDispatchPanel({
   const [run, setRun] = useState<RunState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function CloudDispatchPanel({
       const data: RunState = await res.json();
       setRun(data);
       if (
-        ["completed", "failed"].includes(data.dispatch.status) &&
+        ["completed", "failed", "timeout"].includes(data.dispatch.status) &&
         timer.current
       ) {
         clearInterval(timer.current);
@@ -67,6 +68,13 @@ export function CloudDispatchPanel({
   }, [runId]);
 
   if (!hasRepo || hidden) return null;
+
+  // 65.4 — one active run per project: no second click while one is
+  // being enqueued or is still queued/started.
+  const runActive =
+    runId !== null &&
+    (run === null || ["queued", "started"].includes(run.dispatch.status));
+  const disabled = submitting || runActive;
 
   return (
     <div className="mb-6 p-4 border border-space-600 bg-space-800">
@@ -94,28 +102,45 @@ export function CloudDispatchPanel({
           ))}
         </select>
         <button
+          type="button"
+          disabled={disabled}
+          aria-busy={submitting}
           onClick={async () => {
+            if (disabled) return;
             setError(null);
-            const res = await fetch("/api/dispatch/cloud", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ slug, mode }),
-            });
-            if (res.status === 401) {
-              setHidden(true);
-              return;
+            setSubmitting(true);
+            try {
+              const res = await fetch("/api/dispatch/cloud", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug, mode }),
+              });
+              if (res.status === 401) {
+                setHidden(true);
+                return;
+              }
+              const data = await res.json().catch(() => ({}));
+              if (res.status === 409 && typeof data.dispatchId === "string") {
+                // Already running — follow that run instead of erroring.
+                setRun(null);
+                setRunId(data.dispatchId);
+                return;
+              }
+              if (!res.ok) {
+                setError(data.error ?? "Couldn't enqueue.");
+                return;
+              }
+              setRun(null);
+              setRunId(data.dispatch.id);
+            } catch {
+              setError("Network error — try again.");
+            } finally {
+              setSubmitting(false);
             }
-            const data = await res.json();
-            if (!res.ok) {
-              setError(data.error ?? "Couldn't enqueue.");
-              return;
-            }
-            setRun(null);
-            setRunId(data.dispatch.id);
           }}
-          className="border border-cyan px-3 py-1.5 text-xs font-mono uppercase text-cyan hover:bg-cyan/10"
+          className="border border-cyan px-3 py-1.5 text-xs font-mono uppercase text-cyan hover:bg-cyan/10 disabled:opacity-50 disabled:cursor-not-allowed focus-ring"
         >
-          Dispatch to cloud
+          {submitting ? "Dispatching…" : runActive ? "Run in progress" : "Dispatch to cloud"}
         </button>
         {error && (
           <span role="alert" className="text-xs font-mono text-danger">

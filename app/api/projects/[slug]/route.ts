@@ -4,7 +4,7 @@ import { markAuditsRead } from "@/lib/unread";
 import { isValidSlug } from "@/lib/validators";
 import { validateBadges } from "@/lib/badges";
 import { THEME_KEYS, type ThemeKey } from "@/lib/theme-registry";
-import { canSeeProject } from "@/lib/project-access";
+import { canSeeProject, canEditProject } from "@/lib/project-access";
 import { jsonError, requireUser } from "@/lib/access";
 
 export async function GET(
@@ -71,12 +71,21 @@ export async function PATCH(
       });
       if (target) {
         const session = access.viewer.kind === "user" ? access.viewer.session : null;
-        if (
-          !(await canSeeProject(prisma, session?.user.id ?? null, target.id))
-        ) {
+        const userId = session?.user.id ?? null;
+        if (!(await canSeeProject(prisma, userId, target.id))) {
           return NextResponse.json(
             { error: "Project not found" },
             { status: 404 },
+          );
+        }
+        // 65.4 — seeing is not editing (autonomyMode decides what a cloud
+        // run may do). Demo visitors may still edit their own sandbox.
+        const isDemoSandbox =
+          access.viewer.kind === "user" && access.viewer.isDemo;
+        if (!isDemoSandbox && !(await canEditProject(prisma, userId, target.id))) {
+          return NextResponse.json(
+            { error: "Only the project's owner or an org admin can change it" },
+            { status: 403 },
           );
         }
       }

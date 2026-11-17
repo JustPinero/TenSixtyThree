@@ -8,12 +8,23 @@
  *    degrades gracefully.
  *  - local-only: only meaningful on an operator machine with a filesystem
  *    fleet (PROJECTS_DIR scans, dispatcher shell-outs, Stop-hook spool).
+ *  - runner-required / runner-optional (65.5): the cloud runner service
+ *    (RUNNER_MODE=1). validateRunnerEnv() refuses to boot without the
+ *    required ones.
+ *  - platform: set by the runtime/toolchain (NODE_ENV, PATH, PORT, CI…),
+ *    declared so the inventory test can prove nothing is undeclared.
  *
  * The inventory test in env-manifest.test.ts pins this list to the actual
  * `process.env.*` reads in app/lib/scripts — extend BOTH when adding a var.
  */
 
-export type EnvScope = "hosted-required" | "hosted-optional" | "local-only";
+export type EnvScope =
+  | "hosted-required"
+  | "hosted-optional"
+  | "local-only"
+  | "runner-required"
+  | "runner-optional"
+  | "platform";
 
 export interface EnvVarSpec {
   name: string;
@@ -136,6 +147,50 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
     description:
       "Comma list of sources for the version watcher's feature-proposal feed.",
   },
+  // ── cloud runner service (65.5) ────────────────────────────────────────
+  {
+    name: "RUNNER_MODE",
+    scope: "runner-required",
+    description: '"1" makes `pnpm start` boot the cloud runner instead of the web app.',
+  },
+  {
+    name: "GITHUB_TOKEN",
+    scope: "runner-optional",
+    description:
+      "Clone private repos, push result branches, open PRs. Passed to git only as an http.extraHeader in env (lib/runner/git-ops.ts) — never in a URL or argv. Should be a fine-grained PAT scoped to the dispatched repos.",
+  },
+  {
+    name: "RUNNER_ID",
+    scope: "runner-optional",
+    description: "Stable runner identity for claims (default: hostname-pid).",
+  },
+  {
+    name: "RUNNER_MAX_TURNS",
+    scope: "runner-optional",
+    description: "Agent turn cap per run (default 40). Non-numeric → boot refuses.",
+  },
+  {
+    name: "RUNNER_MAX_BUDGET_USD",
+    scope: "runner-optional",
+    description: "Spend cap per run in USD (default 5). Non-numeric → boot refuses (a NaN used to remove the cap).",
+  },
+  {
+    name: "RUNNER_POLL_MS",
+    scope: "runner-optional",
+    description: "Queue poll interval (default 5000).",
+  },
+  // ── platform / toolchain ───────────────────────────────────────────────
+  { name: "NODE_ENV", scope: "platform", description: "Set by Next.js / the runtime." },
+  { name: "NEXT_RUNTIME", scope: "platform", description: "Set by Next.js (nodejs | edge)." },
+  { name: "PATH", scope: "platform", description: "Passed through to subprocesses." },
+  { name: "TMPDIR", scope: "platform", description: "Scratch directory base." },
+  { name: "PORT", scope: "platform", description: "Set by Railway; health server port." },
+  { name: "CI", scope: "platform", description: "Set by GitHub Actions; tunes Playwright." },
+  {
+    name: "CLOUDFLARE_API_TOKEN",
+    scope: "platform",
+    description: "Operator-only: `pnpm infra:cloudflare` (1Password Cascade → TenSixtyThree Cloudflare token).",
+  },
   // ── local-only (operator machine / fleet filesystem) ───────────────────
   {
     name: "PROJECTS_DIR",
@@ -206,4 +261,15 @@ export function validateHostedEnv(
   }
 
   return { ok: missing.length === 0, missing, warnings };
+}
+
+/** 65.5 — the runner refuses to boot without these. */
+export function validateRunnerEnv(
+  env: Record<string, string | undefined>,
+): { ok: boolean; missing: string[] } {
+  // RUNNER_MODE only routes `pnpm start` to the runner; `pnpm start:runner`
+  // runs it directly, so it is not required here.
+  const required = ["DATABASE_URL", "ENCRYPTION_KEY"];
+  const missing = required.filter((name) => !env[name]);
+  return { ok: missing.length === 0, missing };
 }

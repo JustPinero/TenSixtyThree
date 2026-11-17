@@ -25,14 +25,19 @@ async function viewerContext(prisma: PrismaClient, userId: string | null) {
     }),
     prisma.member.findMany({
       where: { userId },
-      select: { organizationId: true },
+      select: { organizationId: true, role: true },
     }),
   ]);
   return {
     kind: "user" as const,
+    exists: user !== null,
     isAdmin: user?.role === "admin",
     isDemo: user?.isDemo === true,
     orgIds: memberships.map((m) => m.organizationId),
+    /** Orgs where the viewer is owner/admin — they may act on shared projects. */
+    managedOrgIds: memberships
+      .filter((m) => m.role === "owner" || m.role === "admin")
+      .map((m) => m.organizationId),
   };
 }
 
@@ -43,7 +48,14 @@ export async function visibleProjectFilter(
   const viewer = await viewerContext(prisma, userId);
   if (viewer.kind === "none") return { id: { in: [] } };
   if (viewer.kind === "local") return { isDemo: false };
-  if (viewer.isDemo) return { isDemo: true };
+  // S13 — a demo visitor sees only the sandbox shared into their own
+  // demo org, not every concurrent visitor's.
+  if (viewer.isDemo) {
+    return {
+      isDemo: true,
+      orgShares: { some: { organizationId: { in: viewer.orgIds } } },
+    };
+  }
   // Admins ARE the operator: the whole non-demo fleet.
   if (viewer.isAdmin) return { isDemo: false };
 
@@ -67,4 +79,58 @@ export async function canSeeProject(
     select: { id: true },
   });
   return hit !== null;
+}
+
+/**
+ * Phase 65.4 — seeing is not acting. Who may change a project's settings
+ * (autonomyMode especially) or spend runs on it: the owner, an owner/admin
+ * of an org it is shared into, a site admin, or the local operator. Plain
+ * org members can see and discuss, not drive. Demo sessions never.
+ * (A per-share permission column would refine "org admin" — phase 66.)
+ */
+async function actFilter(
+  prisma: PrismaClient,
+  userId: string | null,
+): Promise<Prisma.ProjectWhereInput | null> {
+  const viewer = await viewerContext(prisma, userId);
+  if (viewer.kind === "none") return null;
+  if (viewer.kind === "local") return { isDemo: false };
+  if (!viewer.exists || viewer.isDemo) return null;
+  if (viewer.isAdmin) return { isDemo: false };
+  return {
+    isDemo: false,
+    OR: [
+      { ownerUserId: userId },
+      { orgShares: { some: { organizationId: { in: viewer.managedOrgIds } } } },
+    ],
+  };
+}
+
+async function matches(
+  prisma: PrismaClient,
+  where: Prisma.ProjectWhereInput | null,
+  projectId: number,
+): Promise<boolean> {
+  if (!where) return false;
+  const hit = await prisma.project.findFirst({
+    where: { AND: [{ id: projectId }, where] },
+    select: { id: true },
+  });
+  return hit !== null;
+}
+
+export async function canEditProject(
+  prisma: PrismaClient,
+  userId: string | null,
+  projectId: number,
+): Promise<boolean> {
+  return matches(prisma, await actFilter(prisma, userId), projectId);
+}
+
+export async function canDispatchProject(
+  prisma: PrismaClient,
+  userId: string | null,
+  projectId: number,
+): Promise<boolean> {
+  return matches(prisma, await actFilter(prisma, userId), projectId);
 }

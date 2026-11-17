@@ -8,7 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSignedIn } from "@/lib/access";
 import { isDemoSession } from "@/lib/demo";
-import { canSeeProject } from "@/lib/project-access";
+import { canSeeProject, canDispatchProject } from "@/lib/project-access";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { PUBLIC_DISPATCH_SELECT, publicDispatch } from "@/lib/runner/public-dispatch";
 import { cloudPermissionFor } from "@/lib/runner/autonomy";
 
 const MODES = ["continue", "audit", "investigate", "custom"];
@@ -32,6 +34,13 @@ export async function POST(request: NextRequest) {
   if (!project || !(await canSeeProject(prisma, session.user.id, project.id))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+  // 65.4 — seeing is not driving: owner, org owner/admin, or site admin.
+  if (!(await canDispatchProject(prisma, session.user.id, project.id))) {
+    return NextResponse.json(
+      { error: "Only the project's owner or an org admin can start cloud runs" },
+      { status: 403 },
+    );
+  }
   if (!project.githubRepo) {
     return NextResponse.json(
       { error: "Cloud dispatch needs a GitHub repo on the project" },
@@ -43,8 +52,40 @@ export async function POST(request: NextRequest) {
   if (!permission.allowed) {
     return NextResponse.json({ error: permission.reason }, { status: 400 });
   }
+  // 65.4 — non-admins run on their own key; the app key is the
+  // operator's, not a free tier.
+  if (!access.viewer.isAdmin) {
+    const owner = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { anthropicKeyEnc: true },
+    });
+    if (!owner?.anthropicKeyEnc) {
+      return NextResponse.json(
+        { error: "Cloud runs use your own Anthropic key. Add one in Settings first." },
+        { status: 402 },
+      );
+    }
+  }
+  // 65.4 — one active run per (user, project), and a per-user ceiling.
+  const active = await prisma.dispatch.findFirst({
+    where: {
+      projectId: project.id,
+      ownerUserId: session.user.id,
+      runtime: "cloud",
+      status: { in: ["queued", "started"] },
+    },
+    select: { id: true },
+  });
+  if (active) {
+    return NextResponse.json(
+      { error: "A cloud run for this project is already in progress", dispatchId: active.id },
+      { status: 409 },
+    );
+  }
+  const limited = checkRateLimit(`cloud-dispatch:${session.user.id}`, 20, 3600_000);
+  if (limited) return limited;
 
-  const dispatch = await prisma.dispatch.create({
+  const created = await prisma.dispatch.create({
     data: {
       projectId: project.id,
       projectSlug: project.slug,
@@ -58,6 +99,7 @@ export async function POST(request: NextRequest) {
         ? { customPrompt: body.prompt.slice(0, 5000) }
         : {}),
     },
+    select: PUBLIC_DISPATCH_SELECT,
   });
-  return NextResponse.json({ dispatch });
+  return NextResponse.json({ dispatch: publicDispatch(created) });
 }

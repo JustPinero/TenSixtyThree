@@ -56,13 +56,13 @@ describe("visibleProjectFilter × AUTH_REQUIRED", () => {
     expect(await slugs(rig, null)).toEqual([]);
   });
 
-  it("hosted: plain user sees none of the operator fleet, admin sees it, demo sees demo", async () => {
+  it("hosted: plain user sees none of the operator fleet, admin sees it, a demo user without a sandbox org sees nothing", async () => {
     process.env.AUTH_REQUIRED = "true";
     rig = await createDispatchRig({ fakeTimers: false });
     await seed(rig);
     expect(await slugs(rig, "u-plain")).toEqual([]);
     expect(await slugs(rig, "u-admin")).toEqual(["fleet"]);
-    expect(await slugs(rig, "u-demo")).toEqual(["demo-x"]);
+    expect(await slugs(rig, "u-demo")).toEqual([]);
   });
 
   it("hosted: an unknown user id → nothing", async () => {
@@ -89,5 +89,97 @@ describe("resolveAnthropicKey × AUTH_REQUIRED", () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const k = await resolveAnthropicKey(rig.prisma, null);
     expect(k).toEqual({ key: "sk-app", source: "app" });
+  });
+});
+
+describe("demo visitors see only their own sandbox (S13)", () => {
+  it("two demo users never see each other's demo projects", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const r = rig;
+    for (const n of ["a", "b"]) {
+      await r.prisma.user.create({
+        data: { id: `demo-${n}`, name: n, email: `${n}@demo.x`, isDemo: true },
+      });
+      await r.prisma.organization.create({
+        data: { id: `org-${n}`, name: n, slug: `org-${n}`, isDemo: true, createdAt: new Date() },
+      });
+      await r.prisma.member.create({
+        data: { userId: `demo-${n}`, organizationId: `org-${n}`, role: "owner", createdAt: new Date() },
+      });
+      const p = await r.prisma.project.create({
+        data: { name: n, slug: `demo-${n}-proj`, path: `/demo/${n}`, isDemo: true },
+      });
+      await r.prisma.orgProjectShare.create({
+        data: { organizationId: `org-${n}`, projectId: p.id, sharedById: `demo-${n}` },
+      });
+    }
+    expect(await slugs(r, "demo-a")).toEqual(["demo-a-proj"]);
+    expect(await slugs(r, "demo-b")).toEqual(["demo-b-proj"]);
+  });
+});
+
+describe("canEditProject / canDispatchProject (65.4)", () => {
+  async function matrix(r: DispatchRig) {
+    for (const [id, role] of [
+      ["owner", "user"],
+      ["orgadmin", "user"],
+      ["orgmember", "user"],
+      ["stranger", "user"],
+      ["admin", "admin"],
+    ] as const) {
+      await r.prisma.user.create({ data: { id, name: id, email: `${id}@x.dev`, role } });
+    }
+    await r.prisma.user.create({
+      data: { id: "demo", name: "d", email: "d@demo.x", isDemo: true },
+    });
+    await r.prisma.organization.create({
+      data: { id: "org", name: "Org", slug: "org", createdAt: new Date() },
+    });
+    for (const [userId, role] of [
+      ["owner", "owner"],
+      ["orgadmin", "admin"],
+      ["orgmember", "member"],
+    ] as const) {
+      await r.prisma.member.create({
+        data: { userId, organizationId: "org", role, createdAt: new Date() },
+      });
+    }
+    const p = await r.prisma.project.create({
+      data: { name: "Owned", slug: "owned", path: "/p/o", ownerUserId: "owner" },
+    });
+    await r.prisma.orgProjectShare.create({
+      data: { organizationId: "org", projectId: p.id, sharedById: "owner" },
+    });
+    return p.id;
+  }
+
+  it("owner, org owner/admin and site admin may edit and dispatch; plain members, strangers and demo may not", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const id = await matrix(rig);
+    const { canEditProject, canDispatchProject } = await import("./project-access");
+    const expected: Record<string, boolean> = {
+      owner: true,
+      orgadmin: true,
+      orgmember: false,
+      stranger: false,
+      admin: true,
+      demo: false,
+    };
+    for (const [user, allowed] of Object.entries(expected)) {
+      expect(await canEditProject(rig.prisma, user, id), `edit ${user}`).toBe(allowed);
+      expect(await canDispatchProject(rig.prisma, user, id), `dispatch ${user}`).toBe(allowed);
+    }
+    expect(await canEditProject(rig.prisma, null, id)).toBe(false);
+  });
+
+  it("local mode: the operator may edit and dispatch", async () => {
+    delete process.env.AUTH_REQUIRED;
+    rig = await createDispatchRig({ fakeTimers: false });
+    const id = await matrix(rig);
+    const { canEditProject, canDispatchProject } = await import("./project-access");
+    expect(await canEditProject(rig.prisma, null, id)).toBe(true);
+    expect(await canDispatchProject(rig.prisma, null, id)).toBe(true);
   });
 });

@@ -12,9 +12,19 @@ export interface ResolvedKey {
   source: "user" | "app" | "none";
 }
 
+export class ByokDecryptError extends Error {
+  constructor() {
+    super(
+      "Your stored Anthropic key could not be decrypted. Re-enter it in Settings.",
+    );
+    this.name = "ByokDecryptError";
+  }
+}
+
 export async function resolveAnthropicKey(
   prisma: PrismaClient,
   userId: string | null,
+  opts: { strict?: boolean } = {},
 ): Promise<ResolvedKey> {
   const appKey = process.env.ANTHROPIC_API_KEY ?? "";
   if (!userId) {
@@ -30,6 +40,12 @@ export async function resolveAnthropicKey(
   if (!user?.anthropicKeyEnc) return { key: appKey, source: "app" };
 
   const decrypted = open(user.anthropicKeyEnc);
-  if (!decrypted) return { key: appKey, source: "app" };
+  if (!decrypted) {
+    // 65.4 — a stored-but-broken key is the user's key going missing; in
+    // strict mode (cloud runs) that is an error, never a silent switch to
+    // the app key.
+    if (opts.strict) throw new ByokDecryptError();
+    return { key: appKey, source: "app" };
+  }
   return { key: decrypted, source: "user" };
 }

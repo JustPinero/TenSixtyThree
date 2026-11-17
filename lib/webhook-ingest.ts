@@ -88,9 +88,12 @@ export async function ingestSessionComplete(
   // Find the originating Dispatch row, if any. Idempotency-key path
   // is the canonical correlation mechanism; legacy lookup runs as
   // fallback only when the key is absent or unknown.
-  const dispatch = idempotencyKey
+  // 65.5 — a Stop hook only ever speaks for LOCAL dispatches; it must
+  // never be able to flip a cloud runner's row.
+  const found = idempotencyKey
     ? await prisma.dispatch.findUnique({ where: { idempotencyKey } })
     : null;
+  const dispatch = found && found.runtime === "local" ? found : null;
 
   // Idempotency: a duplicate Stop hook (or a re-drained spool entry)
   // for an already-completed dispatch returns a deduped response
@@ -114,7 +117,7 @@ export async function ingestSessionComplete(
   } else {
     queue.release(projectPath);
     const latestInFlight = await prisma.dispatch.findFirst({
-      where: { projectSlug: slug, status: { in: ["queued", "started"] } },
+      where: { projectSlug: slug, runtime: "local", status: { in: ["queued", "started"] } },
       orderBy: { enqueuedAt: "desc" },
     });
     if (latestInFlight) {

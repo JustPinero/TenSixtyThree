@@ -3,7 +3,9 @@
  * AC1 from requests/phase-51-hosted/51.4-railway-deploy.md.
  */
 import { describe, it, expect } from "vitest";
-import { ENV_MANIFEST, validateHostedEnv } from "./env-manifest";
+import fs from "node:fs";
+import path from "node:path";
+import { ENV_MANIFEST, validateHostedEnv, validateRunnerEnv } from "./env-manifest";
 
 /** Minimal complete hosted environment. */
 function fullHostedEnv(): Record<string, string> {
@@ -60,40 +62,35 @@ describe("AC1 — validateHostedEnv", () => {
     expect(result.warnings.some((w) => w.includes("AUTH_REQUIRED"))).toBe(true);
   });
 
-  it("covers every env var the app reads (inventory 2026-08-06, +54.1)", () => {
-    // From: grep -rhoE 'process\.env\.[A-Z_0-9]+' app lib scripts
-    const inventory = [
-      "ANTHROPIC_API_KEY",
-      "ADMIN_EMAILS",
-      "ENCRYPTION_KEY",
-      "RESEND_API_KEY",
-      "EMAIL_FROM",
-      "OPS_SECRET",
-      "VERCEL_TOKEN",
-      "DATABASE_URL",
-      "RAILWAY_TOKEN",
-      "PROJECTS_DIR",
-      "CASCADE_MAX_CONCURRENT_SUBAGENTS",
-      "KILROY_BRAIN_PATH",
-      "CASCADE_CHAT_MODEL",
-      "AUTH_REQUIRED",
-      "CASCADE_PLUGIN_JSON_PATH",
-      "CASCADE_CLAUDE_CONFIG_PATH",
-      "CASCADE_AI_SERVICE",
-      "GOOGLE_CLIENT_SECRET",
-      "GOOGLE_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-      "GITHUB_CLIENT_ID",
-      "CASCADE_WEBHOOK_SPOOL",
-      "CASCADE_WEBHOOK_SECRET_PATH",
-      "CASCADE_PORT",
-      "BETTER_AUTH_URL",
-      "BETTER_AUTH_SECRET",
-    ];
+  it("covers every env var the code reads (scanned, not hand-listed)", () => {
+    const roots = ["app", "lib", "scripts", "middleware.ts", "instrumentation.ts"];
+    const read = new Set<string>();
+    const walk = (p: string) => {
+      if (!fs.existsSync(p)) return;
+      const st = fs.statSync(p);
+      if (st.isDirectory()) {
+        if (/node_modules|generated/.test(p)) return;
+        for (const e of fs.readdirSync(p)) walk(path.join(p, e));
+      } else if (/\.(ts|tsx)$/.test(p) && !/\.test\.tsx?$/.test(p)) {
+        for (const m of fs.readFileSync(p, "utf8").matchAll(/process\.env\.([A-Z_0-9]+)/g)) {
+          read.add(m[1]);
+        }
+      }
+    };
+    for (const r of roots) walk(path.resolve(__dirname, "..", r));
     const declared = new Set(ENV_MANIFEST.map((s) => s.name));
-    for (const name of inventory) {
-      expect(declared, `manifest is missing ${name}`).toContain(name);
-    }
+    const undeclared = [...read].filter((n) => !declared.has(n)).sort();
+    expect(undeclared).toEqual([]);
+  });
+
+  it("runner env: required vars are enforced (65.5)", () => {
+    expect(validateRunnerEnv({}).ok).toBe(false);
+    expect(validateRunnerEnv({}).missing).toEqual(
+      expect.arrayContaining(["DATABASE_URL", "ENCRYPTION_KEY"]),
+    );
+    expect(
+      validateRunnerEnv({ DATABASE_URL: "x", ENCRYPTION_KEY: "y" }).ok,
+    ).toBe(true);
   });
 
   it("every manifest entry has a non-empty description", () => {

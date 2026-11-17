@@ -3,13 +3,14 @@
  * scratch-dir cleanup. The SDK is imported dynamically so the Next.js
  * web build never bundles it — only scripts/runner.ts walks this path.
  *
- * Auth: the dispatch owner's BYOK key wins (resolveAnthropicKey), else
- * the app key. GITHUB_TOKEN (optional) unlocks private-repo clones —
- * without it public repos still work and private ones fail with a clear
- * error on the Dispatch row.
+ * Auth (65.4): the dispatch owner's BYOK key; admins may fall back to the
+ * app key, nobody else does, and a stored key that fails to decrypt is a
+ * hard error. GITHUB_TOKEN (optional) unlocks private-repo clones and
+ * pushes — it reaches git only as an env-supplied http.extraHeader
+ * (lib/runner/git-ops.ts), never a URL, argv, or the agent's env.
  */
-import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
-import { tmpdir, homedir } from "node:os";
+import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
@@ -23,6 +24,14 @@ import {
 } from "./sdk-map";
 import { resolveAnthropicKey } from "../anthropic-key";
 import { ensureAgentUser, type AgentUser } from "./agent-user";
+import { parseRunnerConfig } from "./config";
+import {
+  pristineClone,
+  agentWorktree,
+  exportAgentWork,
+  publishBundle,
+} from "./git-ops";
+import { scrubSecrets } from "./scrub";
 
 /** execFile-shaped (no shell) exec for agent-user provisioning. */
 const execForUser = async (command: string, args: string[]) => {
@@ -32,14 +41,43 @@ const execForUser = async (command: string, args: string[]) => {
 
 const execFileAsync = promisify(execFile);
 
-const MAX_TURNS = Number(process.env.RUNNER_MAX_TURNS ?? 40);
-const MAX_BUDGET_USD = Number(process.env.RUNNER_MAX_BUDGET_USD ?? 5);
+/**
+ * 65.3 — everything one job touches lives under one runner-owned dir:
+ *   <job>/pristine  0700, runner only (clone with credentials-in-env)
+ *   <job>/work      the agent's checkout (chowned to the agent uid)
+ *   <job>/home      the agent's HOME for this job only (+ home/tmp)
+ *   <job>/out       where the agent-uid export writes its bundle
+ * Removed in cleanup(), so nothing survives into the next tenant's job.
+ */
+interface JobState {
+  jobDir: string;
+  pristine: string;
+  base: string;
+  home: string;
+  out: string;
+  githubRepo: string;
+}
 
-function cloneUrl(githubRepo: string): string {
-  const token = process.env.GITHUB_TOKEN;
-  return token
-    ? `https://x-access-token:${token}@github.com/${githubRepo}.git`
-    : `https://github.com/${githubRepo}.git`;
+export interface RealDepsOptions {
+  /** Test seam: where to clone from (default https://github.com/<repo>.git). */
+  repoUrl?: (githubRepo: string) => string;
+  /** Test seam: the unprivileged agent user (default: provision tsagent). */
+  agentUser?: () => Promise<AgentUser | null>;
+}
+
+const githubUrl = (repo: string) => `https://github.com/${repo}.git`;
+
+/** Kill every process the agent uid still owns (65.3). */
+async function killAgentProcesses(agentUser: AgentUser): Promise<void> {
+  await new Promise<void>((done) => {
+    const child = spawn(
+      process.execPath,
+      ["-e", "try { process.kill(-1, 'SIGKILL') } catch {}"],
+      { uid: agentUser.uid, gid: agentUser.gid, stdio: "ignore" },
+    );
+    child.on("exit", () => done());
+    child.on("error", () => done());
+  });
 }
 
 const FILE_TOOLS = new Set([
@@ -93,193 +131,202 @@ async function trustWorkdir(workdir: string, home: string): Promise<void> {
   await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
 }
 
-export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
+export function buildRealDeps(
+  prisma: PrismaClient,
+  options: RealDepsOptions = {},
+): RunnerDeps {
+  const config = parseRunnerConfig();
+  const repoUrl = options.repoUrl ?? githubUrl;
+  const getAgentUser =
+    options.agentUser ?? (() => ensureAgentUser(execForUser));
+  const jobs = new Map<string, JobState>();
+
   return {
     async cloneRepo(githubRepo: string): Promise<string> {
-      const workdir = await mkdtemp(join(tmpdir(), "runner-"));
-      await execFileAsync(
-        "git",
-        ["clone", "--depth", "1", cloneUrl(githubRepo), workdir],
-        { timeout: 120_000 },
-      );
-      // Security review 52: the credentialed clone URL lands in
-      // .git/config, readable by the agent — strip it back to the
-      // public URL immediately.
-      await execFileAsync(
-        "git",
-        ["-C", workdir, "remote", "set-url", "origin",
-         `https://github.com/${githubRepo}.git`],
-        { timeout: 10_000 },
-      );
-      return workdir;
+      const jobDir = await mkdtemp(join(tmpdir(), "runner-"));
+      // Traversable (so the agent can reach work/ and home/) but not
+      // listable; pristine/ itself is 0700.
+      await chmod(jobDir, 0o711);
+      try {
+        const { pristine, base } = await pristineClone({
+          url: repoUrl(githubRepo),
+          token: process.env.GITHUB_TOKEN ?? null,
+          dir: join(jobDir, "pristine"),
+        });
+        await chmod(pristine, 0o700);
+        const workdir = join(jobDir, "work");
+        await agentWorktree({ pristine, workdir, publicUrl: githubUrl(githubRepo) });
+        const home = join(jobDir, "home");
+        const out = join(jobDir, "out");
+        await mkdir(join(home, "tmp"), { recursive: true });
+        await mkdir(out, { recursive: true });
+        jobs.set(workdir, { jobDir, pristine, base, home, out, githubRepo });
+        return workdir;
+      } catch (error) {
+        // R17 — a failed clone must not leak its temp dir.
+        await rm(jobDir, { recursive: true, force: true });
+        throw error;
+      }
     },
 
     async *runAgent(args: {
       workdir: string;
       dispatch: Dispatch;
     }): AsyncGenerator<RunnerMessage> {
-      // [52.D1] Run the agent as an unprivileged uid so it cannot read
-      // the runner's /proc/<pid>/environ. Degrades to same-uid with a
-      // warning where provisioning isn't possible (dev boxes, non-root).
-      const agentUser: AgentUser | null = await ensureAgentUser(execForUser);
-      const home = agentUser?.home ?? homedir();
-      if (agentUser) {
-        await execFileAsync(
-          "chown",
-          ["-R", `${agentUser.uid}:${agentUser.gid}`, args.workdir],
-          { timeout: 60_000 },
+      const job = jobs.get(args.workdir);
+      if (!job) throw new Error("runAgent called for an unknown workdir");
+
+      // 65.4 — whose key pays. Non-admins run on their own key only; a
+      // broken stored key is an error, never a silent app-key fallback.
+      const owner = args.dispatch.ownerUserId
+        ? await prisma.user.findUnique({
+            where: { id: args.dispatch.ownerUserId },
+            select: { role: true },
+          })
+        : null;
+      if (!owner) throw new Error("Cloud dispatch has no owner");
+      const resolved = await resolveAnthropicKey(
+        prisma,
+        args.dispatch.ownerUserId,
+        { strict: true },
+      );
+      if (resolved.source !== "user" && owner.role !== "admin") {
+        throw new Error(
+          "Cloud runs use your own Anthropic key. Add one in Settings, then dispatch again.",
         );
+      }
+      if (!resolved.key) throw new Error("No Anthropic key available for this run");
+
+      // [52.D1] Unprivileged uid so the agent cannot read the runner's
+      // /proc/<pid>/environ. Degrades to same-uid with a warning on dev
+      // boxes where provisioning is impossible.
+      const agentUser = await getAgentUser();
+      if (agentUser) {
+        for (const dir of [args.workdir, job.home, job.out]) {
+          await execFileAsync(
+            "chown",
+            ["-R", `${agentUser.uid}:${agentUser.gid}`, dir],
+            { timeout: 60_000 },
+          );
+        }
       } else {
         console.warn(
           "[runner] agent user unavailable — running the session same-uid ([52.D1])",
         );
       }
 
-      // Headless Claude Code refuses untrusted workspaces (repos carrying
-      // .claude/settings.json). Pre-trust the ephemeral clone dir.
-      await trustWorkdir(args.workdir, home);
+      // Headless Claude Code refuses untrusted workspaces; pre-trust the
+      // clone in this job's own HOME.
+      await trustWorkdir(args.workdir, job.home);
       if (agentUser) {
         await execFileAsync(
           "chown",
-          [`${agentUser.uid}:${agentUser.gid}`, join(home, ".claude.json")],
+          [`${agentUser.uid}:${agentUser.gid}`, join(job.home, ".claude.json")],
           { timeout: 30_000 },
         ).catch(() => {});
       }
       const { query } = await import("@anthropic-ai/claude-agent-sdk");
-      const { key } = await resolveAnthropicKey(
-        prisma,
-        args.dispatch.ownerUserId,
-      );
       const prompt = composeCloudPrompt(
         args.dispatch.mode,
         args.dispatch.customPrompt,
       );
-      // Autonomy is enforced at enqueue (manual is refused — see
-      // lib/runner/autonomy.ts). No permissionMode is passed here on
-      // purpose: bypassPermissions skips canUseTool entirely and
-      // acceptEdits auto-approves file edits without it, and both would
-      // drop the path scoping below. Default mode routes every tool
-      // through canUseTool, which is the reviewed posture.
-
-      const stream = query({
-        prompt,
-        options: {
-          cwd: args.workdir,
-          maxTurns: MAX_TURNS,
-          // The runner CONTAINER is the sandbox (dedicated Railway
-          // service, no host mounts) — but the CLI refuses
-          // --dangerously-skip-permissions as root, so tools are granted
-          // through the programmatic canUseTool callback instead (also
-          // the pattern the 52 security review preferred). The agent
-          // still never sees runner secrets: subprocess env is an
-          // explicit allowlist, not process.env.
-          // Security posture (reviewed, accepted 52): file tools are
-          // path-scoped to the clone; Bash stays open because dispatched
-          // sessions legitimately run arbitrary builds/tests — the same
-          // full-autonomy posture as local dispatches, with the container
-          // as the boundary and no runner secrets in the agent env.
-          // [52.D1] uid-separation for the agent subprocess is the real
-          // fix for same-uid /proc reads — logged in audits/debt.md.
-          canUseTool: async (
-            toolName: string,
-            input: Record<string, unknown>,
-          ) => {
-            const decision = classifyToolUse(toolName, input, args.workdir);
-            if (!decision.allowed) {
-              console.warn(
-                `[runner] denied ${toolName}: ${decision.reason}`,
-              );
-              return { behavior: "deny" as const, message: decision.reason };
-            }
-            return { behavior: "allow" as const, updatedInput: input };
-          },
-          env: {
-            ANTHROPIC_API_KEY: key,
-            PATH: process.env.PATH ?? "",
-            HOME: home,
-            ...(process.env.TMPDIR ? { TMPDIR: process.env.TMPDIR } : {}),
-          },
-          ...(agentUser
-            ? {
-                spawnClaudeCodeProcess: (o: {
-                  command: string;
-                  args: string[];
-                  cwd?: string;
-                  env: Record<string, string | undefined>;
-                  signal?: AbortSignal;
-                }) =>
-                  spawn(o.command, o.args, {
-                    cwd: o.cwd,
-                    env: o.env as NodeJS.ProcessEnv,
-                    signal: o.signal,
-                    stdio: ["pipe", "pipe", "pipe"],
-                    uid: agentUser.uid,
-                    gid: agentUser.gid,
-                  }),
+      // Autonomy is enforced at enqueue AND at claim (lib/runner/autonomy.ts).
+      // No permissionMode is passed on purpose: bypassPermissions skips
+      // canUseTool entirely and acceptEdits auto-approves file edits
+      // without it; both would drop the path scoping below.
+      try {
+        const stream = query({
+          prompt,
+          options: {
+            cwd: args.workdir,
+            maxTurns: config.maxTurns,
+            maxBudgetUsd: config.maxBudgetUsd,
+            // 65.3 — no settings from the image, the repo or a previous
+            // job; no session files written for the next tenant to find.
+            settingSources: [],
+            persistSession: false,
+            // File tools are path-scoped to the clone; Bash stays open
+            // (dispatched sessions run builds/tests) with the container +
+            // uid drop as the boundary and no runner secrets in env.
+            canUseTool: async (
+              toolName: string,
+              input: Record<string, unknown>,
+            ) => {
+              const decision = classifyToolUse(toolName, input, args.workdir);
+              if (!decision.allowed) {
+                console.warn(`[runner] denied ${toolName}: ${decision.reason}`);
+                return { behavior: "deny" as const, message: decision.reason };
               }
-            : {}),
-          ...(Number.isFinite(MAX_BUDGET_USD)
-            ? { maxBudgetUsd: MAX_BUDGET_USD }
-            : {}),
-        },
-      });
+              return { behavior: "allow" as const, updatedInput: input };
+            },
+            env: {
+              ANTHROPIC_API_KEY: resolved.key,
+              PATH: process.env.PATH ?? "",
+              HOME: job.home,
+              TMPDIR: join(job.home, "tmp"),
+            },
+            ...(agentUser
+              ? {
+                  spawnClaudeCodeProcess: (o: {
+                    command: string;
+                    args: string[];
+                    cwd?: string;
+                    env: Record<string, string | undefined>;
+                    signal?: AbortSignal;
+                  }) =>
+                    spawn(o.command, o.args, {
+                      cwd: o.cwd,
+                      env: o.env as NodeJS.ProcessEnv,
+                      signal: o.signal,
+                      stdio: ["pipe", "pipe", "pipe"],
+                      uid: agentUser.uid,
+                      gid: agentUser.gid,
+                    }),
+                }
+              : {}),
+          },
+        });
 
-      for await (const message of stream) {
-        for (const mapped of mapSdkMessage(message as SdkWireMessage)) {
-          yield mapped;
+        for await (const message of stream) {
+          for (const mapped of mapSdkMessage(message as SdkWireMessage)) {
+            yield mapped;
+          }
         }
+      } finally {
+        // 65.3 — nothing the agent started outlives the session.
+        if (agentUser) await killAgentProcesses(agentUser);
       }
     },
 
     async pushBranch(args: {
       workdir: string;
       dispatch: Dispatch;
-    }): Promise<{ pushed: boolean; branch: string | null }> {
-      const { workdir, dispatch } = args;
-      // Anything uncommitted the agent left behind gets committed too.
-      // 52.8 — the worktree is owned by the agent uid now; root git
-      // refuses "dubious ownership" without this. Scoped to this dir.
-      const G = ["-C", workdir, "-c", `safe.directory=${workdir}`];
-      const status = await execFileAsync(
-        "git",
-        [...G, "status", "--porcelain"],
-        { timeout: 30_000 },
-      );
-      if (status.stdout.trim()) {
-        await execFileAsync("git", [...G, "add", "-A"], { timeout: 30_000 });
-        await execFileAsync(
-          "git",
-          [
-            ...G,
-            "-c", "user.name=TenSixtyThree Runner",
-            "-c", "user.email=runner@tensixtythree.com",
-            "commit", "-m", `cloud ${dispatch.mode}: session work (dispatch ${dispatch.id})`,
-          ],
-          { timeout: 30_000 },
-        );
-      }
-      // No commits beyond the clone point → nothing to publish.
-      const ahead = await execFileAsync(
-        "git",
-        [...G, "rev-list", "--count", "origin/HEAD..HEAD"],
-        { timeout: 30_000 },
-      ).catch(() => ({ stdout: "0" }));
-      if (Number(ahead.stdout.trim()) === 0) {
-        return { pushed: false, branch: null };
-      }
-      const project = await prisma.project.findUnique({
-        where: { id: dispatch.projectId },
-        select: { githubRepo: true },
+    }): Promise<{ pushed: boolean; branch: string | null; reason?: string }> {
+      const job = jobs.get(args.workdir);
+      if (!job) return { pushed: false, branch: null, reason: "unknown workdir" };
+      // 65.2 — the agent-uid half: commit leftovers + bundle. Nothing the
+      // agent planted ever runs with runner privileges.
+      const agentUser = await getAgentUser();
+      const exported = await exportAgentWork({
+        workdir: args.workdir,
+        base: job.base,
+        outDir: job.out,
+        runAs: agentUser
+          ? { uid: agentUser.uid, gid: agentUser.gid, home: job.home }
+          : null,
+        dispatchId: args.dispatch.id,
       });
-      if (!project?.githubRepo) return { pushed: false, branch: null };
-      const branch = `cloud/${dispatch.id}`;
-      // Push straight to a credentialed URL — never persisted in .git/config.
-      await execFileAsync(
-        "git",
-        [...G, "push", cloneUrl(project.githubRepo), `HEAD:refs/heads/${branch}`],
-        { timeout: 120_000 },
-      );
-      return { pushed: true, branch };
+      if (!exported.bundle) return { pushed: false, branch: null };
+      // The runner half: pristine clone + bundle data + token in env.
+      return publishBundle({
+        pristine: job.pristine,
+        bundle: exported.bundle,
+        base: job.base,
+        branch: `cloud/${args.dispatch.id}`,
+        remoteUrl: repoUrl(job.githubRepo),
+        token: process.env.GITHUB_TOKEN ?? null,
+        allowWorkflowChanges: false,
+      });
     },
 
     async openPullRequest(args: {
@@ -316,8 +363,8 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
           method: "POST",
           headers,
           body: JSON.stringify({
-            title: args.title,
-            body: args.body,
+            title: scrubSecrets(args.title),
+            body: scrubSecrets(args.body),
             head: args.branch,
             base,
           }),
@@ -325,14 +372,19 @@ export function buildRealDeps(prisma: PrismaClient): RunnerDeps {
       );
       if (!prRes.ok) {
         throw new Error(
-          `GitHub PR creation failed: ${prRes.status} ${(await prRes.text()).slice(0, 200)}`,
+          scrubSecrets(
+            `GitHub PR creation failed: ${prRes.status} ${(await prRes.text()).slice(0, 200)}`,
+          ),
         );
       }
       return (await prRes.json()).html_url as string;
     },
 
     async cleanup(workdir: string): Promise<void> {
-      await rm(workdir, { recursive: true, force: true });
+      const job = jobs.get(workdir);
+      jobs.delete(workdir);
+      // 65.3 — the whole job dir: pristine clone, checkout, HOME, bundle.
+      await rm(job?.jobDir ?? workdir, { recursive: true, force: true });
     },
   };
 }

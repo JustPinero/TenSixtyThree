@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { activeOrgContext } from "@/lib/org-context";
-import { canSeeProject } from "@/lib/project-access";
+import { canSeeProject, canEditProject } from "@/lib/project-access";
 
 export async function GET(request: NextRequest) {
   const ctx = await activeOrgContext(prisma, request);
@@ -52,6 +52,14 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+  // S7 — a plain member of one org must not re-share a project into
+  // another org they control. Sharing is an owner/admin act.
+  if (!(await canEditProject(prisma, ctx.session.user.id, project.id))) {
+    return NextResponse.json(
+      { error: "Only the project's owner or an org admin can share it" },
+      { status: 403 },
+    );
+  }
   const existing = await prisma.orgProjectShare.findFirst({
     where: { organizationId: ctx.orgId, projectId },
   });
@@ -80,6 +88,18 @@ export async function DELETE(request: NextRequest) {
   const projectId = typeof body.projectId === "number" ? body.projectId : null;
   if (projectId === null) {
     return NextResponse.json({ error: "projectId required" }, { status: 400 });
+  }
+  // S14 — unsharing: the project's editor, or an owner/admin of this org.
+  const me = await prisma.member.findFirst({
+    where: { organizationId: ctx.orgId, userId: ctx.session.user.id },
+    select: { role: true },
+  });
+  const orgManager = me?.role === "owner" || me?.role === "admin";
+  if (!orgManager && !(await canEditProject(prisma, ctx.session.user.id, projectId))) {
+    return NextResponse.json(
+      { error: "Only the project's owner or an org admin can unshare it" },
+      { status: 403 },
+    );
   }
   await prisma.orgProjectShare.deleteMany({
     where: { organizationId: ctx.orgId, projectId },

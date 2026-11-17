@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 40 [P3] — route tests for the recommendations endpoint.
  *
@@ -40,7 +41,7 @@ interface Body {
 
 async function callRoute(): Promise<Body> {
   (globalThis as Record<string, unknown>).__rigPrisma = rig!.prisma;
-  const res = await GET();
+  const res = await GET(new NextRequest("http://x/api/recommendations"));
   expect(res.status).toBe(200);
   return (await res.json()) as Body;
 }

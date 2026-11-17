@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDispatchQueue } from "@/lib/dispatch-queue";
+import { requireUser } from "@/lib/access";
 
 /**
  * Phase 38 [P2] — fleet status for the dashboard strip.
@@ -12,7 +13,9 @@ import { getDispatchQueue } from "@/lib/dispatch-queue";
  *
  * No-store: the strip polls every 15s and must see live state.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   const queue = getDispatchQueue();
   const { running, pending } = queue.size();
 

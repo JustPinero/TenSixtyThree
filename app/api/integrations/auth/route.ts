@@ -4,6 +4,7 @@ import {
   launchLogin,
   type CLIService,
 } from "@/lib/cli-auth";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 const VALID_SERVICES = new Set(["vercel", "github", "railway", "1password"]);
 
@@ -12,14 +13,14 @@ const VALID_SERVICES = new Set(["vercel", "github", "railway", "1password"]);
  *
  * Returns auth status for all CLI services.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const statuses = checkAllAuthStatuses();
     return NextResponse.json(statuses);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.auth");
   }
 }
 
@@ -30,6 +31,8 @@ export async function GET() {
  * Body: { service: "vercel" | "github" | "railway" | "1password" }
  */
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const { service } = await request.json();
 
@@ -51,8 +54,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, service });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.auth");
   }
 }

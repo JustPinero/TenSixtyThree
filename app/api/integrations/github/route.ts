@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGitHubRepo, isGhAuthenticated } from "@/lib/github";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     if (!isGhAuthenticated()) {
       return NextResponse.json(
@@ -34,8 +37,6 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.github");
   }
 }

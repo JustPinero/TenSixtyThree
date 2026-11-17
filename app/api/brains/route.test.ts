@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /** Phase 48.4 — /api/brains registry surface. */
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
@@ -34,7 +35,7 @@ describe("/api/brains", () => {
       }),
     );
     expect(res.status).toBe(200);
-    const list = await (await route.GET()).json();
+    const list = await (await route.GET(new NextRequest("http://x/api/brains"))).json();
     expect(list.brains.length).toBe(1);
     expect(list.brains[0].valid).toBe(true);
   });

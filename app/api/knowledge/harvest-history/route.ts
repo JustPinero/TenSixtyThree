@@ -4,6 +4,7 @@ import {
   retroHarvestProject,
   retroHarvestAll,
 } from "@/lib/retroactive-harvester";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 /**
  * POST /api/knowledge/harvest-history
@@ -12,6 +13,8 @@ import {
  * Body: { slug?: string } — harvest one project or all if no slug.
  */
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || !apiKey.startsWith("sk-")) {
@@ -66,8 +69,6 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "knowledge.harvest-history");
   }
 }

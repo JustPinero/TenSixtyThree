@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   computeRecommendations,
   type ProjectOutcomes,
 } from "@/lib/dispatch-recommendations";
+import { requireUser } from "@/lib/access";
 
 /**
  * Phase 40 [P3] — outcome-driven dispatch recommendations for the dashboard.
@@ -26,7 +27,9 @@ function parseSignals(raw: string): string[] {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   const rows = await prisma.dispatchOutcome.findMany({

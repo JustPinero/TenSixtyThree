@@ -3,7 +3,7 @@ import path from "path";
 import { execFileSync, execSync } from "child_process";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { createGitHubRepo } from "./github";
-import { isValidGithubUrl } from "./validators";
+import { isValidGithubUrl, isValidSlug } from "./validators";
 
 function detectGitAuthor(): { name: string; email: string } {
   let name = "Cascade User";
@@ -59,7 +59,18 @@ export async function launchProject(
   projectsDir: string,
   config: LaunchConfig
 ): Promise<LaunchResult> {
-  const projectPath = path.join(projectsDir, config.name);
+  const root = path.resolve(projectsDir);
+  const projectPath = path.resolve(root, config.name);
+  // 64.3 — belt and braces behind the route's validation: the project
+  // directory is exactly one level under PROJECTS_DIR.
+  if (path.dirname(projectPath) !== root || !isValidSlug(config.slug)) {
+    return {
+      success: false,
+      projectPath,
+      githubUrl: null,
+      error: "Invalid project name or slug",
+    };
+  }
 
   try {
     // 1. Create project directory

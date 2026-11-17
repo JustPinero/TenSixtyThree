@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { resolveBrainPath } from "@/lib/brain-registry";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 const PLAYBOOK_PATH = path.resolve(
   process.cwd(),
@@ -10,7 +11,9 @@ const PLAYBOOK_PATH = path.resolve(
   "overseer-playbook.md"
 );
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const content = await fs.readFile(PLAYBOOK_PATH, "utf-8");
     return NextResponse.json({ content });
@@ -20,6 +23,8 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const { content } = await request.json();
 
@@ -49,8 +54,6 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "playbook");
   }
 }

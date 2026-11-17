@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionLogs } from "@/lib/session-reader";
 import { analyzeSessionPatterns } from "@/lib/playbook-learner";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 /**
  * GET /api/playbook/suggestions
@@ -9,7 +10,9 @@ import { analyzeSessionPatterns } from "@/lib/playbook-learner";
  * Analyzes recent session logs across all projects for recurring patterns.
  * Returns playbook addition suggestions when patterns emerge.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const projects = await prisma.project.findMany({
       where: { status: { in: ["building", "complete"] } },
@@ -36,8 +39,6 @@ export async function GET() {
       suggestions,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "playbook.suggestions");
   }
 }

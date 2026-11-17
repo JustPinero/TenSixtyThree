@@ -1,14 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { detectKnowledgeGaps } from "@/lib/knowledge-gaps";
+import { jsonError, requireAdmin } from "@/lib/access";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   try {
     const gaps = await detectKnowledgeGaps(prisma);
     return NextResponse.json(gaps);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "knowledge.gaps");
   }
 }

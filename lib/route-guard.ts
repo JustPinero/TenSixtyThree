@@ -2,9 +2,10 @@
  * 54.1 — middleware route guard (pure).
  *
  * Optimistic gate only: classifies paths and reacts to session-cookie
- * PRESENCE. Real session validation stays server-side (lib/auth-helpers'
- * requireSession) — a forged cookie gets past middleware and then 401s
- * at the route. Public list is deliberately narrow.
+ * PRESENCE. Real session validation happens in every route through
+ * lib/access.ts (phase 64; coverage enforced by
+ * lib/route-auth-coverage.test.ts) — a forged cookie gets past middleware
+ * and then 401s at the route. Public list is deliberately narrow.
  */
 
 const PUBLIC_PREFIXES = [

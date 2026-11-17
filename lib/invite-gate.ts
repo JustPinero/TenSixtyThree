@@ -12,6 +12,12 @@ export interface OrgInviteRow {
   email: string;
   status: string; // Better Auth organization plugin: pending | accepted | rejected | canceled
   expiresAt: Date;
+  /**
+   * 64.4 — sent by a demo user or into a demo org. Never grants an
+   * account: demo visitors are anonymous, so their invitations would make
+   * invite-only sign-up open to anyone.
+   */
+  fromDemo?: boolean;
 }
 
 export interface UserInviteRow {
@@ -46,6 +52,7 @@ export function decideUserCreation(
     (i) =>
       i.email.trim().toLowerCase() === email &&
       i.status === "pending" &&
+      i.fromDemo !== true &&
       i.expiresAt.getTime() > input.now.getTime(),
   );
   if (liveOrgInvite) return { allowed: true, via: "org-invite" };

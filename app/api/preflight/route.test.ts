@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 28 — preflight API route tests.
  *
@@ -32,7 +33,7 @@ describe("GET /api/preflight", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/preflight"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.platform).toBe("windows");
@@ -53,7 +54,7 @@ describe("GET /api/preflight", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/preflight"));
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.missing).toEqual(["wt.exe"]);

@@ -8,7 +8,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
 import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel, DEFAULT_CHAT_MODEL } from "@/lib/model-config";
@@ -38,6 +37,7 @@ import {
   compressMessagesForSession,
   defaultSummarizer,
 } from "@/lib/chat-history-compressor";
+import { isHosted, jsonError, requireUser } from "@/lib/access";
 
 // Module-level singleton — the registry is pure and request-independent
 // after Phase 12, so rebuilding it on every request was wasted work.
@@ -219,6 +219,8 @@ function sseFromText(
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   const limited = checkRateLimit(
     getRateLimitKey(request, "overseer"),
     20,
@@ -228,7 +230,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
-    const byokSession = await getServerSession(prisma, request.headers);
+    const byokSession = access.viewer.kind === "user" ? access.viewer.session : null;
     // 54.5 — demo sessions get a canned reply; zero Anthropic spend.
     if (isDemoSession(byokSession)) {
       return new Response(
@@ -537,7 +539,13 @@ export async function POST(request: NextRequest) {
         // Surface mid-stream errors as a final SSE event the client
         // can render. Don't 500 the whole response — by this point
         // the headers are already sent.
-        const message = err instanceof Error ? err.message : String(err);
+        // 64.5 — the hosted client never sees raw provider/Prisma text.
+        console.error("[api:overseer.chat] stream", err);
+        const message = isHosted()
+          ? "The Overseer hit an error. Try again."
+          : err instanceof Error
+            ? err.message
+            : String(err);
         appendSyntheticText(`\n\n[error] ${message}`);
         closeTextBlock();
         writeFrame("message_stop", { type: "message_stop" });
@@ -563,7 +571,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "overseer.chat");
   }
 }

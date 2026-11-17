@@ -22,8 +22,11 @@ import {
   isValidSessionDate,
   readWorkingMemory,
 } from "@/lib/chat-session";
+import { jsonError, requireUser } from "@/lib/access";
 
 export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const raw =
       request.nextUrl.searchParams.get("sessionDate") ||
@@ -69,8 +72,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "overseer.session-state");
   }
 }

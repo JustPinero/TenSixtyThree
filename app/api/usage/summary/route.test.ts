@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 39 [P8] — route test for today's usage summary. Same @/lib/db
  * proxy-injection boilerplate as the other rig-based route tests.
@@ -56,7 +57,7 @@ describe("GET /api/usage/summary", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/usage/summary"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       calls: number;
@@ -73,7 +74,7 @@ describe("GET /api/usage/summary", () => {
     rig = await createDispatchRig({ fakeTimers: false });
     (globalThis as Record<string, unknown>).__rigPrisma = rig.prisma;
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/usage/summary"));
     const body = (await res.json()) as { calls: number; estimatedCostUsd: number };
     expect(body.calls).toBe(0);
     expect(body.estimatedCostUsd).toBe(0);

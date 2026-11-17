@@ -1,13 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUsageSummary } from "@/lib/observability/usage-summary";
+import { requireAdmin } from "@/lib/access";
 
 /**
  * Phase 39 [P8] — today's Anthropic spend for the dashboard cost
  * widget. "Today" is local midnight — Cascade is a local-first,
  * single-user app, so the box's timezone is the user's timezone.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);
 

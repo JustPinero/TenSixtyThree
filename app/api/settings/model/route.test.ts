@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 47.1 — AI service/model settings API.
  */
@@ -21,7 +22,7 @@ describe("/api/settings/model", () => {
   it("GET returns current resolution + options", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const { GET } = await loadRoute(rig);
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/settings/model"));
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.model).toBe("claude-sonnet-5");
@@ -39,7 +40,7 @@ describe("/api/settings/model", () => {
       }),
     );
     expect(res.status).toBe(200);
-    const after = await (await GET()).json();
+    const after = await (await GET(new NextRequest("http://x/api/settings/model"))).json();
     expect(after.model).toBe("claude-opus-4-8");
   });
 

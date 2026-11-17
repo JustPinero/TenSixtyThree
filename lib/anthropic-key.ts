@@ -8,7 +8,8 @@ import { open } from "./crypto-box";
 
 export interface ResolvedKey {
   key: string;
-  source: "user" | "app";
+  /** "none" = hosted request with no user: never spend the app key. */
+  source: "user" | "app" | "none";
 }
 
 export async function resolveAnthropicKey(
@@ -16,7 +17,11 @@ export async function resolveAnthropicKey(
   userId: string | null,
 ): Promise<ResolvedKey> {
   const appKey = process.env.ANTHROPIC_API_KEY ?? "";
-  if (!userId) return { key: appKey, source: "app" };
+  if (!userId) {
+    // Phase 64.2 — only the local operator rides the app key anonymously.
+    if (process.env.AUTH_REQUIRED === "true") return { key: "", source: "none" };
+    return { key: appKey, source: "app" };
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

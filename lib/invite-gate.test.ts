@@ -10,7 +10,7 @@ function base() {
     email: "new@user.dev",
     now: NOW,
     adminEmails: ["justin@ops.dev"],
-    orgInvites: [] as { email: string; status: string; expiresAt: Date }[],
+    orgInvites: [] as { email: string; status: string; expiresAt: Date; fromDemo?: boolean }[],
     userInvites: [] as {
       email: string;
       expiresAt: Date;
@@ -89,5 +89,13 @@ describe("decideUserCreation", () => {
     ];
     const orgDecision = decideUserCreation(org);
     expect(orgDecision.allowed && orgDecision.via).toBe("org-invite");
+  });
+
+  it("64.4 — an invitation from a demo inviter or demo org never permits account creation", () => {
+    const input = base();
+    input.orgInvites = [
+      { email: "new@user.dev", status: "pending", expiresAt: FRESH, fromDemo: true },
+    ];
+    expect(decideUserCreation(input).allowed).toBe(false);
   });
 });

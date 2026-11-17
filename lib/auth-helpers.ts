@@ -6,14 +6,20 @@
  * helpers do the same cookie→session→user resolution against the DB so
  * routes and tests can check auth without booting the OAuth machinery).
  *
- * Local-first compatibility: `requireSession` only enforces when
- * AUTH_REQUIRED=true — the single-operator local mode keeps working
- * unauthenticated until the hosted deploy flips the flag (51.4).
+ * Routes do NOT call this directly for access decisions — they go through
+ * lib/access.ts (phase 64), which decides what a missing session means
+ * (local operator only when AUTH_REQUIRED is unset).
  */
 import type { PrismaClient } from "@/app/generated/prisma/client";
 
 export interface ServerSession {
-  user: { id: string; email: string; name: string; isDemo: boolean };
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    isDemo: boolean;
+    role: string | null;
+  };
   session: {
     token: string;
     expiresAt: Date;
@@ -25,7 +31,7 @@ const SESSION_COOKIE = "better-auth.session_token";
 /**
  * Better Auth adds the `__Secure-` prefix whenever its baseURL is https,
  * which the hosted deploy always is. Matching only the bare name made
- * every requireSession route 401 a genuinely signed-in account: the edge
+ * every session-checked route 401 a genuinely signed-in account: the edge
  * middleware accepted the prefixed cookie so pages rendered, then every
  * data call failed. Both names are accepted; prefixed wins, mirroring
  * Better Auth's own getCookie lookup order.
@@ -73,6 +79,7 @@ export async function getServerSession(
       email: session.user.email,
       name: session.user.name,
       isDemo: session.user.isDemo,
+      role: session.user.role ?? null,
     },
     session: {
       token: session.token,
@@ -80,20 +87,4 @@ export async function getServerSession(
       activeOrganizationId: session.activeOrganizationId,
     },
   };
-}
-
-export type RequireSessionResult =
-  | { ok: true; session: ServerSession | null }
-  | { ok: false; status: 401; error: string };
-
-export async function requireSession(
-  prisma: PrismaClient,
-  headers: Headers,
-): Promise<RequireSessionResult> {
-  const session = await getServerSession(prisma, headers);
-  const required = process.env.AUTH_REQUIRED === "true";
-  if (!required) return { ok: true, session };
-  if (!session)
-    return { ok: false, status: 401, error: "Authentication required" };
-  return { ok: true, session };
 }

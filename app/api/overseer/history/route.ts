@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { jsonError, requireNonDemo, requireUser } from "@/lib/access";
 
 /**
  * GET /api/overseer/history
@@ -8,6 +9,8 @@ import { prisma } from "@/lib/db";
  * Query params: date (YYYY-MM-DD)
  */
 export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const date =
       request.nextUrl.searchParams.get("date") ||
@@ -20,9 +23,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(messages);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "overseer.history");
   }
 }
 
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest) {
  * Body: { role, content, sessionDate? }
  */
 export async function POST(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { role, content, sessionDate } = body;
@@ -53,9 +56,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(msg, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "overseer.history");
   }
 }
 
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
  * Query params: date (YYYY-MM-DD), defaults to today
  */
 export async function DELETE(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const date =
       request.nextUrl.searchParams.get("date") ||
@@ -77,8 +80,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "overseer.history");
   }
 }

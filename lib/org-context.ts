@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server";
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import { getServerSession, type ServerSession } from "./auth-helpers";
 import { requireMembership } from "./orgs";
+import { isDemoSession } from "./demo";
 
 export type OrgContext =
   | { ok: true; session: ServerSession; orgId: string }
@@ -17,11 +18,17 @@ export type OrgContext =
 
 export async function activeOrgContext(
   prisma: PrismaClient,
-  request: NextRequest
+  request: NextRequest,
+  opts: { allowDemo?: boolean } = {}
 ): Promise<OrgContext> {
   const session = await getServerSession(prisma, request.headers);
   if (!session) {
     return { ok: false, error: "Authentication required", status: 401 };
+  }
+  // 64.4 — demo sessions may read and post in their sandbox org, but not
+  // share projects or touch integrations.
+  if (opts.allowDemo === false && isDemoSession(session)) {
+    return { ok: false, error: "Not available in the demo", status: 403 };
   }
   const orgId = session.session.activeOrganizationId;
   if (!orgId) {

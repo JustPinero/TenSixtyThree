@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isValidSlug } from "@/lib/validators";
 import { getRemainingWork } from "@/lib/work-reader";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 /**
  * GET /api/projects/[slug]/work
@@ -10,9 +11,11 @@ import { getRemainingWork } from "@/lib/work-reader";
  * phases, requests, and their completion status.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const { slug } = await params;
     if (!isValidSlug(slug)) {
@@ -38,8 +41,6 @@ export async function GET(
 
     return NextResponse.json(work);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug].work");
   }
 }

@@ -62,10 +62,25 @@ export const auth = betterAuth({
         before: async (user) => {
           const email = user.email.toLowerCase();
           const [orgInvites, userInvites] = await Promise.all([
-            prisma.invitation.findMany({
-              where: { email: { equals: email, mode: "insensitive" } },
-              select: { email: true, status: true, expiresAt: true },
-            }),
+            prisma.invitation
+              .findMany({
+                where: { email: { equals: email, mode: "insensitive" } },
+                select: {
+                  email: true,
+                  status: true,
+                  expiresAt: true,
+                  user: { select: { isDemo: true } },
+                  organization: { select: { isDemo: true } },
+                },
+              })
+              .then((rows) =>
+                rows.map((i) => ({
+                  email: i.email,
+                  status: i.status,
+                  expiresAt: i.expiresAt,
+                  fromDemo: i.user.isDemo || i.organization.isDemo,
+                })),
+              ),
             prisma.userInvite.findMany({
               where: { email: { equals: email, mode: "insensitive" } },
               select: { email: true, expiresAt: true, acceptedAt: true },

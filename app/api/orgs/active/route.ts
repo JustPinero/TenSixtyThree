@@ -1,17 +1,13 @@
 /** 54.3 — switch the active organization (membership-checked). */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { setActiveOrg } from "@/lib/orgs";
 
 export async function PUT(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const body = await request.json();
   const organizationId =
     typeof body.organizationId === "string" ? body.organizationId : "";

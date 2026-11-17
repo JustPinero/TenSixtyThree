@@ -8,6 +8,7 @@ import { activeOrgContext } from "@/lib/org-context";
 import { seal, open } from "@/lib/crypto-box";
 import { canAccessBoard } from "@/lib/boards";
 import { syncLinearIssues, fetchLinearIssues } from "@/lib/linear-sync";
+import { jsonError } from "@/lib/access";
 
 export async function GET(request: NextRequest) {
   const ctx = await activeOrgContext(prisma, request);
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const ctx = await activeOrgContext(prisma, request);
+  const ctx = await activeOrgContext(prisma, request, { allowDemo: false });
   if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
@@ -42,7 +43,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await activeOrgContext(prisma, request);
+  const ctx = await activeOrgContext(prisma, request, { allowDemo: false });
   if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
@@ -70,7 +71,6 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return jsonError(err, "orgs.linear", 502);
   }
 }

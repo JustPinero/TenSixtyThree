@@ -7,10 +7,13 @@ import {
   populateEnvLocal,
 } from "@/lib/onepassword";
 import { isInsideProjectsDir } from "@/lib/validators";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 const VAULT_NAME = "Cascade";
 
 export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const projectPath = request.nextUrl.searchParams.get("path");
     const projectName = request.nextUrl.searchParams.get("name");
@@ -41,13 +44,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ authenticated: true, vars: status });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.onepassword");
   }
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { action, projectPath, projectName, vars } = body;
@@ -84,8 +87,6 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.onepassword");
   }
 }

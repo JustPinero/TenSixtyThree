@@ -1,7 +1,7 @@
 /** 54.4 — tickets: create, move/edit, delete. Board access enforced. */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn, type UserViewer } from "@/lib/access";
 import { canAccessBoard, positionAfter } from "@/lib/boards";
 
 const PRIORITIES = ["low", "normal", "high", "urgent"];
@@ -41,22 +41,22 @@ async function assigneeInScope(
   return member !== null;
 }
 
-async function guard(request: NextRequest, boardId: string) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) return { error: 401 as const };
-  if (!(await canAccessBoard(prisma, session.user.id, boardId))) {
+async function guard(viewer: UserViewer, boardId: string) {
+  if (!(await canAccessBoard(prisma, viewer.userId, boardId))) {
     return { error: 404 as const };
   }
-  return { session };
+  return { session: viewer.session };
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
   const body = await request.json();
   const boardId = typeof body.boardId === "string" ? body.boardId : "";
-  const g = await guard(request, boardId);
+  const g = await guard(access.viewer, boardId);
   if ("error" in g) {
     return NextResponse.json(
-      { error: g.error === 401 ? "Authentication required" : "Not found" },
+      { error: "Not found" },
       { status: g.error }
     );
   }
@@ -107,16 +107,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
   const body = await request.json();
   const id = typeof body.id === "string" ? body.id : "";
   const existing = await prisma.ticket.findUnique({ where: { id } });
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const g = await guard(request, existing.boardId);
+  const g = await guard(access.viewer, existing.boardId);
   if ("error" in g) {
     return NextResponse.json(
-      { error: g.error === 401 ? "Authentication required" : "Not found" },
+      { error: "Not found" },
       { status: g.error }
     );
   }
@@ -172,16 +174,18 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
   const body = await request.json();
   const id = typeof body.id === "string" ? body.id : "";
   const existing = await prisma.ticket.findUnique({ where: { id } });
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const g = await guard(request, existing.boardId);
+  const g = await guard(access.viewer, existing.boardId);
   if ("error" in g) {
     return NextResponse.json(
-      { error: g.error === 401 ? "Authentication required" : "Not found" },
+      { error: "Not found" },
       { status: g.error }
     );
   }

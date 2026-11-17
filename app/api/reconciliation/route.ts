@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { reconcileFleet } from "@/lib/fleet-reconciler";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 /**
  * GET /api/reconciliation (phase 41.4)
@@ -11,7 +12,9 @@ import { reconcileFleet } from "@/lib/fleet-reconciler";
  * for dashboard loads (comparisons use last-known remote refs); the
  * morning briefing runs the fetch-enabled pass.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const rows = await prisma.project.findMany({
       select: { slug: true, name: true, path: true, status: true },
@@ -42,7 +45,6 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "reconciliation");
   }
 }

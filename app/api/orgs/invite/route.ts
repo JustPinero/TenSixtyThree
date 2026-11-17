@@ -6,8 +6,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { requireMembership } from "@/lib/orgs";
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { sendEmail, escapeHtml } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -15,13 +16,12 @@ const INVITE_TTL_MS = 7 * 24 * 3600_000;
 const ROLES = ["member", "admin"];
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request, { allowDemo: false });
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
+  // 64.4 — every invite sends mail from our domain: cap it per account.
+  const limited = checkRateLimit(`org-invite:${session.user.id}`, 10, 3600_000);
+  if (limited) return limited;
   const orgId = session.session.activeOrganizationId;
   if (!orgId) {
     return NextResponse.json(

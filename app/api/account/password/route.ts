@@ -9,19 +9,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 128;
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const credential = await prisma.account.findFirst({
     where: { userId: session.user.id, providerId: "credential" },
     select: { id: true },
@@ -30,13 +26,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request, { allowDemo: false });
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const body = await request.json();
   const newPassword =
     typeof body.newPassword === "string" ? body.newPassword : "";

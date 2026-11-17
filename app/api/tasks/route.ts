@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { jsonError, requireNonDemo, requireUser } from "@/lib/access";
 
 const VALID_CATEGORIES = new Set([
   "asset",
@@ -20,6 +21,8 @@ const VALID_STATUSES = new Set(["pending", "done"]);
  * Query params: status, projectSlug, category
  */
 export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const status = request.nextUrl.searchParams.get("status");
     const projectSlug = request.nextUrl.searchParams.get("projectSlug");
@@ -44,9 +47,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(tasks);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "tasks");
   }
 }
 
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
  * Body: { title, category?, priority?, projectSlug?, createdBy? }
  */
 export async function POST(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { title, category, priority, projectSlug, createdBy } = body;
@@ -92,9 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "tasks");
   }
 }
 
@@ -105,6 +106,8 @@ export async function POST(request: NextRequest) {
  * Body: { id, status?, priority?, category? }
  */
 export async function PATCH(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { id, status, priority, category } = body;
@@ -138,9 +141,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(task);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "tasks");
   }
 }
 
@@ -151,6 +152,8 @@ export async function PATCH(request: NextRequest) {
  * Body: { id }
  */
 export async function DELETE(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { id } = body;
@@ -165,8 +168,6 @@ export async function DELETE(request: NextRequest) {
     await prisma.humanTask.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "tasks");
   }
 }

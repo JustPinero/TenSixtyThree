@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 38 [P2] — route tests for the fleet status endpoint.
  *
@@ -41,7 +42,7 @@ interface StatusBody {
 
 async function callRoute(): Promise<StatusBody> {
   (globalThis as Record<string, unknown>).__rigPrisma = rig!.prisma;
-  const res = await GET();
+  const res = await GET(new NextRequest("http://x/api/dispatch/status"));
   expect(res.status).toBe(200);
   return (await res.json()) as StatusBody;
 }

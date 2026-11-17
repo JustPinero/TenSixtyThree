@@ -143,3 +143,33 @@ describe("POST /api/projects/launch", () => {
     expect(mocked).not.toHaveBeenCalled();
   });
 });
+
+describe("64.3 — launcher input is a single safe path component", () => {
+  const base = { kickoffContent: "do stuff" };
+  for (const [label, body] of [
+    ["name ..", { ...base, name: "..", slug: "ok" }],
+    ["name with traversal", { ...base, name: "../../etc", slug: "ok" }],
+    ["absolute name", { ...base, name: "/tmp/evil", slug: "ok" }],
+    ["backslash name", { ...base, name: "a\\b", slug: "ok" }],
+    ["slug ..", { ...base, name: "Fine", slug: ".." }],
+    ["slug outside charset", { ...base, name: "Fine", slug: "a b;rm" }],
+    ["slug with slash", { ...base, name: "Fine", slug: "a/b" }],
+  ] as const) {
+    it(`rejects ${label} with 400 and never launches`, async () => {
+      const res = await POST(makeRequest(body));
+      expect(res.status).toBe(400);
+      expect(mocked).not.toHaveBeenCalled();
+    });
+  }
+
+  it("still accepts a display name with spaces", async () => {
+    mocked.mockResolvedValue({
+      success: true,
+      projectPath: "/p/My App",
+      githubUrl: null,
+      error: null,
+    });
+    const res = await POST(makeRequest({ ...base, name: "My App", slug: "my-app" }));
+    expect(res.status).toBe(201);
+  });
+});

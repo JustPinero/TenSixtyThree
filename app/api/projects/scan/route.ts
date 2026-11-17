@@ -6,8 +6,11 @@ import { generateAdvisories } from "@/lib/advisory-engine";
 import { checkReminders } from "@/lib/reminders";
 import { resolveProjectsDir } from "@/lib/validators";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   const limited = checkRateLimit(getRateLimitKey(request, "scan"), 5, 60_000);
   if (limited) return limited;
 
@@ -40,8 +43,6 @@ export async function POST(request: NextRequest) {
       advisories: advisoryResult,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error during scan";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.scan");
   }
 }

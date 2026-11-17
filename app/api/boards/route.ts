@@ -1,15 +1,14 @@
 /** 54.4 — my boards: personal + active-org. */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { createBoard } from "@/lib/boards";
 import { requireMembership } from "@/lib/orgs";
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   // Security review 54.4: re-verify membership — a stale
   // activeOrganizationId (user removed from the org) must not leak
   // that org's boards.
@@ -30,10 +29,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const body = await request.json();
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const scope = body.scope === "org" ? "org" : "personal";

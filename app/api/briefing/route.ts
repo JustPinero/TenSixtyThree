@@ -6,6 +6,8 @@ import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { reconcileFleet, formatDriftSection } from "@/lib/fleet-reconciler";
 import { computeInfraVersion } from "@/lib/infra-version";
 import { UTILITY_MODEL } from "@/lib/model-config";
+import { jsonError, requireUser, viewerUserId } from "@/lib/access";
+import { visibleProjectFilter } from "@/lib/project-access";
 
 /**
  * Timebox for per-repo `git fetch` during the briefing's reconciliation
@@ -15,6 +17,18 @@ import { UTILITY_MODEL } from "@/lib/model-config";
  */
 const RECONCILE_FETCH_TIMEOUT_MS = 5_000;
 
+const DEMO_BRIEFING = `**Good morning.** This is a sample briefing — in your own workspace the
+Overseer writes one each morning from your projects' real activity.
+
+**Needs attention:**
+- One project is blocked waiting on a human task (credentials).
+
+**Completed since last briefing:**
+- Two dispatches finished and opened pull requests.
+
+**Suggested next step:** review the open pull requests, then dispatch the
+next request on the project closest to shipping.`;
+
 /**
  * POST /api/briefing
  *
@@ -23,6 +37,20 @@ const RECONCILE_FETCH_TIMEOUT_MS = 5_000;
  * to produce a concise summary.
  */
 export async function POST(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
+  // 64.4 — demo visitors get a canned briefing: zero model spend, and no
+  // fleet data from outside their sandbox.
+  if (access.viewer.kind === "user" && access.viewer.isDemo) {
+    return NextResponse.json({
+      briefing: DEMO_BRIEFING,
+      generatedAt: new Date().toISOString(),
+      projectCount: 0,
+      blockedCount: 0,
+      recentEventCount: 0,
+      demo: true,
+    });
+  }
   const limited = checkRateLimit(
     getRateLimitKey(request, "briefing"),
     5,
@@ -41,6 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Gather project states
     const projects = await prisma.project.findMany({
+      where: await visibleProjectFilter(prisma, viewerUserId(access.viewer)),
       orderBy: { lastActivityAt: "desc" },
     });
 
@@ -254,8 +283,6 @@ ${infraSection ?? "None — all projects clean of v3.5 remnants."}`;
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "briefing");
   }
 }

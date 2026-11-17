@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAdmin } from "@/lib/access";
 
 const VALID_STATUSES = new Set([
   "proposed",
@@ -22,6 +23,8 @@ const MAX_LIMIT = 200;
  * the UI can render without a second query.
  */
 export async function GET(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
   const projectSlug = url.searchParams.get("project");

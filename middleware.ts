@@ -3,8 +3,8 @@
  *
  * Decision logic lives in lib/route-guard.ts (pure, tested). This layer
  * only reacts to session-cookie PRESENCE: pages bounce to /signin, APIs
- * 401. Real session validation stays server-side in requireSession — a
- * forged cookie passes here and dies at the route.
+ * 401. Real session validation is lib/access.ts, called by every route —
+ * a forged cookie passes here and dies at the route.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { guardDecision } from "@/lib/route-guard";

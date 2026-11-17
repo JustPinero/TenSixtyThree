@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   AI_SERVICE_OPTIONS,
@@ -5,6 +6,7 @@ import {
   resolveAiService,
   resolveChatModel,
 } from "@/lib/model-config";
+import { requireAdmin, requireUser } from "@/lib/access";
 
 /**
  * Phase 47.1 — AI service + chat model settings.
@@ -12,7 +14,9 @@ import {
  * PATCH: persist overrides on the single-row CascadeConfig. Passing null
  * clears an override (falls back to env/default resolution).
  */
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   const [model, service] = await Promise.all([
     resolveChatModel(prisma),
     resolveAiService(prisma),
@@ -26,6 +30,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function PATCH(req: Request): Promise<Response> {
+  const access = await requireAdmin(req);
+  if (!access.ok) return access.response;
   let body: { model?: string | null; service?: string | null };
   try {
     body = await req.json();

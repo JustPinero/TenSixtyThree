@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 const CHANNEL_PATH = path.resolve(
   process.cwd(),
@@ -36,7 +37,9 @@ async function getChannelPath(): Promise<string> {
  *
  * Read the current channel contents.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const channelPath = await getChannelPath();
     const content = await fs.readFile(channelPath, "utf-8");
@@ -53,6 +56,8 @@ export async function GET() {
  * Body: { from: "engineer" | "overseer" | "kilroy" | "delamain", message: string }
  */
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const { from, message } = await request.json();
 
@@ -90,8 +95,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, sender, timestamp });
   } catch (error) {
-    const msg =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return jsonError(error, "engineer-channel");
   }
 }

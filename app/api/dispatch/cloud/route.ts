@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { isDemoSession } from "@/lib/demo";
 import { canSeeProject } from "@/lib/project-access";
 import { cloudPermissionFor } from "@/lib/runner/autonomy";
@@ -14,13 +14,9 @@ import { cloudPermissionFor } from "@/lib/runner/autonomy";
 const MODES = ["continue", "audit", "investigate", "custom"];
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   if (isDemoSession(session)) {
     return NextResponse.json(
       { error: "Demo mode: dispatching is disabled in the sandbox." },

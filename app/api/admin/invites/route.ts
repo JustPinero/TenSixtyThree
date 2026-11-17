@@ -7,43 +7,28 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn, type UserViewer } from "@/lib/access";
 import { sendEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function requireAdmin(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return {
-      ok: false as const,
-      status: 401,
-      error: "Authentication required",
-    };
+/** Admin ACCOUNT required (invitedById needs a user id), never a demo. */
+function adminOnly(viewer: UserViewer): NextResponse | null {
+  if (viewer.isDemo) {
+    return NextResponse.json({ error: "Not available in demo mode" }, { status: 403 });
   }
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true },
-  });
-  const full = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isDemo: true },
-  });
-  if (full?.isDemo) {
-    return { ok: false as const, status: 403, error: "Not available in demo mode" };
+  if (!viewer.isAdmin) {
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
-  if (user?.role !== "admin") {
-    return { ok: false as const, status: 403, error: "Admin only" };
-  }
-  return { ok: true as const, userId: session.user.id };
+  return null;
 }
 
 export async function POST(request: NextRequest) {
-  const gate = await requireAdmin(request);
-  if (!gate.ok) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status });
-  }
+  const gate = await requireSignedIn(request);
+  if (!gate.ok) return gate.response;
+  const denied = adminOnly(gate.viewer);
+  if (denied) return denied;
 
   const body = await request.json();
   const email =
@@ -69,7 +54,7 @@ export async function POST(request: NextRequest) {
   const invite = await prisma.userInvite.create({
     data: {
       email,
-      invitedById: gate.userId,
+      invitedById: gate.viewer.userId,
       expiresAt: new Date(Date.now() + INVITE_TTL_MS),
     },
   });
@@ -86,10 +71,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const gate = await requireAdmin(request);
-  if (!gate.ok) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status });
-  }
+  const gate = await requireSignedIn(request);
+  if (!gate.ok) return gate.response;
+  const denied = adminOnly(gate.viewer);
+  if (denied) return denied;
   const invites = await prisma.userInvite.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

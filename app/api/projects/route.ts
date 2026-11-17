@@ -1,17 +1,19 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
 import { visibleProjectFilter } from "@/lib/project-access";
 import { getAllUnreadCounts } from "@/lib/unread";
 import { getAdvisoryStatuses } from "@/lib/advisory-tracker";
+import { jsonError, requireUser } from "@/lib/access";
 
 export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     // 55.2 — full visibility matrix (owner / org-shared / admin / demo /
     // local) lives in lib/project-access.ts. Resolved BEFORE the fan-out:
     // an `await` inside the Promise.all array serialized everything behind
     // it (1.0 optimize audit).
-    const session = await getServerSession(prisma, request.headers);
+    const session = access.viewer.kind === "user" ? access.viewer.session : null;
     const where = await visibleProjectFilter(prisma, session?.user.id ?? null);
 
     const [projects, unreadCounts, humanTaskCounts] = await Promise.all([
@@ -47,8 +49,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(projectsWithExtras);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects");
   }
 }

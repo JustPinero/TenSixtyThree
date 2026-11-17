@@ -8,6 +8,7 @@ import {
   type DispatchMode,
 } from "@/lib/claude-dispatcher";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 const VALID_MODES = new Set(["continue", "audit", "investigate", "custom"]);
 
@@ -15,6 +16,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   // 54.5 — the sandbox never spawns real Claude Code sessions.
   {
     const demoSession = await getServerSession(prisma, request.headers);
@@ -90,8 +93,6 @@ export async function POST(
       dispatchId: result.dispatchId,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug].dispatch");
   }
 }

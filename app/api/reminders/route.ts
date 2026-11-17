@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkReminders } from "@/lib/reminders";
+import { jsonError, requireNonDemo, requireUser } from "@/lib/access";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     // Check conditions and trigger any that are met
     await checkReminders(prisma);
@@ -15,13 +18,13 @@ export async function GET() {
 
     return NextResponse.json(reminders);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "reminders");
   }
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const { message, conditionType, conditionValue, projectSlug, createdBy } =
       await request.json();
@@ -45,13 +48,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(reminder, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "reminders");
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const access = await requireNonDemo(request);
+  if (!access.ok) return access.response;
   try {
     const { id, status } = await request.json();
 
@@ -72,8 +75,6 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(reminder);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "reminders");
   }
 }

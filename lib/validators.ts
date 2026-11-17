@@ -7,7 +7,20 @@ import os from "os";
  * Only allows alphanumeric, dots, hyphens, and underscores.
  */
 export function isValidSlug(s: string): boolean {
+  if (s === "." || s === "..") return false; // 64.3 — dot segments traverse
   return /^[a-zA-Z0-9._-]+$/.test(s) && s.length > 0 && s.length <= 100;
+}
+
+/**
+ * 64.3 — a display name used as ONE directory under PROJECTS_DIR. Spaces
+ * and unicode are fine; separators, dot segments, `~`, and control
+ * characters are not.
+ */
+export function isSafeDirName(s: string): boolean {
+  if (s.length === 0 || s.length > 100) return false;
+  if (s === "." || s === ".." || s.startsWith("~")) return false;
+  if (/[\/\\\u0000-\u001f]/.test(s)) return false;
+  return true;
 }
 
 /**

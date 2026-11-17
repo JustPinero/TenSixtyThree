@@ -11,7 +11,13 @@
 import type { PrismaClient, Prisma } from "@/app/generated/prisma/client";
 
 async function viewerContext(prisma: PrismaClient, userId: string | null) {
-  if (!userId) return { kind: "local" as const };
+  // Phase 64.2 — "local" is configuration, never a missing session. On
+  // the hosted app a null user sees nothing (routes 401 before this).
+  if (!userId) {
+    return process.env.AUTH_REQUIRED === "true"
+      ? ({ kind: "none" } as const)
+      : ({ kind: "local" } as const);
+  }
   const [user, memberships] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -35,6 +41,7 @@ export async function visibleProjectFilter(
   userId: string | null,
 ): Promise<Prisma.ProjectWhereInput> {
   const viewer = await viewerContext(prisma, userId);
+  if (viewer.kind === "none") return { id: { in: [] } };
   if (viewer.kind === "local") return { isDemo: false };
   if (viewer.isDemo) return { isDemo: true };
   // Admins ARE the operator: the whole non-demo fleet.

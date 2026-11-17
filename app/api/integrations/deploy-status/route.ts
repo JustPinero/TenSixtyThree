@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDeploymentStatus } from "@/lib/deploy-monitor";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 export async function GET(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const platform = request.nextUrl.searchParams.get("platform") as
       | "vercel"
@@ -26,8 +29,6 @@ export async function GET(request: NextRequest) {
     const status = await getDeploymentStatus(platform, projectId);
     return NextResponse.json(status);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "integrations.deploy-status");
   }
 }

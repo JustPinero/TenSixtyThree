@@ -5,24 +5,17 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { seal } from "@/lib/crypto-box";
 
-import { isDemoSession } from "@/lib/demo";
-
-async function requireUser(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) return null;
-  // 54.5 — demo sessions must not write (or read) key material.
-  if (isDemoSession(session)) return null;
-  return session.user;
-}
-
 export async function GET(request: NextRequest) {
-  const user = await requireUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const gate = await requireSignedIn(request);
+  if (!gate.ok) return gate.response;
+  // 54.5 — demo sessions must not write (or read) key material.
+  if (gate.viewer.isDemo) {
+    return NextResponse.json({ error: "Not available in the demo" }, { status: 403 });
   }
+  const user = { id: gate.viewer.userId };
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { anthropicKeyEnc: true },
@@ -31,10 +24,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const user = await requireUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const gate = await requireSignedIn(request);
+  if (!gate.ok) return gate.response;
+  // 54.5 — demo sessions must not write (or read) key material.
+  if (gate.viewer.isDemo) {
+    return NextResponse.json({ error: "Not available in the demo" }, { status: 403 });
   }
+  const user = { id: gate.viewer.userId };
   const body = await request.json();
   const key = typeof body.key === "string" ? body.key.trim() : "";
   if (!key.startsWith("sk-ant-") || key.length < 20 || key.length > 300) {
@@ -51,10 +47,13 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const user = await requireUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const gate = await requireSignedIn(request);
+  if (!gate.ok) return gate.response;
+  // 54.5 — demo sessions must not write (or read) key material.
+  if (gate.viewer.isDemo) {
+    return NextResponse.json({ error: "Not available in the demo" }, { status: 403 });
   }
+  const user = { id: gate.viewer.userId };
   await prisma.user.update({
     where: { id: user.id },
     data: { anthropicKeyEnc: null },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isValidSlug } from "@/lib/validators";
 import { getSessionLogs } from "@/lib/session-reader";
+import { jsonError, requireLocalMode } from "@/lib/access";
 
 /**
  * GET /api/projects/[slug]/sessions
@@ -13,6 +14,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const { slug } = await params;
     if (!isValidSlug(slug)) {
@@ -37,8 +40,6 @@ export async function GET(
 
     return NextResponse.json(sessions);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug].sessions");
   }
 }

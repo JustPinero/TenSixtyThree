@@ -6,8 +6,11 @@ import {
   reportToMarkdown,
 } from "@/lib/report-generator";
 import { reportToPdf } from "@/lib/report-pdf";
+import { jsonError, requireUser } from "@/lib/access";
 
 export async function POST(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const { type, slug, format = "markdown" } = await request.json();
 
@@ -64,8 +67,6 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "reports.generate");
   }
 }

@@ -5,20 +5,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { canSeeProject } from "@/lib/project-access";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const { id } = await params;
   const dispatch = await prisma.dispatch.findUnique({
     where: { id },

@@ -1,17 +1,16 @@
 /** 54.4 — roadmap milestones: personal or active-org scoped. */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
+import { requireSignedIn } from "@/lib/access";
 import { positionAfter } from "@/lib/boards";
 import { requireMembership } from "@/lib/orgs";
 
 const STATUSES = ["planned", "in_progress", "shipped"];
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   // Bughunt 1.0: re-verify membership — a stale activeOrganizationId
   // (user removed from the org) must not leak that org's roadmap. Mirrors
   // the boards route; POST/PATCH/DELETE already checked.
@@ -32,10 +31,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
   const body = await request.json();
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title || title.length > 200) {
@@ -73,22 +71,20 @@ export async function POST(request: NextRequest) {
 }
 
 async function canTouch(
-  request: NextRequest,
+  userId: string,
   id: string
-): Promise<{ ok: true } | { status: 401 | 403 | 404 }> {
-  const session = await getServerSession(prisma, request.headers);
-  if (!session) return { status: 401 };
+): Promise<{ ok: true } | { status: 403 | 404 }> {
   const milestone = await prisma.milestone.findUnique({ where: { id } });
   if (!milestone) return { status: 404 };
   if (milestone.ownerUserId) {
-    return milestone.ownerUserId === session.user.id
+    return milestone.ownerUserId === userId
       ? { ok: true }
       : { status: 404 };
   }
   if (milestone.organizationId) {
     const member = await requireMembership(
       prisma,
-      session.user.id,
+      userId,
       milestone.organizationId
     );
     return member ? { ok: true } : { status: 404 };
@@ -97,9 +93,11 @@ async function canTouch(
 }
 
 export async function PATCH(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
   const body = await request.json();
   const id = typeof body.id === "string" ? body.id : "";
-  const gate = await canTouch(request, id);
+  const gate = await canTouch(access.viewer.userId, id);
   if (!("ok" in gate)) {
     return NextResponse.json({ error: "Not available" }, { status: gate.status });
   }
@@ -127,9 +125,11 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
   const body = await request.json();
   const id = typeof body.id === "string" ? body.id : "";
-  const gate = await canTouch(request, id);
+  const gate = await canTouch(access.viewer.userId, id);
   if (!("ok" in gate)) {
     return NextResponse.json({ error: "Not available" }, { status: gate.status });
   }

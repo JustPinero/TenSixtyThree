@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import path from "path";
 import {
   isValidSlug,
+  isSafeDirName,
   isValidGithubUrl,
   isInsideProjectsDir,
   sanitizeForShell,
@@ -28,6 +29,11 @@ describe("validators", () => {
       expect(isValidSlug("test$(cat /etc/passwd)")).toBe(false);
       expect(isValidSlug("test && echo pwned")).toBe(false);
       expect(isValidSlug("test | cat")).toBe(false);
+    });
+
+    it("rejects dot segments (64.3 — they are path traversal, not names)", () => {
+      expect(isValidSlug(".")).toBe(false);
+      expect(isValidSlug("..")).toBe(false);
     });
 
     it("rejects empty and too-long strings", () => {
@@ -85,6 +91,18 @@ describe("validators", () => {
       expect(isWithinLength("hello", 10)).toBe(true);
       expect(isWithinLength("hello", 3)).toBe(false);
       expect(isWithinLength("hi", 10, 5)).toBe(false);
+    });
+  });
+
+  describe("isSafeDirName (64.3)", () => {
+    it("accepts display names", () => {
+      expect(isSafeDirName("My App")).toBe(true);
+      expect(isSafeDirName("café-2")).toBe(true);
+    });
+    it("rejects traversal, separators, absolute paths, control chars", () => {
+      for (const bad of ["", ".", "..", "../x", "/tmp/x", "a/b", "a\\b", "a\u0000b", "~", "x".repeat(101)]) {
+        expect(isSafeDirName(bad), JSON.stringify(bad)).toBe(false);
+      }
     });
   });
 });

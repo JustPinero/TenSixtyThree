@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getServerSession } from "@/lib/auth-helpers";
 import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel } from "@/lib/model-config";
@@ -9,11 +8,14 @@ import { projectPersonaBlock } from "@/lib/persona-prompt";
 import { canSeeProject } from "@/lib/project-access";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
+import { jsonError, requireUser } from "@/lib/access";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   const chatModel = await resolveChatModel(prisma);
   const limited = checkRateLimit(
     getRateLimitKey(request, "project-chat"),
@@ -24,7 +26,7 @@ export async function POST(
 
   try {
     // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
-    const byokSession = await getServerSession(prisma, request.headers);
+    const byokSession = access.viewer.kind === "user" ? access.viewer.session : null;
     // 54.5 — no Anthropic spend from demo sessions.
     if (isDemoSession(byokSession)) {
       return NextResponse.json(
@@ -140,7 +142,6 @@ export async function POST(
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug].chat");
   }
 }

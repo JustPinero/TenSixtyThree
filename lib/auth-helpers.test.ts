@@ -5,7 +5,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
-import { getServerSession, requireSession } from "./auth-helpers";
+import { getServerSession } from "./auth-helpers";
 
 let rig: DispatchRig | null = null;
 afterEach(async () => {
@@ -86,40 +86,7 @@ describe("AC2 — getServerSession", () => {
   });
 });
 
-describe("AC3 — requireSession honors AUTH_REQUIRED", () => {
-  it("passes anonymous through when AUTH_REQUIRED is unset (local single-user mode)", async () => {
-    rig = await createDispatchRig({ fakeTimers: false });
-    const result = await requireSession(rig.prisma, headersWith());
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.session).toBeNull();
-  });
-
-  it("rejects anonymous with 401 semantics when AUTH_REQUIRED=true", async () => {
-    rig = await createDispatchRig({ fakeTimers: false });
-    process.env.AUTH_REQUIRED = "true";
-    const result = await requireSession(rig.prisma, headersWith());
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.status).toBe(401);
-  });
-
-  it("accepts a valid session when AUTH_REQUIRED=true", async () => {
-    rig = await createDispatchRig({ fakeTimers: false });
-    process.env.AUTH_REQUIRED = "true";
-    const user = await rig.prisma.user.create({
-      data: { email: "ok@t.dev", name: "OK", emailVerified: true },
-    });
-    await rig.prisma.session.create({
-      data: {
-        userId: user.id,
-        token: "tok_ok",
-        expiresAt: new Date(Date.now() + 3600_000),
-      },
-    });
-    const result = await requireSession(rig.prisma, headersWith("tok_ok"));
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.session?.user.email).toBe("ok@t.dev");
-  });
-});
+// AC3 (AUTH_REQUIRED semantics) moved to lib/access.test.ts in phase 64.
 
 /**
  * Phase 57.1 — Better Auth prefixes its cookie with `__Secure-` whenever
@@ -127,7 +94,7 @@ describe("AC3 — requireSession honors AUTH_REQUIRED", () => {
  * prefix is chosen from baseURL's protocol). The hosted deploy has been
  * https since day one, so the browser sent
  * `__Secure-better-auth.session_token` while these helpers matched only
- * the bare name — every requireSession route 401'd a real signed-in
+ * the bare name — every session-checked route 401'd a real signed-in
  * account. middleware.ts already checked both names, so pages loaded and
  * only the data calls failed.
  */

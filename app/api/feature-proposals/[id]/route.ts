@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAdmin } from "@/lib/access";
 
 const TERMINAL_STATUSES = new Set(["accepted", "rejected", "applied"]);
 const VALID_TRANSITIONS = new Set([
@@ -13,9 +14,11 @@ const VALID_TRANSITIONS = new Set([
  * GET /api/feature-proposals/[id]
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
   if (!Number.isFinite(id)) {
@@ -49,6 +52,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
   if (!Number.isFinite(id)) {

@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { jsonError, requireAdmin, requireUser } from "@/lib/access";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const templates = await prisma.kickoffTemplate.findMany({
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(templates);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "templates");
   }
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { name, description, content, projectType, isDefault } = body;
@@ -46,13 +49,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(template, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "templates");
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const { id, ...data } = body;
@@ -79,13 +82,13 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(template);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "templates");
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  const access = await requireAdmin(request);
+  if (!access.ok) return access.response;
   try {
     const { id } = await request.json();
 
@@ -99,8 +102,6 @@ export async function DELETE(request: NextRequest) {
     await prisma.kickoffTemplate.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "templates");
   }
 }

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { launchProject } from "@/lib/project-launcher";
 import path from "path";
 import os from "os";
+import { requireLocalMode, jsonError } from "@/lib/access";
+import { isSafeDirName, isValidSlug } from "@/lib/validators";
 
 function resolveProjectsDir(): string {
   const dir = process.env.PROJECTS_DIR || "~/Desktop/projects";
@@ -13,6 +15,8 @@ function resolveProjectsDir(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   try {
     const body = await request.json();
     const {
@@ -30,6 +34,19 @@ export async function POST(request: NextRequest) {
     if (!name || !slug || !kickoffContent) {
       return NextResponse.json(
         { error: "name, slug, and kickoffContent are required" },
+        { status: 400 }
+      );
+    }
+
+    // 64.3 — `name` becomes a directory and `slug` a GitHub repo name.
+    if (
+      typeof name !== "string" ||
+      typeof slug !== "string" ||
+      !isSafeDirName(name) ||
+      !isValidSlug(slug)
+    ) {
+      return NextResponse.json(
+        { error: "name must be a plain folder name and slug may use only letters, digits, . _ -" },
         { status: 400 }
       );
     }
@@ -57,8 +74,6 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.launch");
   }
 }

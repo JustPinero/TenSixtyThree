@@ -4,13 +4,15 @@ import { markAuditsRead } from "@/lib/unread";
 import { isValidSlug } from "@/lib/validators";
 import { validateBadges } from "@/lib/badges";
 import { THEME_KEYS, type ThemeKey } from "@/lib/theme-registry";
-import { getServerSession } from "@/lib/auth-helpers";
 import { canSeeProject } from "@/lib/project-access";
+import { jsonError, requireUser } from "@/lib/access";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const { slug } = await params;
     if (!isValidSlug(slug)) {
@@ -36,7 +38,7 @@ export async function GET(
 
     // 55.2 — visibility gate ([54.D1]): strangers get the same 404.
     {
-      const session = await getServerSession(prisma, request.headers);
+      const session = access.viewer.kind === "user" ? access.viewer.session : null;
       if (!(await canSeeProject(prisma, session?.user.id ?? null, project.id))) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
       }
@@ -47,8 +49,7 @@ export async function GET(
 
     return NextResponse.json(project);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug]");
   }
 }
 
@@ -56,6 +57,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const access = await requireUser(request);
+  if (!access.ok) return access.response;
   try {
     const { slug } = await params;
     const body = await request.json();
@@ -67,7 +70,7 @@ export async function PATCH(
         select: { id: true },
       });
       if (target) {
-        const session = await getServerSession(prisma, request.headers);
+        const session = access.viewer.kind === "user" ? access.viewer.session : null;
         if (
           !(await canSeeProject(prisma, session?.user.id ?? null, target.id))
         ) {
@@ -172,7 +175,6 @@ export async function PATCH(
 
     return NextResponse.json(project);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "projects.[slug]");
   }
 }

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await activeOrgContext(prisma, request);
+  const ctx = await activeOrgContext(prisma, request, { allowDemo: false });
   if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const ctx = await activeOrgContext(prisma, request);
+  const ctx = await activeOrgContext(prisma, request, { allowDemo: false });
   if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }

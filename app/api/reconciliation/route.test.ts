@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 /**
  * Phase 41.4 — GET /api/reconciliation: the fleet dashboard's drift
  * surface. Runs the reconciler over Project rows (fetch disabled for a
@@ -58,7 +59,7 @@ describe("GET /api/reconciliation", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/reconciliation"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       findingsCount: number;
@@ -85,7 +86,7 @@ describe("GET /api/reconciliation", () => {
     rig = await createDispatchRig({ fakeTimers: false });
     (globalThis as Record<string, unknown>).__rigPrisma = rig.prisma;
 
-    const res = await GET();
+    const res = await GET(new NextRequest("http://x/api/reconciliation"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       findingsCount: number;

@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkWebhookSecret, WEBHOOK_SECRET_HEADER } from "@/lib/webhook-auth";
 import { prisma } from "@/lib/db";
 import { ingestSessionComplete } from "@/lib/webhook-ingest";
+import { jsonError } from "@/lib/access";
 
 /**
  * POST /api/webhook/session-complete
@@ -84,7 +85,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error, "webhook.session-complete");
   }
 }

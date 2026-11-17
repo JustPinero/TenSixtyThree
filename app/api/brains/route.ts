@@ -1,11 +1,15 @@
+import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateBrainPath } from "@/lib/brain-registry";
+import { requireLocalMode } from "@/lib/access";
 
 /**
  * Phase 48.4 — brain connections. GET: list registered brains. POST: register
  * a repo as a brain (validated: must exist + be a git repo). DELETE: ?id=N.
  */
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  const access = await requireLocalMode(request);
+  if (!access.ok) return access.response;
   const brains = await prisma.brain.findMany({ orderBy: { id: "asc" } });
   const withStatus = brains.map((b) => ({
     ...b,
@@ -15,6 +19,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const access = await requireLocalMode(req);
+  if (!access.ok) return access.response;
   let body: { name?: string; path?: string };
   try {
     body = await req.json();
@@ -43,6 +49,8 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 export async function DELETE(req: Request): Promise<Response> {
+  const access = await requireLocalMode(req);
+  if (!access.ok) return access.response;
   const id = Number(new URL(req.url).searchParams.get("id"));
   if (!Number.isInteger(id)) {
     return Response.json({ error: "id required" }, { status: 400 });

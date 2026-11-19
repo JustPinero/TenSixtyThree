@@ -1,5 +1,9 @@
 # Data Model Reference
 
+> Source of truth: `prisma/schema.prisma`, shipped as the migration chain in
+> `prisma/migrations/` (baseline `0_init`, Phase 59). Change the schema with
+> `pnpm db:migrate --name <change>`, never `db push`; update this file to match.
+
 ## Project
 The central entity. Represents a software project being monitored.
 

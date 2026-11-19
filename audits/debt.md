@@ -10,6 +10,12 @@
   launch, whichever comes first. **1.0 note:** the hosted DB now holds real
   rows (orgs, invites, boards, sealed BYOK keys) — the trigger has fired;
   baseline `prisma migrate` is the first post-1.0 chore.
+  **2026-11-19 (Phase 59, batch branch):** code side DONE — 0_init baseline,
+  preDeploy + CI e2e + test template on `migrate deploy`, drift test,
+  destructive-migration guard. Local dev + e2e DBs baselined. **Remaining:**
+  the hosted cutover (dump → verify no drift → `migrate resolve --applied
+  0_init` → deploy), which rides the batch deploy with Justin's yes; see
+  deployment-landmines.md. Close this entry after that.
 
 - **[1.0.D1]** (2026-09-15, release test-audit) 47 legacy test files still
   build their Prisma client through the `@prisma/adapter-better-sqlite3` →

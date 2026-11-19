@@ -110,7 +110,7 @@ async function preparePerRigDb(dbName: string): Promise<void> {
   }
   await pgAdmin((c) => c.query(`CREATE DATABASE "${dbName}"`));
   const cp = await vi.importActual<typeof import("child_process")>("child_process");
-  cp.execSync("pnpm exec prisma db push", {
+  cp.execSync("pnpm exec prisma migrate deploy", {
     cwd: CASCADE_ROOT,
     stdio: "pipe",
     env: { ...process.env, DATABASE_URL: `${TEST_PG_BASE}/${dbName}` },
@@ -137,7 +137,9 @@ async function resetWorkerDb(dbName: string): Promise<void> {
   await pgAdminOn(dbName, async (c) => {
     const { rows } = await c.query<{ tables: string | null }>(
       `SELECT string_agg(format('%I.%I', schemaname, tablename), ', ') AS tables
-       FROM pg_tables WHERE schemaname = 'public'`
+       FROM pg_tables WHERE schemaname = 'public'
+         -- Phase 59: keep the migration history; it is schema, not data.
+         AND tablename <> '_prisma_migrations'`
     );
     if (rows[0]?.tables) {
       await c.query(`TRUNCATE ${rows[0].tables} RESTART IDENTITY CASCADE`);
@@ -244,6 +246,7 @@ export async function createDispatchRig(
 
   const rig: DispatchRig = {
     prisma,
+    dbUrl,
     queue,
     get spawnRecords(): SpawnRecord[] {
       const calls = spawnFn?.mock?.calls;

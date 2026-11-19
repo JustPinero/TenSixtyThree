@@ -13,9 +13,18 @@ paths:
   `tensixtythree-pg` Docker container (`postgres:16`, `127.0.0.1:51063`,
   `docker-compose.dev.yml`). The old SQLite `./dev.db` is retired (kept on disk
   as a legacy backup; `scripts/migrate-dev-db.ts` was its one-way exit).
-- Sync schema with `pnpm exec prisma db push` + `pnpm exec prisma generate`.
-  After ANY schema change also delete nothing — tests build their template DB
-  per run (`test_rig_template` database, created by vitest globalSetup).
+- **Schema changes are migrations (Phase 59).** Edit `prisma/schema.prisma`,
+  then `pnpm db:migrate --name <change>` (= `prisma migrate dev`) to write
+  `prisma/migrations/<ts>_<change>/migration.sql`, then `prisma generate`.
+  Never `db push` against a migrated database. Hosted runs
+  `prisma migrate deploy` in the web service preDeploy. Tests build their
+  template DB per run with `migrate deploy` (`test_rig_template`, vitest
+  globalSetup), and a drift test fails if schema.prisma has changes no
+  migration covers.
+- **Destructive migrations** (DROP TABLE/COLUMN/TYPE, column type change,
+  TRUNCATE, DELETE) fail `pnpm db:check-migrations` (validate.sh + CI) unless
+  the file has `-- allow-destructive: <why>` — and hosted gets a verified
+  `pg_dump` first (Destructive Actions Protocol).
 - JSON is stored as `String` columns and parsed manually (legacy convention;
   migrate to native `Json` deliberately, not incidentally).
 - **Postgres has real concurrency** — SQLite's single writer no longer saves

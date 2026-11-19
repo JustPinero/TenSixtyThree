@@ -20,6 +20,10 @@ echo "--- Prisma Generate ---"
 pnpm exec prisma generate
 
 echo ""
+echo "--- Migration Guard ---"
+pnpm db:check-migrations
+
+echo ""
 echo "--- Tests ---"
 pnpm test
 

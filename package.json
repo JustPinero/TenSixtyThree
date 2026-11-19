@@ -23,6 +23,8 @@
     "eval:refresh": "tsx evals/run.ts --record",
     "validate": "bash scripts/validate.sh",
     "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:check-migrations": "tsx scripts/check-destructive-migrations.ts",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "start:runner": "tsx scripts/runner.ts",

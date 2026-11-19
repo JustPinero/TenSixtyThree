@@ -87,6 +87,8 @@ describe("CI workflow", () => {
       ["prisma generate", /prisma generate/],
       ["tests", /pnpm test/],
       ["build", /pnpm build/],
+      // Phase 59.3 — destructive migrations need an explicit marker.
+      ["migration guard", /pnpm db:check-migrations/],
     ];
     for (const [name, re] of gates) {
       expect(VALIDATE, `validate.sh lost the ${name} gate`).toMatch(re);

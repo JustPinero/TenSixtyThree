@@ -28,7 +28,7 @@ Next.js 16 (App Router) | TypeScript strict | Tailwind CSS 4 | Prisma 7 + Postgr
 - `pnpm test` — run Vitest
 - `pnpm lint` — run ESLint
 - `pnpm exec tsc --noEmit` — type check
-- `pnpm exec prisma db push` — sync schema to Postgres (`prisma.config.ts` defaults to the dev container); then `pnpm exec prisma generate`
+- `pnpm db:migrate --name <change>` — schema change → new migration (`prisma migrate dev`; `prisma.config.ts` defaults to the dev container); then `pnpm exec prisma generate`. Hosted applies with `prisma migrate deploy`. Never `db push` (Phase 59)
 - `pnpm start:runner` — run the cloud runner locally (needs `ANTHROPIC_API_KEY`, optional `GITHUB_TOKEN`)
 
 ## References

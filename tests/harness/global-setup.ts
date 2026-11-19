@@ -40,7 +40,9 @@ export async function setup() {
     await admin.end();
   }
 
-  execSync("pnpm exec prisma db push", {
+  // Phase 59 — build the template from the migration chain hosted runs
+  // (`migrate deploy`), not `db push`, so every rig exercises it.
+  execSync("pnpm exec prisma migrate deploy", {
     cwd: CASCADE_ROOT,
     stdio: "pipe",
     env: { ...process.env, DATABASE_URL: `${TEST_PG_BASE}/${TEMPLATE_DB}` },

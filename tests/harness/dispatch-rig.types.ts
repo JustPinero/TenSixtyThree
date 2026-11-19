@@ -52,6 +52,8 @@ export interface FireWebhookResult {
 export interface DispatchRig {
   /** Real Prisma client backed by an isolated scratch SQLite db. */
   prisma: PrismaClient;
+  /** Connection URL of this rig's database (for CLI checks like `prisma migrate status`). */
+  dbUrl: string;
   /** Fresh DispatchQueue singleton scoped to this rig instance. */
   queue: DispatchQueue;
 

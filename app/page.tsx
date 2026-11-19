@@ -251,8 +251,10 @@ function DashboardContent() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      {/* 71.3 — title above controls below lg; controls wrap instead of
+          widening the page (495px of sideways scroll at 390). */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold font-mono tracking-wide text-text-bright uppercase">
             Dashboard
           </h1>
@@ -261,7 +263,7 @@ function DashboardContent() {
             monitored
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <CostWidget />
           <QuarantineBanner />
           <FleetStatusStrip />
@@ -292,7 +294,7 @@ function DashboardContent() {
         />
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 [&>*]:min-w-0">
         <ProjectGrid
           projects={filtered}
           loading={loading}

@@ -41,13 +41,13 @@ export function Toggle({
         aria-describedby={showReason ? reasonId : undefined}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`w-10 h-5 rounded-full transition-colors relative focus-ring ${
+        className={`w-11 h-6 rounded-full transition-colors relative focus-ring ${
           checked ? "bg-cyan" : "bg-space-600"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-space-900 transition-transform ${
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-space-900 transition-transform ${
             checked ? "translate-x-5" : "translate-x-0.5"
           }`}
         />

@@ -5,7 +5,14 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
   return (
-    <div className="flex items-center gap-1 mb-8 overflow-x-auto pb-2">
+    <>
+    {/* 71.3 — seven 60px steps cannot fit a phone; below sm show a
+        compact "Step n of 7" line and keep the full stepper from sm up. */}
+    <p className="sm:hidden mb-6 text-xs font-mono uppercase tracking-wider text-text" aria-live="polite">
+      Step {Math.min(currentStep, steps.length - 1) + 1} of {steps.length}
+      <span className="text-cyan"> · {steps[Math.min(currentStep, steps.length - 1)]}</span>
+    </p>
+    <div className="hidden sm:flex items-center gap-1 mb-8 overflow-x-auto pb-2">
       {steps.map((label, i) => {
         const isComplete = i < currentStep;
         const isCurrent = i === currentStep;
@@ -52,5 +59,6 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
         );
       })}
     </div>
+    </>
   );
 }

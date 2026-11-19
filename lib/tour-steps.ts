@@ -13,6 +13,11 @@ export interface TourStep {
   route: "/" | "/team" | "/boards" | "/roadmap" | "/settings";
   selector: string;
   anchorFile: string;
+  /**
+   * 71.2 — fallback when `selector` is off-canvas (e.g. inside the closed
+   * mobile nav drawer below `lg`). Lives in the same anchorFile.
+   */
+  mobileSelector?: string;
   title: string;
   text: string;
 }
@@ -31,6 +36,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     route: "/",
     selector: "#tour-overseer-link",
     anchorFile: "app/components/sidebar.tsx",
+    mobileSelector: "#tour-nav-toggle",
     title: "The Overseer",
     text: "That's me. Open this chat and I'll plan sprints, read session logs, and propose dispatches. In the demo my replies are scripted — the real me runs on Claude with full tool use.",
   },

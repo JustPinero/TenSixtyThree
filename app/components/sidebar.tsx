@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, useEffect } from "react";
+import { useMemo, useState, useSyncExternalStore, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { NavLink } from "./nav-link";
 import { ReminderWidget } from "./reminder-widget";
 import { AttentionBadge } from "./attention-badge";
@@ -232,6 +233,19 @@ const navItems = [
   },
 ];
 
+// 71.4 — the drawer is only a drawer below lg; at lg+ the sidebar is
+// always on screen and must never be inert.
+const DESKTOP_QUERY = "(min-width: 1024px)";
+function subscribeToDesktop(callback: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const mql = window.matchMedia(DESKTOP_QUERY);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+// No matchMedia (old engines, jsdom): treat as desktop — never inert.
+const isDesktopNow = () =>
+  typeof window.matchMedia !== "function" || window.matchMedia(DESKTOP_QUERY).matches;
+
 function subscribeToOverseer(callback: () => void) {
   window.addEventListener("storage", callback);
   return () => window.removeEventListener("storage", callback);
@@ -246,7 +260,20 @@ function overseerRaw(): string {
 }
 
 export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  // 71.4 — remember which route the drawer was opened on; navigating
+  // (tapping a nav link) changes the route, which closes it. Derived
+  // state, so no setState-in-effect.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const mobileOpen = openedOn !== null && openedOn === pathname;
+  const setMobileOpen = (open: boolean) => setOpenedOn(open ? pathname : null);
+  // Server snapshot assumes desktop so SSR never ships an inert sidebar
+  // to lg+ screens.
+  const isDesktop = useSyncExternalStore(subscribeToDesktop, isDesktopNow, () => true);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (mobileOpen) closeRef.current?.focus();
+  }, [mobileOpen]);
   const { theme } = useTheme();
   // Persona lives in localStorage; the storage event (same signal the
   // theme provider uses) keeps the header avatar live across pack
@@ -269,7 +296,7 @@ export function Sidebar() {
   useEffect(() => {
     if (!mobileOpen) return;
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setMobileOpen(false);
+      if (e.key === "Escape") setOpenedOn(null);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -279,6 +306,7 @@ export function Sidebar() {
     <>
       {/* Mobile menu button */}
       <button
+        id="tour-nav-toggle"
         onClick={() => setMobileOpen(true)}
         className="fixed top-3 left-3 z-40 p-2 rounded bg-space-700 border border-space-500 text-text-bright lg:hidden focus-ring"
         aria-label="Open navigation"
@@ -301,6 +329,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         id="sidebar-nav"
+        inert={!isDesktop && !mobileOpen}
         className={`
           fixed top-0 left-0 z-50 h-full w-56 flex flex-col transition-transform duration-200
           lg:translate-x-0 lg:static lg:z-auto
@@ -325,8 +354,9 @@ export function Sidebar() {
             <AttentionBadge />
           </div>
           <button
+            ref={closeRef}
             onClick={() => setMobileOpen(false)}
-            className="p-1 text-text hover:text-text-bright lg:hidden"
+            className="p-2.5 -m-1.5 text-text hover:text-text-bright lg:hidden focus-ring"
             aria-label="Close navigation"
           >
             <CloseIcon />

@@ -37,7 +37,7 @@ export default async function LessonDetailPage({
   const tags = parseLessonTags(lesson.tags);
 
   return (
-    <main className="container mx-auto p-6 max-w-3xl">
+    <div className="mx-auto w-full max-w-3xl">
       <nav className="mb-6 text-sm text-space-400">
         <Link href="/knowledge" className="hover:text-text">
           ← Knowledge Base
@@ -100,6 +100,6 @@ export default async function LessonDetailPage({
           </div>
         </footer>
       )}
-    </main>
+    </div>
   );
 }

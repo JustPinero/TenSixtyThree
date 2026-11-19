@@ -63,7 +63,7 @@ export default async function CacheObservabilityPage({
   ];
 
   return (
-    <main className="container mx-auto p-6">
+    <div className="mx-auto w-full">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Anthropic Cache Observability</h1>
         <p className="text-sm text-space-400 mt-1">
@@ -214,6 +214,6 @@ export default async function CacheObservabilityPage({
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

@@ -223,28 +223,28 @@ export default function BoardsPage() {
 
   if (signedOut) {
     return (
-      <main className="p-8">
+      <div className="w-full">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider mb-2">
           Boards
         </h1>
         <p className="text-sm font-mono text-text-dim">
           Sign in to use kanban boards.
         </p>
-      </main>
+      </div>
     );
   }
   if (boards === null) {
     return (
-      <main className="p-8">
+      <div className="w-full">
         <p className="text-sm font-mono text-text-dim">Loading boards…</p>
-      </main>
+      </div>
     );
   }
 
   const board = boards.find((b) => b.id === activeBoard) ?? null;
 
   return (
-    <main id="tour-board" className="p-8">
+    <div id="tour-board" className="w-full">
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider">
           Boards
@@ -372,6 +372,6 @@ export default function BoardsPage() {
           organization has them.
         </p>
       )}
-    </main>
+    </div>
   );
 }

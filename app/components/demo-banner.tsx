@@ -22,14 +22,14 @@ export function DemoBanner() {
   if (!demo) return null;
 
   return (
-    <div className="border-b border-cyan/40 bg-space-800 px-4 py-1.5 flex items-center gap-3">
+    <div className="border-b border-cyan/40 bg-space-800 px-4 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
       <p className="text-xs font-mono text-cyan">
         DEMO MODE — a sandbox fleet on scripted assistants. Nothing here is
         real, everything resets.
       </p>
       <a
         href="/signin"
-        className="ml-auto text-xs font-mono text-text-dim hover:text-text underline"
+        className="ml-auto inline-flex items-center min-h-6 px-1 text-xs font-mono text-text-dim hover:text-text underline focus-ring"
       >
         Exit demo
       </a>

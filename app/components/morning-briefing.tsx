@@ -111,7 +111,7 @@ export function MorningBriefing() {
         </div>
         <button
           onClick={handleDismiss}
-          className="text-xs font-mono text-muted hover:text-text transition-colors"
+          className="inline-flex items-center min-h-6 px-1 text-xs font-mono text-muted hover:text-text transition-colors focus-ring"
         >
           Dismiss
         </button>

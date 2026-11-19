@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { TOUR_STEPS } from "@/lib/tour-steps";
+import { TOUR_STEPS, type TourStep } from "@/lib/tour-steps";
 import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
 import { getOverseerSettings } from "@/lib/overseer-settings";
 import { speak } from "@/lib/speak";
 import { Portrait } from "./portrait";
-import { tourBubblePosition } from "@/lib/tour-position";
+import { tourBubblePosition, highlightRect } from "@/lib/tour-position";
 
 /**
  * 54.6 — the persona-guided demo tour. Hand-rolled spotlight: a fixed
@@ -42,13 +42,35 @@ function writeState(value: string) {
   }
 }
 
-function ThemePicker({ onPicked }: { onPicked: () => void }) {
+function ThemePicker({
+  onPicked,
+  onSkip,
+}: {
+  onPicked: () => void;
+  onSkip: () => void;
+}) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6">
-      <div className="max-w-2xl w-full bg-space-800 border border-cyan glow-border p-6 max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider mb-1">
-          Choose your guide
-        </h2>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 sm:p-6">
+      <div
+        role="dialog"
+        aria-labelledby="tour-picker-title"
+        className="max-w-2xl w-full bg-space-800 border border-cyan glow-border p-4 sm:p-6 max-h-[85dvh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h2
+            id="tour-picker-title"
+            className="text-lg font-mono font-bold text-cyan uppercase tracking-wider"
+          >
+            Choose your guide
+          </h2>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="shrink-0 min-h-11 sm:min-h-8 px-3 text-xs font-mono text-text-dim hover:text-text focus-ring"
+          >
+            Skip tour
+          </button>
+        </div>
         <p className="text-xs font-mono text-text-dim mb-4">
           Every theme pack bundles a look and an assistant. Pick one — it will
           walk you through the demo.
@@ -57,11 +79,12 @@ function ThemePicker({ onPicked }: { onPicked: () => void }) {
           {THEME_PACKS.map((pack) => (
             <button
               key={pack.key}
+              type="button"
               onClick={() => {
                 applyThemePack(pack.key);
                 onPicked();
               }}
-              className="p-3 border border-space-600 bg-space-900 hover:border-cyan text-left"
+              className="p-3 border border-space-600 bg-space-900 hover:border-cyan text-left min-w-0 focus-ring"
             >
               <div className="w-12 h-12 rounded border border-space-600 overflow-hidden mb-2">
                 <Portrait
@@ -70,10 +93,10 @@ function ThemePicker({ onPicked }: { onPicked: () => void }) {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="text-sm font-mono font-bold text-text-bright">
+              <p className="text-sm font-mono font-bold text-text-bright truncate">
                 {pack.persona.name}
               </p>
-              <p className="text-micro font-mono text-text-dim">
+              <p className="text-micro font-mono text-text-dim truncate">
                 {pack.label}
               </p>
             </button>
@@ -84,6 +107,24 @@ function ThemePicker({ onPicked }: { onPicked: () => void }) {
   );
 }
 
+/** On screen horizontally? (The closed mobile drawer sits at x < 0.) */
+function onCanvas(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.right > 0 && r.left < window.innerWidth;
+}
+
+function resolveTarget(step: TourStep): Element | null {
+  const el = document.querySelector(step.selector);
+  if (el && onCanvas(el)) return el;
+  // 71.2 — e.g. the Overseer link lives in the closed drawer below lg:
+  // point at the menu button instead.
+  if (step.mobileSelector) {
+    const alt = document.querySelector(step.mobileSelector);
+    if (alt && onCanvas(alt)) return alt;
+  }
+  return el;
+}
+
 function TourInner() {
   const router = useRouter();
   const pathname = usePathname();
@@ -91,6 +132,12 @@ function TourInner() {
   const [demo, setDemo] = useState(false);
   const [state, setState] = useState<string | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [viewport, setViewport] = useState({ width: 1440, height: 900 });
+  const [bubbleHeight, setBubbleHeight] = useState(220);
+  const [paused, setPaused] = useState(false);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  /** Route we pushed ourselves — not a visitor navigating away. */
+  const pendingRoute = useRef<string | null>(null);
 
   // Arm only for demo sessions.
   useEffect(() => {
@@ -118,10 +165,10 @@ function TourInner() {
   const stepIndex = state !== null && /^\d+$/.test(state) ? Number(state) : -1;
   const step = stepIndex >= 0 ? TOUR_STEPS[stepIndex] : null;
 
-  // Route + measure the current step's target.
   const measure = useCallback(() => {
+    setViewport({ width: window.innerWidth, height: window.innerHeight });
     if (!step) return;
-    const el = document.querySelector(step.selector);
+    const el = resolveTarget(step);
     if (!el) {
       setRect(null);
       return;
@@ -130,25 +177,80 @@ function TourInner() {
     setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
   }, [step]);
 
+  /** 71.1 — bring the target on screen before placing the bubble. */
+  const scrollToTarget = useCallback(() => {
+    if (!step) return;
+    const el = resolveTarget(step);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const offScreen = r.top < 0 || r.bottom > window.innerHeight;
+      if (offScreen && onCanvas(el)) {
+        el.scrollIntoView({
+          block: r.height > window.innerHeight * 0.8 ? "start" : "center",
+          behavior: "auto",
+        });
+      }
+    }
+    measure();
+  }, [step, measure]);
+
   useEffect(() => {
     if (!step) return;
     if (pathname !== step.route) {
-      router.push(step.route);
+      // 71.2 — never drag the visitor back. Our own push is in flight
+      // only when pendingRoute says so; otherwise they navigated away.
+      if (pendingRoute.current !== step.route) setPaused(true);
       return;
     }
-    // Element may mount after data loads — retry briefly.
+    pendingRoute.current = null;
+    setPaused(false);
     setRect(null);
-    const tries = [100, 400, 900, 1600];
-    const timers = tries.map((ms) => setTimeout(measure, ms));
-    window.addEventListener("resize", measure);
+    // Element may mount after data loads — retry briefly.
+    const timers = [100, 400, 900, 1600].map((ms) => setTimeout(scrollToTarget, ms));
+    let frame = 0;
+    const onMove = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+    window.addEventListener("resize", onMove);
+    // capture: <main> is the scroll container, not the window.
+    window.addEventListener("scroll", onMove, { capture: true, passive: true });
     const persona = getOverseerSettings();
     if (persona.voiceEnabled) speak(step.text, persona);
     return () => {
       timers.forEach(clearTimeout);
-      window.removeEventListener("resize", measure);
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onMove);
+      window.removeEventListener("scroll", onMove, { capture: true });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, pathname]);
+
+  // 71.1 — place against the bubble's real height, not a constant.
+  useEffect(() => {
+    const el = bubbleRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setBubbleHeight(el.scrollHeight));
+    observer.observe(el);
+    setBubbleHeight(el.scrollHeight);
+    return () => observer.disconnect();
+  }, [step, paused]);
+
+  const end = useCallback(() => {
+    writeState("done");
+    setState("done");
+  }, []);
+
+  // 71.2 — focus moves into the bubble each step; Escape ends the tour.
+  useEffect(() => {
+    if (!step || paused) return;
+    bubbleRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") end();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [step, paused, end]);
 
   if (!demo || state === null || state === "done") return null;
 
@@ -159,51 +261,93 @@ function TourInner() {
           writeState("0");
           setState("0");
         }}
+        onSkip={end}
       />
     );
   }
   if (!step) return null;
 
-  const persona = getOverseerSettings();
-  const go = (next: number) => {
-    if (next >= TOUR_STEPS.length) {
-      writeState("done");
-      setState("done");
-      return;
+  const goToRoute = (route: string) => {
+    if (route !== pathname) {
+      pendingRoute.current = route;
+      router.push(route);
     }
-    const value = String(Math.max(0, next));
-    writeState(value);
-    setState(value);
   };
 
-  // Phase 63.5 — clamped in a pure helper; the old inline min/max
-  // produced a negative left below 376px (bubble off-screen on phones).
-  const bubble = tourBubblePosition(
-    rect,
-    typeof window === "undefined"
-      ? { width: 1440, height: 900 }
-      : { width: window.innerWidth, height: window.innerHeight },
-  );
+  const go = (next: number) => {
+    if (next >= TOUR_STEPS.length) {
+      end();
+      return;
+    }
+    const index = Math.max(0, next);
+    writeState(String(index));
+    setState(String(index));
+    goToRoute(TOUR_STEPS[index].route);
+  };
+
+  if (paused) {
+    return (
+      <div className="fixed z-50 bottom-4 right-4 flex items-center gap-2 bg-space-800 border border-cyan glow-border p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <button
+          type="button"
+          onClick={() => {
+            setPaused(false);
+            goToRoute(step.route);
+          }}
+          className="min-h-11 sm:min-h-8 px-3 text-xs font-mono uppercase text-cyan border border-cyan focus-ring"
+        >
+          Resume tour ({stepIndex + 1}/{TOUR_STEPS.length})
+        </button>
+        <button
+          type="button"
+          onClick={end}
+          className="min-h-11 sm:min-h-8 px-3 text-xs font-mono text-text-dim hover:text-text focus-ring"
+        >
+          End
+        </button>
+      </div>
+    );
+  }
+
+  const persona = getOverseerSettings();
+  const bubble = tourBubblePosition(rect, viewport, bubbleHeight);
+  const spot = bubble.mode === "centered" ? null : highlightRect(rect, viewport);
+  const isSheet = bubble.mode === "sheet";
 
   return (
     <>
-      {rect && (
+      {spot && (
         <div
           aria-hidden
           className="fixed z-40 pointer-events-none border-2 border-cyan rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
           style={{
-            top: rect.top - 6,
-            left: rect.left - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
+            top: spot.top - 6,
+            left: spot.left - 6,
+            width: spot.width + 12,
+            height: spot.height + 12,
           }}
         />
       )}
       <div
+        ref={bubbleRef}
         role="dialog"
         aria-label={`Tour: ${step.title}`}
-        className="fixed z-50 bg-space-800 border border-cyan glow-border p-3"
-        style={{ top: bubble.top, left: bubble.left, width: bubble.width }}
+        tabIndex={-1}
+        className={`fixed z-50 bg-space-800 border-cyan glow-border overflow-y-auto outline-none ${
+          isSheet
+            ? "inset-x-0 bottom-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            : "border p-3"
+        }`}
+        style={
+          isSheet
+            ? { maxHeight: bubble.maxHeight }
+            : {
+                top: bubble.top,
+                left: bubble.left,
+                width: bubble.width,
+                maxHeight: bubble.maxHeight,
+              }
+        }
       >
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded border border-space-600 overflow-hidden shrink-0 delamain-talking">
@@ -213,24 +357,26 @@ function TourInner() {
               className="w-full h-full object-cover"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-mono font-bold text-cyan uppercase tracking-wider">
               {persona.name} · {step.title}
             </p>
             <p className="text-xs font-mono text-text mt-1">{step.text}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex flex-wrap items-center gap-2 mt-3">
           <button
+            type="button"
             onClick={() => go(stepIndex - 1)}
             disabled={stepIndex === 0}
-            className="border border-space-600 px-2 py-1 text-xs font-mono text-text-dim disabled:opacity-40"
+            className="min-h-11 sm:min-h-8 border border-space-600 px-3 text-xs font-mono text-text-dim disabled:opacity-40 focus-ring"
           >
             Back
           </button>
           <button
+            type="button"
             onClick={() => go(stepIndex + 1)}
-            className="border border-cyan px-3 py-1 text-xs font-mono uppercase text-cyan"
+            className="min-h-11 sm:min-h-8 border border-cyan px-4 text-xs font-mono uppercase text-cyan focus-ring"
           >
             {stepIndex === TOUR_STEPS.length - 1 ? "Finish" : "Next"}
           </button>
@@ -238,8 +384,9 @@ function TourInner() {
             {stepIndex + 1}/{TOUR_STEPS.length}
           </span>
           <button
-            onClick={() => go(TOUR_STEPS.length)}
-            className="ml-auto text-xs font-mono text-text-dim hover:text-text"
+            type="button"
+            onClick={end}
+            className="ml-auto min-h-11 sm:min-h-8 px-3 text-xs font-mono text-text-dim hover:text-text focus-ring"
           >
             End tour
           </button>

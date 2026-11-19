@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Phase 71 — one demo mint per run (/api/demo is 3/h/IP); specs read e2e/.auth/demo.json.
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -26,8 +28,12 @@ export default defineConfig({
     command: process.env.CI ? "pnpm dev:ci" : "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    // Phase 71 — never let a test server drain the operator's real
+    // Stop-hook spool (~/.cascade/webhook-spool.jsonl). That happened
+    // once on 2026-11-16 with a scratch server; this pins it shut.
     env: process.env.CI
       ? {
+          CASCADE_WEBHOOK_SPOOL: "/tmp/tensixtythree-e2e-nonexistent-spool.jsonl",
           ANTHROPIC_API_KEY: "sk-ant-ci-fake-key-not-used-by-smoke-specs",
           // Phase 57.2 — this used to hardcode `file:./test-e2e.db`.
           // SQLite was retired in Phase 51, so the dev server booted with

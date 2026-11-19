@@ -216,7 +216,7 @@ export default function RoadmapPage() {
                 <td className="px-3 py-2">
                   <Link
                     href={`/projects/${p.slug}`}
-                    className="text-text-bright hover:text-cyan transition-colors"
+                    className="inline-flex items-center min-h-6 py-1 text-text-bright hover:text-cyan transition-colors focus-ring"
                   >
                     {p.name}
                   </Link>

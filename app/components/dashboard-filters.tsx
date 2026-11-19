@@ -63,7 +63,7 @@ export function DashboardFilters({
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1">
         {statusOptions.map((opt) => (
           <button
             key={opt.label}

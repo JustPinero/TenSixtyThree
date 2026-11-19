@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTheme } from "../components/theme-provider";
 import {
   isNotificationSupported,
@@ -266,7 +266,7 @@ function IntegrationsPanel() {
           {statuses.map((s) => (
             <div
               key={s.service}
-              className="flex items-center justify-between p-3 border border-space-600 bg-space-800"
+              className="flex flex-wrap items-center justify-between gap-2 p-3 border border-space-600 bg-space-800"
             >
               <div className="flex items-center gap-3">
                 <div
@@ -325,15 +325,26 @@ function IntegrationsPanel() {
   );
 }
 
+// 71 — browser-only reads must not run in a useState initializer: the
+// server answers "unsupported", the browser "supported", and hydration
+// fails. useSyncExternalStore renders the server snapshot during
+// hydration, then switches to the client value.
+const noSubscribe = () => () => {};
+const readPermission = (): NotificationPermission =>
+  isNotificationSupported() ? Notification.permission : "default";
+
 function NotificationsPanel() {
-  const [enabled, setEnabled] = useState(() => getNotificationPreference());
-  const [supported] = useState(() => isNotificationSupported());
-  const [permission, setPermission] = useState(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      return Notification.permission;
-    }
-    return "default";
-  });
+  const storedEnabled = useSyncExternalStore(noSubscribe, getNotificationPreference, () => true);
+  const [enabledOverride, setEnabled] = useState<boolean | null>(null);
+  const enabled = enabledOverride ?? storedEnabled;
+  const supported = useSyncExternalStore(noSubscribe, isNotificationSupported, () => false);
+  const storedPermission = useSyncExternalStore(
+    noSubscribe,
+    readPermission,
+    (): NotificationPermission => "default",
+  );
+  const [permissionOverride, setPermission] = useState<NotificationPermission | null>(null);
+  const permission = permissionOverride ?? storedPermission;
 
   async function handleToggle() {
     const newValue = !enabled;
@@ -363,7 +374,7 @@ function NotificationsPanel() {
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
         Notifications
       </h2>
-      <div className="flex items-center justify-between p-3 border border-space-600 bg-space-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 border border-space-600 bg-space-800">
         <div>
           <span className="text-sm font-mono text-text-bright">
             Desktop Notifications
@@ -402,7 +413,7 @@ function SoundsPanel() {
   }
 
   return (
-    <div className="flex items-center justify-between p-3 border border-space-600 bg-space-800 mt-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 p-3 border border-space-600 bg-space-800 mt-2">
       <div>
         <span className="text-sm font-mono text-text-bright">
           Delamain Sound Effects
@@ -438,7 +449,7 @@ function AutomationPanel() {
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
         Automation
       </h2>
-      <div className="flex items-center justify-between p-3 border border-space-600 bg-space-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 border border-space-600 bg-space-800">
         <div>
           <span className="text-sm font-mono text-text-bright">
             Auto-Dispatch (Continue)
@@ -505,7 +516,7 @@ function ModelPanel() {
         AI Service &amp; Model
       </h2>
       <div className="p-3 border border-space-600 bg-space-800 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span className="text-sm font-mono text-text-bright">Service</span>
             <p className="text-micro font-mono text-muted mt-0.5">
@@ -526,7 +537,7 @@ function ModelPanel() {
           </select>
         </div>
         {service === "claude" && (
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-sm font-mono text-text-bright">Model</span>
               <p className="text-micro font-mono text-muted mt-0.5">
@@ -636,7 +647,7 @@ function BrainsPanel() {
           </p>
         )}
       </div>
-      <form onSubmit={add} className="flex gap-2">
+      <form onSubmit={add} className="flex gap-2 min-w-0">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -647,7 +658,7 @@ function BrainsPanel() {
           value={path}
           onChange={(e) => setPath(e.target.value)}
           placeholder="/absolute/path/to/repo"
-          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 flex-1"
+          className="bg-space-900 border border-space-600 text-sm font-mono text-text-bright px-2 py-1 flex-1 min-w-0"
         />
         <button
           type="submit"
@@ -739,7 +750,7 @@ function OverseerPanel() {
               onChange={(e) => setPortraitIdle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="/delamain.jpg"
-              className="flex-1 px-3 py-1.5 text-sm font-mono input"
+              className="flex-1 min-w-0 px-3 py-1.5 text-sm font-mono input"
             />
           </div>
           <p className="text-micro font-mono text-muted mt-1">
@@ -748,12 +759,12 @@ function OverseerPanel() {
         </div>
 
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="flex items-center gap-3 cursor-pointer mb-2">
+          <label className="flex items-center gap-3 min-h-6 cursor-pointer mb-2">
             <input
               type="checkbox"
               checked={usesTalkingFace}
               onChange={(e) => setUsesTalkingFace(e.target.checked)}
-              className="accent-cyan"
+              className="accent-cyan size-4"
             />
             <span className="text-sm font-mono text-text-bright">
               Use a talking portrait
@@ -776,7 +787,7 @@ function OverseerPanel() {
                   onChange={(e) => setPortraitTalking(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
                   placeholder="/delamain-talking.jpg"
-                  className="flex-1 px-3 py-1.5 text-sm font-mono input"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-sm font-mono input"
                 />
               </div>
               <p className="text-micro font-mono text-muted mt-1">
@@ -863,12 +874,12 @@ function VoicePanel() {
       </h2>
       <div className="space-y-3">
         <div className="p-3 border border-space-600 bg-space-800">
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 min-h-6 cursor-pointer">
             <input
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              className="accent-cyan"
+              className="accent-cyan size-4"
             />
             <span className="text-sm font-mono text-text-bright">
               Enable voice output
@@ -919,7 +930,7 @@ function VoicePanel() {
             step="0.05"
             value={rate}
             onChange={(e) => setRate(parseFloat(e.target.value))}
-            className="w-full accent-cyan"
+            className="w-full h-6 accent-cyan"
           />
           <p className="text-micro font-mono text-muted mt-1">
             How fast Delamain speaks. 1.0 is normal speed.
@@ -937,7 +948,7 @@ function VoicePanel() {
             step="0.05"
             value={pitch}
             onChange={(e) => setPitch(parseFloat(e.target.value))}
-            className="w-full accent-cyan"
+            className="w-full h-6 accent-cyan"
           />
           <p className="text-micro font-mono text-muted mt-1">
             Vocal pitch. 1.0 is the voice&apos;s natural tone.
@@ -952,28 +963,28 @@ function VoicePanel() {
             Mic Input Mode
           </span>
           <div role="radiogroup" aria-labelledby="mic-mode-label" className="space-y-2">
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 min-h-6 cursor-pointer">
               <input
                 type="radio"
                 name="mic-mode"
                 value="toggle"
                 checked={micMode === "toggle"}
                 onChange={() => setMicMode("toggle")}
-                className="accent-cyan"
+                className="accent-cyan size-4"
               />
               <span className="text-xs font-mono text-text-bright">
                 <span className="font-bold">Click to toggle</span> — click mic
                 on, speak, click off, then Send
               </span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 min-h-6 cursor-pointer">
               <input
                 type="radio"
                 name="mic-mode"
                 value="push-to-talk"
                 checked={micMode === "push-to-talk"}
                 onChange={() => setMicMode("push-to-talk")}
-                className="accent-cyan"
+                className="accent-cyan size-4"
               />
               <span className="text-xs font-mono text-text-bright">
                 <span className="font-bold">Hold to talk</span> — hold the mic
@@ -1003,7 +1014,7 @@ function VoicePanel() {
             onChange={(e) =>
               setSilenceThresholdMs(parseInt(e.target.value, 10))
             }
-            className="w-full accent-cyan"
+            className="w-full h-6 accent-cyan"
           />
           <p className="text-micro font-mono text-muted mt-1">
             How long to wait after you stop speaking before Conversation Mode

@@ -802,8 +802,8 @@ export function OverseerChat({
 
       {/* Header */}
       <div className="px-4 py-2 border-b border-space-600 bg-space-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex items-center gap-2 min-w-0">
             <Portrait
               src={portraitIdle}
               alt={overseerName}
@@ -814,7 +814,7 @@ export function OverseerChat({
               {overseerName} — Sprint Planning
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Phase 21 — Conversation Mode toggle. Always off on
                 mount; never persisted. Cancels on unmount, Esc, or
                 explicit toggle-off. While ON, the Mic button is
@@ -827,7 +827,7 @@ export function OverseerChat({
                     ? "Conversation Mode on — Esc to stop"
                     : "Hands-free conversation (best with headphones)"
                 }
-                className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 min-h-6 text-micro font-mono uppercase border transition-colors ${
                   conversationMode
                     ? "border-cyan text-cyan"
                     : "border-space-600 text-muted hover:text-text"
@@ -853,7 +853,7 @@ export function OverseerChat({
                   ? "Mute Delamain (TTS on)"
                   : "Have Delamain speak responses (TTS off)"
               }
-              className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-0.5 min-h-6 text-micro font-mono uppercase border transition-colors ${
                 ttsEnabled
                   ? "border-cyan text-cyan"
                   : "border-space-600 text-muted hover:text-text"
@@ -879,7 +879,7 @@ export function OverseerChat({
                     ? "Voice input on — click the mic to speak"
                     : "Enable voice input"
                 }
-                className={`flex items-center gap-1.5 px-2 py-0.5 text-micro font-mono uppercase border transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 min-h-6 text-micro font-mono uppercase border transition-colors ${
                   voiceEnabled
                     ? "border-cyan text-cyan"
                     : "border-space-600 text-muted hover:text-text"
@@ -946,7 +946,7 @@ export function OverseerChat({
                     setInput(s);
                     inputRef.current?.focus();
                   }}
-                  className="block text-micro font-mono text-info hover:text-cyan transition-colors text-left"
+                  className="block w-full min-h-6 py-1 text-micro font-mono text-info hover:text-cyan transition-colors text-left focus-ring"
                 >
                   &quot;{s}&quot;
                 </button>
@@ -1092,7 +1092,7 @@ export function OverseerChat({
                 : "What should we work on today?"
           }
           disabled={streaming}
-          className={`flex-1 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50`}
+          className={`flex-1 min-w-0 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50`}
         />
         <button
           onClick={sendMessage}

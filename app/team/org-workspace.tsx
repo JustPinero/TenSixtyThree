@@ -97,7 +97,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
   const active = orgs.find((o) => o.id === activeId) ?? null;
 
   return (
-    <main id="tour-org" className="p-8 max-w-4xl">
+    <div id="tour-org" className="w-full max-w-4xl">
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider">
           Organizations
@@ -148,7 +148,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
               refreshOrgs();
             }
           }}
-          className="flex gap-2 ml-auto"
+          className="flex gap-2 w-full sm:w-auto sm:ml-auto min-w-0"
         >
           <label htmlFor="new-org" className="sr-only">
             New organization name
@@ -158,7 +158,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
             value={newOrgName}
             onChange={(e) => setNewOrgName(e.target.value)}
             placeholder="New org name"
-            className="bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
+            className="flex-1 min-w-0 bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
           />
           <button
             type="submit"
@@ -306,7 +306,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
                     setDraft({ ...draft, title: e.target.value })
                   }
                   placeholder="Title"
-                  className="flex-1 bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
+                  className="flex-1 min-w-0 bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
                 />
                 <button
                   type="submit"
@@ -343,7 +343,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
                       key={post.id}
                       className="p-3 border border-space-600 bg-space-800"
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                         <span
                           className={`text-micro font-mono uppercase tracking-wider border border-current px-1.5 py-0.5 ${meta?.color ?? "text-text-dim"}`}
                         >
@@ -355,7 +355,7 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
                         {post.project && (
                           <a
                             href={`/projects/${post.project.slug}`}
-                            className="text-xs font-mono text-info"
+                            className="inline-flex items-center min-h-6 text-xs font-mono text-info"
                           >
                             {post.project.name}
                           </a>
@@ -378,6 +378,6 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }

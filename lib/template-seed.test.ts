@@ -136,12 +136,13 @@ describeIfTemplates("template seeding (v4.0)", () => {
     expect(defaults[0].projectType).toBe("other");
   });
 
-  it("every seeded template has non-empty content containing VERSION: 4.0", async () => {
+  it("every seeded template has non-empty content on playbook VERSION 4.x", async () => {
     const templates = await prisma.kickoffTemplate.findMany();
     expect(templates).toHaveLength(6);
     for (const row of templates) {
       expect(row.content.length, row.name).toBeGreaterThan(0);
-      expect(row.content, row.name).toContain("VERSION: 4.0");
+      // Files keep their -v4_0 names; the VERSION line moves within 4.x (4.1 since 2026-11-13).
+      expect(row.content, row.name).toMatch(/VERSION: 4\.\d+/);
     }
   });
 

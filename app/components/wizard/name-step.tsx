@@ -59,7 +59,7 @@ export function NameStep({ state, onChange }: NameStepProps) {
         <div
           role="group"
           aria-labelledby="wizard-project-type-label"
-          className="flex gap-2"
+          className="flex flex-wrap gap-2"
         >
           {projectTypes.map((type) => (
             <button

@@ -85,10 +85,10 @@ describe("no hand-rolled toggles remain", () => {
     it(`${f} uses the Toggle primitive`, () => {
       const src = readFileSync(path.join(root, f), "utf-8");
       expect(src, `${f} still paints a raw knob`).not.toMatch(
-        /absolute top-0\.5 w-4 h-4 rounded-full/,
+        /absolute top-0\.5 w-[45] h-[45] rounded-full/,
       );
       expect(src, `${f} has a switch without role=switch`).not.toMatch(
-        /w-10 h-5 rounded-full/,
+        /w-1[01] h-[56] rounded-full/,
       );
     });
   }

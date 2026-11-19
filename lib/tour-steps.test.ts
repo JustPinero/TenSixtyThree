@@ -29,6 +29,12 @@ describe("TOUR_STEPS", () => {
         source.includes(step.selector.slice(1)),
         `${step.anchorFile} is missing ${step.selector}`,
       ).toBe(true);
+      if (step.mobileSelector) {
+        expect(
+          source.includes(`"${step.mobileSelector.slice(1)}"`),
+          `${step.anchorFile} is missing ${step.mobileSelector}`,
+        ).toBe(true);
+      }
     }
   });
 });

@@ -21,7 +21,7 @@ export default function DelamainPage() {
   );
 
   return (
-    <div className="h-[calc(100vh-3rem)] flex flex-col animate-fade-in">
+    <div className="h-full min-h-0 flex flex-col animate-fade-in">
       {dispatchResults.length > 0 && (
         <div className="mb-4">
           <DispatchResults

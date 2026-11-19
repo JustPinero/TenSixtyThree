@@ -53,11 +53,18 @@ export default function RootLayout({
       <body className="h-full flex scanlines">
         <ThemeProvider>
           <Sidebar />
-          <div className="flex-1 min-h-full flex flex-col">
+          {/* 71.3 — min-w-0: a flex child defaults to min-width:auto, which
+              let wide page content widen the whole document (sideways
+              scroll at 390px on six pages). h-full + min-h-0 keep <main>
+              the one scroll container. */}
+          <div className="flex-1 min-w-0 h-full min-h-0 flex flex-col">
+            {/* Reserves the fixed menu button's space below lg, so banners
+                and page headers never sit underneath it. */}
+            <div aria-hidden className="h-14 shrink-0 lg:hidden" />
             <DemoBanner />
             <DemoTour />
             <SetPasswordPrompt />
-            <main className="flex-1 overflow-auto lg:ml-0 p-6 pt-14 lg:pt-6">
+            <main className="flex-1 min-h-0 min-w-0 overflow-auto p-4 sm:p-6">
               {children}
             </main>
           </div>

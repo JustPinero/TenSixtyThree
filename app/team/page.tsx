@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default function TeamPage() {
   return (
     <OrgWorkspace>
-      <main className="p-8 max-w-2xl">
+      <div className="w-full max-w-2xl">
         <h1 className="text-lg font-mono font-bold text-cyan uppercase tracking-wider mb-2">
           Organizations
         </h1>
@@ -20,7 +20,7 @@ export default function TeamPage() {
           features. Sign in to use them — local single-operator mode runs
           without an account.
         </p>
-      </main>
+      </div>
     </OrgWorkspace>
   );
 }

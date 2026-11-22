@@ -247,7 +247,7 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   migration `20261122000000_tenant_scoping` have `userId` null, so no hosted
   user sees them after deploy (local operator rows are unaffected). The data
   is kept. If the old hosted Overseer history matters, backfill it to the
-  admin's user id with one UPDATE after deploy.
+  admin's user id with one UPDATE after deploy. Confirmed by the batch review: add this to the deploy checklist (references/deployment-landmines.md) so it isn't forgotten.
 
 
 - **[68.D1]** (2026-11-22, phase 68 security review, medium) The cloud runner
@@ -273,3 +273,10 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   (two-key) and confirm `RAILWAY_TOKEN` is unset everywhere.
 - ~~**[1.0.D12]**~~ CLOSED by 56.1 — proxy-aware client IP (`x-client-ip`).
 - ~~**[1.0.D13]**~~ CLOSED by 56.1 — direct-to-origin bypass (edge secret).
+
+- **[67.D1]** (2026-11-22, batch review, low) A SIGTERM that lands while the
+  runner is cloning or pushing (git commands can take up to 120s and are
+  not abortable yet) can outlast the 25s shutdown grace: the process exits
+  before `requeueInterrupted`, the row stays `started` until the 60-min
+  stale sweep, and the retry spends an attempt. Fix: thread the shutdown
+  signal into the clone/push `execFile` calls.

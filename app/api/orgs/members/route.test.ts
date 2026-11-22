@@ -170,3 +170,20 @@ describe("DELETE /api/orgs/invite (revoke)", () => {
     ).toBe("canceled");
   });
 });
+
+describe("batch review — last-owner guard under concurrency", () => {
+  it("two owners demoting each other at once leave at least one owner", async () => {
+    const bob = await memberId("bob");
+    await rig!.prisma.member.update({ where: { id: bob }, data: { role: "owner" } });
+    const alice = await memberId("alice");
+    await Promise.all([
+      patch("alice", { memberId: bob, role: "member" }),
+      patch("bob", { memberId: alice, role: "member" }),
+    ]);
+    const owners = await rig!.prisma.member.count({
+      where: { organizationId: t.orgs.aliceOrg.id, role: "owner" },
+    });
+    expect(owners).toBeGreaterThanOrEqual(1);
+  });
+});
+

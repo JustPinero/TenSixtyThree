@@ -26,6 +26,8 @@ export async function claimNextCloudDispatch(
     WHERE "id" = (
       SELECT "id" FROM "Dispatch"
       WHERE "runtime" = 'cloud' AND "status" = 'queued'
+        -- review: a cancelled row is never picked up again
+        AND NOT "cancelRequested"
       ORDER BY "enqueuedAt" ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1
@@ -43,6 +45,15 @@ export async function requeueStaleClaims(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - maxAgeMs);
   const stale = { runtime: "cloud", status: "started", startedAt: { lt: cutoff } };
+  // Review: a run someone cancelled is finished, not retried.
+  await prisma.dispatch.updateMany({
+    where: { ...stale, cancelRequested: true },
+    data: {
+      status: "failed",
+      completedAt: new Date(),
+      errorMessage: "Cancelled by request (the runner stopped before it could finish).",
+    },
+  });
   // 67.2 — a job that has already used its last claim is dead-lettered,
   // not requeued forever.
   await prisma.dispatch.updateMany({

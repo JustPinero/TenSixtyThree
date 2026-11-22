@@ -332,3 +332,52 @@ describe("67.3 — failures explain themselves", () => {
   });
 });
 
+describe("batch review — runner gaps", () => {
+  it("a cancelled job is never claimed again, and a stale cancelled claim is failed, not requeued", async () => {
+    const old = new Date(Date.now() - 2 * 3600_000);
+    const { r, dispatch } = await setup({ startedAt: old, attempts: 1, cancelRequested: true });
+    await requeueStaleClaims(r.prisma, 3600_000);
+    const after = await row(r, dispatch.id);
+    expect(after.status).toBe("failed");
+    expect(after.errorMessage).toMatch(/cancel/i);
+
+    await r.prisma.dispatch.update({
+      where: { id: dispatch.id },
+      data: { status: "queued", runnerId: null, startedAt: null },
+    });
+    expect(await claimNextCloudDispatch(r.prisma, "r2")).toBeNull();
+  });
+
+  it("a stop that lands after the agent finished does not block the PR", async () => {
+    const { r, dispatch } = await setup();
+    let release: () => void = () => {};
+    const d = deps({
+      pushBranch: vi.fn(
+        () =>
+          new Promise<{ pushed: boolean; branch: string | null }>((resolve) => {
+            release = () => resolve({ pushed: true, branch: "cloud/x-1" });
+          }),
+      ),
+    });
+    const run = runClaimedDispatch(r.prisma, dispatch, d, { cancelPollMs: 10 });
+    // Cancel arrives while the final push is in flight.
+    await new Promise((res) => setTimeout(res, 20));
+    await r.prisma.dispatch.update({ where: { id: dispatch.id }, data: { cancelRequested: true } });
+    await new Promise((res) => setTimeout(res, 40));
+    release();
+    await run;
+    expect(d.openPullRequest).toHaveBeenCalled();
+    expect((await row(r, dispatch.id)).status).toBe("completed");
+  });
+
+  it("claim-time push check: an owner who lost repo access gets a failed run, nothing cloned", async () => {
+    const { r, dispatch } = await setup();
+    const d = deps({ verifyRepoAccess: vi.fn().mockResolvedValue(false) });
+    await runClaimedDispatch(r.prisma, dispatch, d);
+    expect(d.cloneRepo).not.toHaveBeenCalled();
+    const after = await row(r, dispatch.id);
+    expect(after.status).toBe("failed");
+    expect(after.errorMessage).toMatch(/push access/i);
+  });
+});
+

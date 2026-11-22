@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/app/generated/prisma/client";
 import { activeOrgContext } from "@/lib/org-context";
 import { requireSignedIn } from "@/lib/access";
 
@@ -29,9 +30,18 @@ async function context(request: NextRequest) {
 
 const canManage = (role: string) => role === "owner" || role === "admin";
 
-async function ownerCount(orgId: string) {
-  return prisma.member.count({
-    where: { organizationId: orgId, role: "owner" },
+/**
+ * Batch review — the last-owner rule is check-then-write; two owners
+ * demoting each other at once could both pass the count. One advisory
+ * lock per org (transaction-scoped) serializes owner-changing writes.
+ */
+async function withOwnerLock<T>(
+  orgId: string,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"org-owners-" + orgId}))`;
+    return fn(tx);
   });
 }
 
@@ -111,17 +121,20 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       { status: 403 },
     );
   }
-  if (
-    row.role === "owner" &&
-    role !== "owner" &&
-    (await ownerCount(c.ctx.orgId)) <= 1
-  ) {
+  const demotesOwner = row.role === "owner" && role !== "owner";
+  const done = await withOwnerLock(c.ctx.orgId, async (tx) => {
+    if (demotesOwner && (await tx.member.count({ where: { organizationId: c.ctx.orgId, role: "owner" } })) <= 1) {
+      return false;
+    }
+    await tx.member.update({ where: { id: row.id }, data: { role } });
+    return true;
+  });
+  if (!done) {
     return NextResponse.json(
       { error: "An organization needs at least one owner" },
       { status: 409 },
     );
   }
-  await prisma.member.update({ where: { id: row.id }, data: { role } });
   return NextResponse.json({ ok: true });
 }
 
@@ -145,12 +158,18 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       { status: 403 },
     );
   }
-  if (row.role === "owner" && (await ownerCount(c.ctx.orgId)) <= 1) {
+  const done = await withOwnerLock(c.ctx.orgId, async (tx) => {
+    if (row.role === "owner" && (await tx.member.count({ where: { organizationId: c.ctx.orgId, role: "owner" } })) <= 1) {
+      return false;
+    }
+    await tx.member.delete({ where: { id: row.id } });
+    return true;
+  });
+  if (!done) {
     return NextResponse.json(
       { error: "An organization needs at least one owner" },
       { status: 409 },
     );
   }
-  await prisma.member.delete({ where: { id: row.id } });
   return NextResponse.json({ ok: true });
 }

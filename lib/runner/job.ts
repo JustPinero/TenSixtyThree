@@ -59,6 +59,9 @@ export interface RunnerDeps {
     dispatch: Dispatch;
     partial?: boolean;
   }) => Promise<{ pushed: boolean; branch: string | null; reason?: string }>;
+  /** Review — claim-time re-check that the dispatching (non-admin) owner
+   *  can still push to the repo; false fails the run before cloning. */
+  verifyRepoAccess?: (args: { userId: string; githubRepo: string }) => Promise<boolean>;
   /** 52.5 — open a PR for the pushed branch; returns its url. Optional;
    *  failures never fail the run (the branch is still on the remote). */
   openPullRequest?: (args: {
@@ -126,6 +129,28 @@ export async function runClaimedDispatch(
   }
 
   const runnerId = dispatch.runnerId ?? "";
+
+  // Review — push access was checked at enqueue, but a row can wait in the
+  // queue; re-check before the runner touches the repo with its token.
+  if (deps.verifyRepoAccess && dispatch.ownerUserId) {
+    const owner = await prisma.user.findUnique({
+      where: { id: dispatch.ownerUserId },
+      select: { role: true },
+    });
+    if (owner?.role !== "admin") {
+      const ok = await deps
+        .verifyRepoAccess({ userId: dispatch.ownerUserId, githubRepo: project.githubRepo })
+        .catch(() => false);
+      if (!ok) {
+        await finalizeIfOwned(prisma, dispatch.id, runnerId, {
+          status: "failed",
+          errorMessage: "The dispatching user no longer has push access to this repository.",
+        });
+        return;
+      }
+    }
+  }
+
   const wallMs = opts.wallClockMs ?? DEFAULT_WALL_MS;
   const stop = new AbortController();
   let reason: StopReason | null = null;
@@ -344,7 +369,10 @@ export async function runClaimedDispatch(
     // 52.5 — a pushed branch becomes a reviewable PR (fenced: not if we
     // lost the claim while pushing).
     let resultPrUrl: string | null = null;
-    if (resultBranch && deps.openPullRequest && !reason) {
+    // Review: only a LOST CLAIM fences publishing here — a cancel or
+    // timeout that lands after the agent already finished doesn't undo
+    // finished work (the run is recorded as completed below).
+    if (resultBranch && deps.openPullRequest && reason !== "lost-claim") {
       try {
         const pr = composePr({
           mode: dispatch.mode,

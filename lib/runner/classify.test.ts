@@ -44,4 +44,18 @@ describe("60.4 [1.0.D5] — symlinks are resolved before the containment check",
     expect(classifyToolUse("Read", { file_path: "alias/x.ts" }, workdir).allowed).toBe(true);
     expect(classifyToolUse("Write", { file_path: "src/new/deep.ts" }, workdir).allowed).toBe(true);
   });
+
+  it("review — a DANGLING symlink pointing outside is still outside (Write would follow it)", async () => {
+    const { mkdtempSync, mkdirSync, symlinkSync, realpathSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "classify-dangling-")));
+    const workdir = join(base, "work");
+    mkdirSync(workdir);
+    symlinkSync(join(base, "outside", "not-yet.md"), join(workdir, "notes.md"));
+    symlinkSync(join(workdir, "later.md"), join(workdir, "inside-link.md"));
+    expect(classifyToolUse("Write", { file_path: "notes.md" }, workdir).allowed).toBe(false);
+    expect(classifyToolUse("Write", { file_path: "inside-link.md" }, workdir).allowed).toBe(true);
+  });
 });
+

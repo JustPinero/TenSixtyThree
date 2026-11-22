@@ -12,7 +12,7 @@
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readlinkSync, realpathSync } from "node:fs";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
@@ -100,16 +100,30 @@ const PATH_KEYS = ["file_path", "path", "notebook_path"];
  * of a new file), the deepest existing ancestor is resolved and the rest
  * appended.
  */
-function realResolve(path: string): string {
+function realResolve(path: string, depth = 0): string {
+  if (depth > 40) return path; // symlink loop — treat as unresolved
+  // Walk up to the deepest component that exists AS AN ENTRY (lstat:
+  // a dangling symlink exists even though its target doesn't).
   let existing = path;
   const tail: string[] = [];
-  while (!existsSync(existing)) {
-    const parent = dirname(existing);
-    if (parent === existing) return path;
-    tail.unshift(basename(existing));
-    existing = parent;
+  for (;;) {
+    try {
+      lstatSync(existing);
+      break;
+    } catch {
+      const parent = dirname(existing);
+      if (parent === existing) return path;
+      tail.unshift(basename(existing));
+      existing = parent;
+    }
   }
   try {
+    // Review: a dangling link would be "non-existent" to existsSync, so a
+    // Write through it escaped the check. Follow its target explicitly.
+    if (lstatSync(existing).isSymbolicLink() && !existsSync(existing)) {
+      const target = resolve(dirname(existing), readlinkSync(existing));
+      return realResolve(join(target, ...tail), depth + 1);
+    }
     return join(realpathSync(existing), ...tail);
   } catch {
     return path;
@@ -365,6 +379,12 @@ export function buildRealDeps(
         token: process.env.GITHUB_TOKEN ?? null,
         allowWorkflowChanges: false,
       });
+    },
+
+    // Review — claim-time push re-check with the owner's own GitHub token.
+    async verifyRepoAccess(args: { userId: string; githubRepo: string }): Promise<boolean> {
+      const { verifyRepoPushAccess } = await import("../github-access");
+      return (await verifyRepoPushAccess(prisma, args.userId, args.githubRepo)).ok;
     },
 
     async openPullRequest(args: {

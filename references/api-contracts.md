@@ -603,3 +603,25 @@ Headless operator ops (Phase 52.3) — exists because the hosted DB is private-n
 - `covered: { [slug]: { progress?, blocker?, note? } }` — confirmed during inventory walks
 - `proposedDispatches: [{ slug, mode, instructions?, proposedAtISO }]`
 - (free-form for anything else the model wants to record)
+
+## Added in the 64–72 batch (2026-11)
+
+All routes go through `lib/access.ts` (deny by default) and the tenant scope in `lib/tenant-scope.ts`.
+
+| Route | Gate | Contract |
+|---|---|---|
+| `GET /api/account` | signed in | `{ user: { id, name, email, role, isDemo }, hasPassword, hasAnthropicKey }` — never key material |
+| `DELETE /api/demo` | public | ends a demo session server-side and clears the cookie; never touches a real account |
+| `POST /api/projects/connect` | signed in, not demo | `{ githubRepo, name? }` → 201 `{ project }`; non-admins must have push on the repo via their own GitHub token (403 `reason`), 409 if already connected |
+| `GET /api/dispatch/cloud?projectSlug=` | signed in | `{ runs: PublicDispatch[] }` newest first (25); 404 for invisible projects |
+| `POST /api/dispatch/cloud/[id]/cancel` | can dispatch the project | queued → failed now; started → `cancelRequested`; 409 when already finished |
+| `GET/PATCH/DELETE /api/orgs/members` | org member / owner-admin | list members + pending invites; change role; remove. Last owner protected (409); admins can't touch owners |
+| `DELETE /api/orgs/invite` | org owner/admin | `{ invitationId }` → revoked (404 for other orgs) |
+| `POST /api/overseer/history` | user | one turn: `{ messages: [{role, content}…], sessionDate }` in one transaction (single-message shape still accepted) |
+| `GET /api/settings/model` / `PATCH` | user / user-or-admin | per-user model (`scope: "user"`, needs BYOK unless admin) over the admin default (`scope: "default"`) |
+| `GET /api/usage/summary` | user | `scope: "mine"` (own calls) or `"fleet"` + `appKeyByUser` for admins/local |
+| `GET /api/dispatch/status` | user | queue + dispatch counts for visible projects |
+| `GET/POST /api/brains` | local mode | registered knowledge brains |
+| `GET /api/observability/quarantine` | admin | quarantined webhook spool lines |
+| `/api/auth/[...all]` | public | Better Auth's own flows |
+

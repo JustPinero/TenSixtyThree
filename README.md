@@ -210,7 +210,7 @@ Projects need `CLAUDE.md` + `.git` + `package.json` (or `Cargo.toml` / `pyprojec
 - **Frontend:** Next.js 16 (App Router), TypeScript strict, Tailwind CSS 4
 - **Database:** Postgres 16 via Prisma 7 (`@prisma/adapter-pg`). Local dev runs the `tensixtythree-pg` Docker container from `docker-compose.dev.yml`; hosted uses Railway Postgres
 - **Auth:** Better Auth — invite-only, email code / password / GitHub + Google OAuth; organizations via the org plugin. Local single-operator mode runs with `AUTH_REQUIRED` unset
-- **Hosting:** Railway, two services from one repo — `tensixtythree-app` (Next.js) and `tensixtythree-runner` (cloud agent runner, `RUNNER_MODE=1`) — plus Postgres
+- **Hosting:** Cloudflare edge (DNS, TLS, the `tensixtythree-edge` Worker) in front of Railway: two services from one repo — `tensixtythree-app` (Next.js) and `tensixtythree-runner` (cloud agent runner, `RUNNER_MODE=1`) — plus Postgres. See the Cloudflare section of [`references/deployment-landmines.md`](references/deployment-landmines.md)
 - **AI:** Anthropic Claude API (Sonnet for chat, Haiku for briefing/harvest); cloud runs use the Claude Agent SDK
 - **Testing:** Vitest + Playwright E2E
 - **Dispatch:** local — tmux + Claude Code CLI, queued via `lib/dispatch-queue.ts`; hosted — `Dispatch` rows with `runtime: "cloud"` claimed by the runner service

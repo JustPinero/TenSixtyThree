@@ -12,7 +12,7 @@ Scopes:
 | `DATABASE_URL` | hosted-required | Postgres connection string (Railway: reference the attached Postgres service). |
 | `ANTHROPIC_API_KEY` | hosted-required | Claude API key for the Overseer chat and briefing engines. |
 | `BETTER_AUTH_SECRET` | hosted-required | Better Auth signing secret (`openssl rand -base64 32`; never reuse the local one in prod). |
-| `BETTER_AUTH_URL` | hosted-required | Public base URL of the deployment (`https://<app>.up.railway.app` until the domain lands). |
+| `BETTER_AUTH_URL` | hosted-required | Public base URL: `https://www.tensixtythree.com` (Cloudflare edge). The `*.up.railway.app` host is origin-only behind the Worker. |
 | `AUTH_REQUIRED` | hosted-required | Set `"true"` on hosted instances to enforce sessions; unset/false is local single-user mode. |
 | `ENCRYPTION_KEY` | hosted-required | 54.2 — 32-byte base64 secret sealing BYOK Anthropic keys at rest (`openssl rand -base64 32`). Rotating it orphans stored keys (users re-enter). |
 | `ADMIN_EMAILS` | hosted-required | 54.1 — comma-separated bootstrap allowlist: these emails may create accounts without an invite and land with the admin role. Without it, an invite-only instance has no way in. |

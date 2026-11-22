@@ -257,3 +257,19 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   deputy for new projects. Defense in depth still owed: user-owned projects
   should run with a per-user or per-installation token (GitHub App), so the
   operator token never touches a repo only a user vouched for.
+
+### 09-18 audit ledger (logged in phase 58.3, 2026-11-22)
+- ~~**[1.0.D6]**~~ CLOSED by 57.2 — CI was dead (workflow never ran on PRs).
+- ~~**[1.0.D7]**~~ CLOSED by 57.1 — `__Secure-` session cookie name mismatch.
+- **[1.0.D8]** (decision needed) KickoffTemplate is never seeded on the hosted
+  app. Options: seed the default template at boot, or treat templates as
+  local-only (the hosted nav already hides Templates since 68.1).
+- **[1.0.D9]** (two-key) Railway has two Postgres services; one is unused.
+  Deleting it needs a verified `pg_dump` and Justin's fresh yes.
+- **[1.0.D10]** The runner's `GITHUB_TOKEN` is Justin's personal OAuth token;
+  replace with a fine-grained PAT scoped to the dispatched repos (see also
+  [68.D1] per-user tokens).
+- **[1.0.D11]** A dead Railway API token remains in 1Password; delete the item
+  (two-key) and confirm `RAILWAY_TOKEN` is unset everywhere.
+- ~~**[1.0.D12]**~~ CLOSED by 56.1 — proxy-aware client IP (`x-client-ip`).
+- ~~**[1.0.D13]**~~ CLOSED by 56.1 — direct-to-origin bypass (edge secret).

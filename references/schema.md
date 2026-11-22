@@ -352,7 +352,9 @@ seam (createTeam/inviteMember/acceptInvite; invite "token" = Invitation.id,
 rotated on re-invite). Attribution: Dispatch.organizationId/ownerUserId +
 HumanTask.organizationId/ownerUserId (String FKs).
 
-## (historical) Teams & identity (Phases 43.1 + 45.1)
+## (historical — REMOVED in 1.0) Teams & identity (Phases 43.1 + 45.1)
+
+> These models and lib/teams.ts were deleted (commit e88dfd1). Identity is Better Auth's User; teams are the org plugin's Organization/Member/Invitation (see above). Kept only as history.
 
 ### User
 | Field | Type | Notes |

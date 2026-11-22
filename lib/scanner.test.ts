@@ -82,16 +82,21 @@ describe("scanProjects", () => {
   });
 
   it("detects git dirty status", async () => {
-    // Add an untracked file to make alpha dirty
+    // Add an untracked file to make alpha dirty — and remove it afterwards
+    // (60.5): the fixture is shared, so later tests must see it clean.
     const projA = path.join(TEST_DIR, "Project-Alpha");
-    await fs.writeFile(path.join(projA, "new-file.txt"), "dirty");
+    const dirtyFile = path.join(projA, "new-file.txt");
+    await fs.writeFile(dirtyFile, "dirty");
+    try {
+      const results = await scanProjects(TEST_DIR);
+      const alpha = results.find((r) => r.name === "Project-Alpha");
+      expect(alpha!.gitDirty).toBe(true);
 
-    const results = await scanProjects(TEST_DIR);
-    const alpha = results.find((r) => r.name === "Project-Alpha");
-    expect(alpha!.gitDirty).toBe(true);
-
-    const beta = results.find((r) => r.name === "project-beta");
-    expect(beta!.gitDirty).toBe(false);
+      const beta = results.find((r) => r.name === "project-beta");
+      expect(beta!.gitDirty).toBe(false);
+    } finally {
+      await fs.rm(dirtyFile, { force: true });
+    }
   });
 
   it("skips hidden directories", async () => {
@@ -133,4 +138,10 @@ describe("scanProjects", () => {
     const allAgain = await scanProjects(TEST_DIR, { since: pastDate });
     expect(allAgain.length).toBe(allResults.length);
   });
+
+  it("60.5 — the shared fixture is clean again after the dirty-status test", async () => {
+    const results = await scanProjects(TEST_DIR);
+    expect(results.find((r) => r.name === "Project-Alpha")!.gitDirty).toBe(false);
+  });
 });
+

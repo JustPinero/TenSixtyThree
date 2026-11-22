@@ -103,8 +103,18 @@ afterAll(async () => {
 describe("auditProjectFeatureUsage", () => {
   it("detects multiple features for a feature-rich project", async () => {
     const result = await auditProjectFeatureUsage(prisma, projectAId);
-    expect(result.detected.length).toBeGreaterThan(3);
     const names = result.detected.map((d) => d.featureName);
+    // 60.5 — the exact set, not ">3": a detector silently dropping (or a
+    // new false positive) must fail this test.
+    expect([...names].sort()).toEqual([
+      "Agent Teams",
+      "Plan Mode",
+      "PostCompact Hook",
+      "Prompt Caching (API)",
+      "Slash Commands (`.claude/commands/`)",
+      "Status Line",
+      "Stop Hook",
+    ]);
     expect(names).toContain("Stop Hook");
     expect(names).toContain("PostCompact Hook");
     expect(names).toContain("Status Line");
@@ -115,7 +125,7 @@ describe("auditProjectFeatureUsage", () => {
 
   it("detects few features for a sparse project", async () => {
     const result = await auditProjectFeatureUsage(prisma, projectBId);
-    expect(result.detected.length).toBeLessThan(3);
+    expect(result.detected.map((d) => d.featureName)).toEqual([]);
   });
 
   it("is idempotent — second run produces same row count", async () => {

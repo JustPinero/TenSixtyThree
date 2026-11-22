@@ -60,7 +60,7 @@ export default async function ToolsObservabilityPage({
     <div className="mx-auto w-full">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Tool-Call Observability</h1>
-        <p className="text-sm text-space-400 mt-1">
+        <p className="text-sm text-muted mt-1">
           One row per Overseer tool execution. Useful for spotting
           tools the model never picks, tools that fail often, or
           sessions that hit the iteration limit.
@@ -69,34 +69,34 @@ export default async function ToolsObservabilityPage({
 
       <form
         method="GET"
-        className="flex flex-wrap items-end gap-3 mb-6 p-4 bg-space-800 rounded"
+        className="flex flex-wrap items-end gap-3 mb-6 p-4 bg-space-800"
       >
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Tool name</span>
+          <span className="text-muted mb-1">Tool name</span>
           <input
             type="text"
             name="toolName"
             defaultValue={sp.toolName ?? ""}
             placeholder="query_project"
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Session ID</span>
+          <span className="text-muted mb-1">Session ID</span>
           <input
             type="text"
             name="sessionId"
             defaultValue={sp.sessionId ?? ""}
             placeholder="cuid…"
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Success</span>
+          <span className="text-muted mb-1">Success</span>
           <select
             name="success"
             defaultValue={sp.success ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           >
             <option value="">All</option>
             <option value="true">Success</option>
@@ -104,39 +104,39 @@ export default async function ToolsObservabilityPage({
           </select>
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Since</span>
+          <span className="text-muted mb-1">Since</span>
           <input
             type="date"
             name="since"
             defaultValue={sp.since ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Until</span>
+          <span className="text-muted mb-1">Until</span>
           <input
             type="date"
             name="until"
             defaultValue={sp.until ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <button
           type="submit"
-          className="bg-accent text-space-900 rounded px-4 py-1.5 text-sm font-medium"
+          className="bg-accent text-space-900 px-4 py-1.5 text-sm font-medium"
         >
           Apply
         </button>
         <Link
           href="/observability/tools"
-          className="text-space-400 hover:text-text text-sm py-1.5"
+          className="text-muted hover:text-text text-sm py-1.5"
         >
           Clear
         </Link>
       </form>
 
       {result.rows.length === 0 ? (
-        <div className="text-center py-12 text-space-400">
+        <div className="text-center py-12 text-muted">
           No tool-call events yet.
           <p className="text-xs mt-2">
             Rows appear after the Overseer executes any registered tool.
@@ -145,7 +145,7 @@ export default async function ToolsObservabilityPage({
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-xs text-space-400 border-b border-space-700">
+            <thead className="text-xs text-muted border-b border-space-600">
               <tr>
                 <th className="text-left py-2 pr-3">Time</th>
                 <th className="text-left py-2 pr-3">Session</th>
@@ -163,13 +163,13 @@ export default async function ToolsObservabilityPage({
                   key={r.id}
                   className="border-b border-space-800 hover:bg-space-800/50"
                 >
-                  <td className="py-2 pr-3 text-space-400 text-xs whitespace-nowrap">
+                  <td className="py-2 pr-3 text-muted text-xs whitespace-nowrap">
                     {r.createdAt.toISOString().replace("T", " ").slice(0, 19)}
                   </td>
-                  <td className="py-2 pr-3 text-space-400 text-xs font-mono">
+                  <td className="py-2 pr-3 text-muted text-xs font-mono">
                     {r.sessionId.slice(0, 8)}
                   </td>
-                  <td className="py-2 pr-3 text-right text-space-400">
+                  <td className="py-2 pr-3 text-right text-muted">
                     {r.iteration}
                   </td>
                   <td className="py-2 pr-3 font-mono">{r.toolName}</td>
@@ -183,10 +183,10 @@ export default async function ToolsObservabilityPage({
                     )}
                   </td>
                   <td className="py-2 pr-3 text-right">{r.outputSize}</td>
-                  <td className="py-2 pr-3 text-right text-space-400">
+                  <td className="py-2 pr-3 text-right text-muted">
                     {r.durationMs}ms
                   </td>
-                  <td className="py-2 pr-3 text-space-400 text-xs font-mono">
+                  <td className="py-2 pr-3 text-muted text-xs font-mono">
                     {truncate(r.input, 80)}
                   </td>
                 </tr>
@@ -201,7 +201,7 @@ export default async function ToolsObservabilityPage({
                   pathname: "/observability/tools",
                   query: { ...sp, cursor: String(result.nextCursor) },
                 }}
-                className="inline-block px-4 py-2 bg-space-800 hover:bg-space-700 rounded text-sm"
+                className="inline-block min-h-6 px-4 py-2 border border-space-600 bg-space-800 hover:bg-space-700 text-sm focus-ring"
               >
                 Older →
               </Link>

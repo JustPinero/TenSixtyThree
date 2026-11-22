@@ -66,7 +66,7 @@ export default async function CacheObservabilityPage({
     <div className="mx-auto w-full">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Anthropic Cache Observability</h1>
-        <p className="text-sm text-space-400 mt-1">
+        <p className="text-sm text-muted mt-1">
           Per-request token usage and cache hit rate. One row per
           Anthropic API call from a buffered call site. Streaming call
           sites (wizard, project chat) wire in a follow-up — see
@@ -76,14 +76,14 @@ export default async function CacheObservabilityPage({
 
       <form
         method="GET"
-        className="flex flex-wrap items-end gap-3 mb-6 p-4 bg-space-800 rounded"
+        className="flex flex-wrap items-end gap-3 mb-6 p-4 bg-space-800"
       >
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Call site</span>
+          <span className="text-muted mb-1">Call site</span>
           <select
             name="callSite"
             defaultValue={sp.callSite ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           >
             <option value="">All</option>
             {callSites.map((cs) => (
@@ -94,49 +94,49 @@ export default async function CacheObservabilityPage({
           </select>
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Model</span>
+          <span className="text-muted mb-1">Model</span>
           <input
             type="text"
             name="model"
             defaultValue={sp.model ?? ""}
             placeholder="claude-..."
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Since</span>
+          <span className="text-muted mb-1">Since</span>
           <input
             type="date"
             name="since"
             defaultValue={sp.since ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <label className="flex flex-col text-xs">
-          <span className="text-space-400 mb-1">Until</span>
+          <span className="text-muted mb-1">Until</span>
           <input
             type="date"
             name="until"
             defaultValue={sp.until ?? ""}
-            className="bg-space-900 border border-space-700 rounded px-2 py-1 text-sm"
+            className="input text-sm"
           />
         </label>
         <button
           type="submit"
-          className="bg-accent text-space-900 rounded px-4 py-1.5 text-sm font-medium"
+          className="bg-accent text-space-900 px-4 py-1.5 text-sm font-medium"
         >
           Apply
         </button>
         <Link
           href="/observability/cache"
-          className="text-space-400 hover:text-text text-sm py-1.5"
+          className="text-muted hover:text-text text-sm py-1.5"
         >
           Clear
         </Link>
       </form>
 
       {result.rows.length === 0 ? (
-        <div className="text-center py-12 text-space-400">
+        <div className="text-center py-12 text-muted">
           No usage events yet.
           <p className="text-xs mt-2">
             Rows will appear here after the first Anthropic API call from a
@@ -146,7 +146,7 @@ export default async function CacheObservabilityPage({
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-xs text-space-400 border-b border-space-700">
+            <thead className="text-xs text-muted border-b border-space-600">
               <tr>
                 <th className="text-left py-2 pr-3">Time</th>
                 <th className="text-left py-2 pr-3">Call site</th>
@@ -165,11 +165,11 @@ export default async function CacheObservabilityPage({
                   key={r.id}
                   className="border-b border-space-800 hover:bg-space-800/50"
                 >
-                  <td className="py-2 pr-3 text-space-400 text-xs whitespace-nowrap">
+                  <td className="py-2 pr-3 text-muted text-xs whitespace-nowrap">
                     {r.createdAt.toISOString().replace("T", " ").slice(0, 19)}
                   </td>
                   <td className="py-2 pr-3">{r.callSite}</td>
-                  <td className="py-2 pr-3 text-space-400 text-xs">
+                  <td className="py-2 pr-3 text-muted text-xs">
                     {r.model}
                   </td>
                   <td className="py-2 pr-3 text-right">
@@ -191,7 +191,7 @@ export default async function CacheObservabilityPage({
                   <td className="py-2 pr-3 text-right">
                     {formatPercent(r.hitRate)}
                   </td>
-                  <td className="py-2 pr-3 text-right text-space-400">
+                  <td className="py-2 pr-3 text-right text-muted">
                     {r.durationMs}ms
                   </td>
                 </tr>
@@ -206,7 +206,7 @@ export default async function CacheObservabilityPage({
                   pathname: "/observability/cache",
                   query: { ...sp, cursor: String(result.nextCursor) },
                 }}
-                className="inline-block px-4 py-2 bg-space-800 hover:bg-space-700 rounded text-sm"
+                className="inline-block min-h-6 px-4 py-2 border border-space-600 bg-space-800 hover:bg-space-700 text-sm focus-ring"
               >
                 Older →
               </Link>

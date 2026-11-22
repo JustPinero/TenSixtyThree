@@ -60,7 +60,15 @@ export async function POST(request: NextRequest) {
   }
   const body = await request.json();
   const boardId = typeof body.boardId === "string" ? body.boardId : "";
-  if (!(await canAccessBoard(prisma, ctx.session.user.id, boardId))) {
+  // Phase 70 — the org's key imports only into the org's own boards.
+  const board = boardId
+    ? await prisma.board.findUnique({ where: { id: boardId }, select: { organizationId: true } })
+    : null;
+  if (
+    !board ||
+    board.organizationId !== ctx.orgId ||
+    !(await canAccessBoard(prisma, ctx.session.user.id, boardId))
+  ) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
   const org = await prisma.organization.findUnique({

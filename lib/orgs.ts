@@ -4,7 +4,7 @@
  * of orgs or none; the active org lives on the session row
  * (activeOrganizationId), same field Better Auth's plugin uses.
  */
-import type { PrismaClient, Organization } from "@/app/generated/prisma/client";
+import type { PrismaClient, Organization, Prisma } from "@/app/generated/prisma/client";
 
 export interface OrgWithRole extends Organization {
   role: string;
@@ -23,7 +23,8 @@ export function slugifyOrgName(name: string): string {
 }
 
 export async function createOrg(
-  prisma: PrismaClient,
+  // Phase 70 — also callable inside a transaction (demo seed).
+  prisma: PrismaClient | Prisma.TransactionClient,
   args: { name: string; ownerId: string },
 ): Promise<Organization> {
   await prisma.user.findUniqueOrThrow({ where: { id: args.ownerId } });

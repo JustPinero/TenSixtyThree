@@ -7,7 +7,7 @@
  * neighbors writes the midpoint, appending adds a fixed gap, so no mass
  * renumbering on drag.
  */
-import type { PrismaClient, Board } from "@/app/generated/prisma/client";
+import type { PrismaClient, Board, Prisma } from "@/app/generated/prisma/client";
 import { requireMembership } from "./orgs";
 
 const GAP = 1024;
@@ -23,7 +23,8 @@ export function positionBetween(before: number, after: number): number {
 export const DEFAULT_COLUMNS = ["Todo", "In Progress", "Done"] as const;
 
 export async function createBoard(
-  prisma: PrismaClient,
+  // Phase 70 — also callable inside a transaction (demo seed).
+  prisma: PrismaClient | Prisma.TransactionClient,
   args: { name: string; organizationId?: string; ownerUserId?: string },
 ): Promise<Board> {
   const owners = [args.organizationId, args.ownerUserId].filter(Boolean);

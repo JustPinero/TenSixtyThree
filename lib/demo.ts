@@ -8,7 +8,7 @@
  * refused) — see isDemoSession call sites.
  */
 import { randomBytes } from "node:crypto";
-import type { PrismaClient } from "@/app/generated/prisma/client";
+import type { PrismaClient, Prisma } from "@/app/generated/prisma/client";
 import { createOrg } from "./orgs";
 import { createBoard, positionAfter } from "./boards";
 import type { ServerSession } from "./auth-helpers";
@@ -35,7 +35,13 @@ export interface DemoIdentity {
   sessionToken: string;
 }
 
-export async function seedDemo(prisma: PrismaClient): Promise<DemoIdentity> {
+export async function seedDemo(client: PrismaClient): Promise<DemoIdentity> {
+  // Phase 70 — one transaction: a failure part-way never leaves a
+  // half-seeded sandbox (user with no org, org with no projects).
+  return client.$transaction((prisma) => seedDemoIn(prisma), { timeout: 15_000 });
+}
+
+async function seedDemoIn(prisma: Prisma.TransactionClient): Promise<DemoIdentity> {
   const tag = randomBytes(6).toString("hex");
   const user = await prisma.user.create({
     data: {
@@ -176,6 +182,12 @@ export async function cleanupDemo(
   prisma: PrismaClient,
 ): Promise<{ users: number }> {
   const cutoff = new Date(Date.now() - SWEEP_AGE_MS);
+  // Phase 70 — demo projects also go by age: a project whose share row was
+  // lost (or a half-seeded one from before the seed was transactional)
+  // used to live forever. Project children cascade.
+  await prisma.project.deleteMany({
+    where: { isDemo: true, createdAt: { lt: cutoff } },
+  });
   const stale = await prisma.user.findMany({
     where: { isDemo: true, createdAt: { lt: cutoff } },
     select: { id: true },

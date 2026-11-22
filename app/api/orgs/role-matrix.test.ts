@@ -146,3 +146,23 @@ describe("membership", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("70 — Linear import target", () => {
+  it("the org's key cannot import into a board outside the active org", async () => {
+    const { createBoard } = await import("@/lib/boards");
+    await linear.PUT(
+      requestAs("alice", "http://x/api/orgs/linear", {
+        method: "PUT",
+        body: { key: "lin_api_0123456789abcdef0123" },
+      }),
+    );
+    const personal = await createBoard(rig!.prisma, { name: "Mine", ownerUserId: "alice" });
+    const res = await linear.POST(
+      requestAs("alice", "http://x/api/orgs/linear", {
+        method: "POST",
+        body: { boardId: personal.id },
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+});

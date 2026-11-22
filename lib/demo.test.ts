@@ -1,5 +1,5 @@
 /** 54.5 — demo sandbox core. */
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import { isDemoEmail, seedDemo, cleanupDemo } from "./demo";
@@ -100,5 +100,53 @@ describe("cleanupDemo", () => {
     expect(
       await rig.prisma.user.findUnique({ where: { id: "real" } }),
     ).not.toBeNull();
+  });
+});
+
+describe("70 — demo deletes that work", () => {
+  it("the sweep succeeds with FeatureProposal rows on demo projects", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const old = await seedDemo(rig.prisma);
+    const projects = await rig.prisma.project.findMany({
+      where: { isDemo: true, orgShares: { some: { organizationId: old.organizationId } } },
+    });
+    const feature = await rig.prisma.upstreamFeature.create({
+      data: { name: "f", category: "hook", description: "d", integrationRecipe: "r" },
+    });
+    await rig.prisma.featureProposal.create({
+      data: { projectId: projects[0].id, featureId: feature.id, diff: "d" },
+    });
+    await rig.prisma.user.update({
+      where: { id: old.userId },
+      data: { createdAt: new Date(Date.now() - 25 * 3600_000) },
+    });
+    await expect(cleanupDemo(rig.prisma)).resolves.toMatchObject({ users: 1 });
+    expect(await rig.prisma.project.count({ where: { id: { in: projects.map((p) => p.id) } } })).toBe(0);
+  });
+
+  it("an old demo project with no share is swept by age", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const orphan = await rig.prisma.project.create({
+      data: {
+        name: "orphan",
+        slug: "demo-orphan",
+        path: "/demo/orphan",
+        isDemo: true,
+        createdAt: new Date(Date.now() - 25 * 3600_000),
+      },
+    });
+    const real = await rig.prisma.project.create({
+      data: { name: "real", slug: "real", path: "/p/real", createdAt: new Date(0) },
+    });
+    await cleanupDemo(rig.prisma);
+    expect(await rig.prisma.project.findUnique({ where: { id: orphan.id } })).toBeNull();
+    expect(await rig.prisma.project.findUnique({ where: { id: real.id } })).not.toBeNull();
+  });
+
+  it("the seed runs in one transaction", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const spy = vi.spyOn(rig.prisma, "$transaction");
+    await seedDemo(rig.prisma);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });

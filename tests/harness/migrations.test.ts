@@ -81,3 +81,63 @@ describe("migration chain (Phase 59)", () => {
     expect(code).toBe(0);
   }, 60_000);
 });
+
+describe("phase 70 — data integrity schema", () => {
+  it("FK lookup indexes exist", async () => {
+    const r = await rig();
+    const rows = await r.prisma.$queryRaw<{ indexname: string }[]>`
+      SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`;
+    const names = new Set(rows.map((x) => x.indexname));
+    for (const idx of [
+      "ticket_boardId_idx",
+      "ticket_milestoneId_idx",
+      "ticket_boardId_linearIssueId_key",
+      "org_post_authorUserId_idx",
+      "org_post_projectId_idx",
+      "HumanTask_projectId_idx",
+      "HumanTask_ownerUserId_idx",
+      "Dispatch_ownerUserId_idx",
+    ]) {
+      expect(names.has(idx), idx).toBe(true);
+    }
+    expect(names.has("ticket_linearIssueId_key")).toBe(false);
+  });
+
+  it("deleting a project removes its children (FeatureProposal included)", async () => {
+    const r = await rig();
+    const project = await r.prisma.project.create({
+      data: { name: "x", slug: "x", path: "/p/x" },
+    });
+    const feature = await r.prisma.upstreamFeature.create({
+      data: { name: "f", category: "hook", description: "d", integrationRecipe: "r" },
+    });
+    await r.prisma.featureProposal.create({
+      data: { projectId: project.id, featureId: feature.id, diff: "d" },
+    });
+    await r.prisma.projectFeatureUsage.create({
+      data: { projectId: project.id, featureId: feature.id, signal: "s" },
+    });
+    const dispatch = await r.prisma.dispatch.create({
+      data: { projectId: project.id, projectSlug: "x", mode: "audit" },
+    });
+    await r.prisma.dispatchOutcome.create({
+      data: {
+        projectId: project.id,
+        projectSlug: "x",
+        mode: "audit",
+        healthAtDispatch: "idle",
+        outcome: "success",
+        dispatchedAt: new Date(),
+        dispatchId: dispatch.id,
+      },
+    });
+    await r.prisma.humanTask.create({ data: { title: "t", projectId: project.id } });
+    await r.prisma.activityEvent.create({
+      data: { projectId: project.id, eventType: "commit", summary: "s" },
+    });
+    await r.prisma.project.delete({ where: { id: project.id } });
+    expect(await r.prisma.featureProposal.count()).toBe(0);
+    expect(await r.prisma.dispatch.count()).toBe(0);
+    expect(await r.prisma.humanTask.count()).toBe(0);
+  });
+});

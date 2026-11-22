@@ -75,7 +75,7 @@ model KnowledgeLesson {
   verified        Boolean  @default(false)
   timesReferenced Int      @default(0)
 
-  sourceProject Project? @relation(fields: [sourceProjectId], references: [id])
+  sourceProject Project? @relation(fields: [sourceProjectId], references: [id], onDelete: SetNull)
 }
 
 model KickoffTemplate {
@@ -101,7 +101,7 @@ model AuditSnapshot {
   isRead     Boolean  @default(false)
   capturedAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model ActivityEvent {
@@ -114,7 +114,7 @@ model ActivityEvent {
   // Phase 66.2 [1.0.D4] — cloud progress events link to their dispatch.
   dispatchId String?
 
-  project Project? @relation(fields: [projectId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([dispatchId])
   // Phase 31 — audit finding [30.D4]. ActivityFeed polls every 30s
@@ -148,8 +148,8 @@ model DispatchOutcome {
   costUsd          Float?
   turns            Int?
 
-  project  Project   @relation(fields: [projectId], references: [id])
-  dispatch Dispatch? @relation(fields: [dispatchId], references: [id])
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dispatch Dispatch? @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
 }
 
 // Phase 23.2 — first-class Dispatch lifecycle row.
@@ -193,7 +193,7 @@ model Dispatch {
   cancelRequested  Boolean   @default(false)
 
   outcome      DispatchOutcome?
-  project      Project          @relation(fields: [projectId], references: [id])
+  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   organization Organization?    @relation(fields: [organizationId], references: [id])
   owner        User?            @relation("DispatchOwner", fields: [ownerUserId], references: [id])
 
@@ -201,6 +201,8 @@ model Dispatch {
   @@index([expectedBy])
   @@index([status])
   @@index([organizationId])
+  // Phase 70 — FK lookup
+  @@index([ownerUserId])
 }
 
 // Phase 12A.1 — ChatSession owns conversation state.
@@ -264,7 +266,7 @@ model HumanTask {
   organizationId String?
   ownerUserId    String?
 
-  project      Project?      @relation(fields: [projectId], references: [id])
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [organizationId], references: [id])
   owner        User?         @relation("HumanTaskOwner", fields: [ownerUserId], references: [id])
 
@@ -272,6 +274,9 @@ model HumanTask {
   // both filter on status; the list endpoint orders by (priority, createdAt).
   @@index([status, priority, createdAt])
   @@index([organizationId])
+  // Phase 70 — FK lookups
+  @@index([projectId])
+  @@index([ownerUserId])
 }
 
 model Reminder {
@@ -322,7 +327,7 @@ model ProjectFeatureUsage {
   signal     String // free-form: where the detector matched (e.g. ".claude/settings.json hooks.Stop")
   detectedAt DateTime @default(now())
 
-  project Project         @relation(fields: [projectId], references: [id])
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   feature UpstreamFeature @relation(fields: [featureId], references: [id])
 
   @@unique([projectId, featureId])
@@ -346,7 +351,7 @@ model FeatureProposal {
   resolvedBy  String? // "user" | "claude" | "system"
   notes       String?
 
-  project Project         @relation(fields: [projectId], references: [id])
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   feature UpstreamFeature @relation(fields: [featureId], references: [id])
 
   @@index([projectId])
@@ -393,11 +398,15 @@ model AnthropicUsageEvent {
   cacheCreation1hTokens    Int      @default(0)
   outputTokens             Int
   durationMs               Int
+  // Phase 70 — spend attribution: who ran the call and whose key paid.
+  userId                   String?
+  keySource                String   @default("app") // byok | app
   createdAt                DateTime @default(now())
 
   @@index([callSite, createdAt])
   @@index([createdAt])
   @@index([model])
+  @@index([userId, createdAt])
 }
 
 // Single-row config table for Cascade-wide state.
@@ -607,10 +616,13 @@ model OrgPost {
   createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  project      Project?     @relation(fields: [projectId], references: [id])
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   author       User         @relation("OrgPostAuthor", fields: [authorUserId], references: [id])
 
   @@index([organizationId, createdAt])
+  // Phase 70 — FK lookups
+  @@index([authorUserId])
+  @@index([projectId])
   @@map("org_post")
 }
 
@@ -691,7 +703,7 @@ model Ticket {
   priority       String   @default("normal") // low | normal | high | urgent
   assigneeUserId String?
   milestoneId    String?
-  linearIssueId  String?  @unique // 54.4b Linear sync idempotency
+  linearIssueId  String? // 54.4b Linear sync idempotency — unique per board (70)
   createdById    String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -700,6 +712,10 @@ model Ticket {
   column    BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
   milestone Milestone?  @relation(fields: [milestoneId], references: [id])
 
+  // Phase 70 — the same Linear issue may be imported into several boards.
+  @@unique([boardId, linearIssueId])
   @@index([columnId, position])
+  @@index([boardId])
+  @@index([milestoneId])
   @@map("ticket")
 }

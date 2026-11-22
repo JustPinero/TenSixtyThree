@@ -90,7 +90,9 @@ export async function syncLinearIssues(
   // 1.0 optimize: one lookup for existing tickets and one for column tail
   // positions, instead of ~3 round trips per issue (N+1 on a user request).
   const existingRows = await prisma.ticket.findMany({
-    where: { linearIssueId: { in: issues.map((i) => i.id) } },
+    // Phase 70 — scoped to THIS board: the same issue imported into a
+    // second board is a new ticket there, never a move of the first one.
+    where: { boardId: args.boardId, linearIssueId: { in: issues.map((i) => i.id) } },
   });
   const existingByIssue = new Map(
     existingRows.map((t) => [t.linearIssueId as string, t])

@@ -98,3 +98,36 @@ describe("syncLinearIssues", () => {
     expect(moved?.column.name).toBe("Done");
   });
 });
+
+describe("70 — Linear import is scoped to the target board", () => {
+  it("re-importing into a second board leaves the first board's tickets untouched", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    await rig.prisma.user.create({ data: { id: "u1", name: "a", email: "a@x.dev" } });
+    const first = await createBoard(rig.prisma, { name: "First", ownerUserId: "u1" });
+    const second = await createBoard(rig.prisma, { name: "Second", ownerUserId: "u1" });
+    const fetchIssues = vi.fn().mockResolvedValue(ISSUES);
+
+    await syncLinearIssues(rig.prisma, { boardId: first.id, createdById: "u1", fetchIssues });
+    const before = await rig.prisma.ticket.findMany({
+      where: { boardId: first.id },
+      orderBy: { linearIssueId: "asc" },
+    });
+
+    fetchIssues.mockResolvedValue([{ ...ISSUES[0], title: "Renamed in Linear" }, ISSUES[1], ISSUES[2]]);
+    const res = await syncLinearIssues(rig.prisma, {
+      boardId: second.id,
+      createdById: "u1",
+      fetchIssues,
+    });
+    expect(res.created).toBe(3);
+
+    const after = await rig.prisma.ticket.findMany({
+      where: { boardId: first.id },
+      orderBy: { linearIssueId: "asc" },
+    });
+    expect(after.map((t) => [t.id, t.title, t.columnId])).toEqual(
+      before.map((t) => [t.id, t.title, t.columnId]),
+    );
+    expect(await rig.prisma.ticket.count({ where: { boardId: second.id } })).toBe(3);
+  });
+});

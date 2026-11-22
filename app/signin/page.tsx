@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth-client";
 import { TryDemoButton } from "../components/try-demo-button";
 
@@ -10,6 +10,24 @@ import { TryDemoButton } from "../components/try-demo-button";
  * email code (works for invited first-timers AND returning users), and
  * password for accounts that set one after first login.
  */
+const noopSubscribe = () => () => {};
+
+/** 72 — what an OAuth / invite-gate rejection means, in words. */
+const CALLBACK_ERRORS: Record<string, string> = {
+  signup_disabled:
+    "That account isn't invited yet. Access is by invitation: use the email your invitation was sent to.",
+  access_denied: "Sign-in was cancelled.",
+  invalid_code: "That sign-in link expired. Try again.",
+  account_not_linked:
+    "That email already has an account with a different sign-in method. Use the method you signed up with.",
+};
+
+function readErrorParam(): string | null {
+  const code = new URLSearchParams(window.location.search).get("error");
+  if (!code) return null;
+  return CALLBACK_ERRORS[code.toLowerCase()] ?? "Sign-in didn't complete. Try again.";
+}
+
 export default function SignInPage() {
   const [mode, setMode] = useState<"code" | "password">("code");
   const [email, setEmail] = useState("");
@@ -18,47 +36,70 @@ export default function SignInPage() {
   const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 72 — a ref (not state) so two submits in the same tick send once.
+  const inFlight = useRef(false);
+  // 72 — OAuth and invite-gate rejections come back as ?error=…
+  const callbackError = useSyncExternalStore(noopSubscribe, readErrorParam, () => null);
 
-  async function sendCode() {
+  /** 72 — every busy flag is released in finally, whatever throws. */
+  async function run(task: () => Promise<void>, fallback: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
-    const { error: err } = await authClient.emailOtp.sendVerificationOtp({
-      email,
-      type: "sign-in",
-    });
-    setBusy(false);
-    if (err) {
-      setError(err.message ?? "Could not send a code to that email.");
-      return;
+    try {
+      await task();
+    } catch {
+      setError(fallback);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
     }
-    setCodeSent(true);
   }
 
-  async function signInWithCode() {
-    setBusy(true);
-    setError(null);
-    const { error: err } = await authClient.signIn.emailOtp({ email, otp });
-    setBusy(false);
-    if (err) {
-      setError(
-        err.message ??
-          "That code didn't work. Codes expire after 10 minutes and 3 bad tries.",
-      );
-      return;
-    }
-    window.location.href = "/";
+  function sendCode() {
+    return run(async () => {
+      const { error: err } = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: "sign-in",
+      });
+      if (err) {
+        setError(err.message ?? "Could not send a code to that email.");
+        return;
+      }
+      setCodeSent(true);
+    }, "Couldn't reach the server. Try again.");
   }
 
-  async function signInWithPassword() {
-    setBusy(true);
+  function signInWithCode() {
+    return run(async () => {
+      const { error: err } = await authClient.signIn.emailOtp({ email, otp });
+      if (err) {
+        setError(
+          err.message ??
+            "That code didn't work. Codes expire after 10 minutes and 3 bad tries.",
+        );
+        return;
+      }
+      window.location.href = "/";
+    }, "Couldn't reach the server. Try again.");
+  }
+
+  function signInWithPassword() {
+    return run(async () => {
+      const { error: err } = await authClient.signIn.email({ email, password });
+      if (err) {
+        setError(err.message ?? "Email or password didn't match.");
+        return;
+      }
+      window.location.href = "/";
+    }, "Couldn't reach the server. Try again.");
+  }
+
+  function useDifferentEmail() {
+    setCodeSent(false);
+    setOtp("");
     setError(null);
-    const { error: err } = await authClient.signIn.email({ email, password });
-    setBusy(false);
-    if (err) {
-      setError(err.message ?? "Email or password didn't match.");
-      return;
-    }
-    window.location.href = "/";
   }
 
   const inputClass =
@@ -113,16 +154,32 @@ export default function SignInPage() {
             </button>
           </div>
 
-          <label className="block text-xs font-mono text-text-dim">
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              className={`${inputClass} mt-1`}
-            />
-          </label>
+          {callbackError && (
+            <p role="alert" className="text-xs font-mono text-danger">
+              {callbackError}
+            </p>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              // 72 — Enter in the email field does the obvious thing.
+              e.preventDefault();
+              if (mode === "code" && !codeSent && email) void sendCode();
+            }}
+          >
+            <label className="block text-xs font-mono text-text-dim">
+              Email
+              <input
+                type="email"
+                value={email}
+                readOnly={codeSent}
+                aria-readonly={codeSent}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className={`${inputClass} mt-1 ${codeSent ? "opacity-70" : ""}`}
+              />
+            </label>
+          </form>
 
           {mode === "code" ? (
             codeSent ? (
@@ -133,6 +190,16 @@ export default function SignInPage() {
                 }}
                 className="space-y-3"
               >
+                <p role="status" className="text-xs font-mono text-success">
+                  Code sent to {email}. Check your inbox (and spam).
+                </p>
+                <button
+                  type="button"
+                  onClick={useDifferentEmail}
+                  className="min-h-6 text-xs font-mono text-cyan underline focus-ring"
+                >
+                  Use a different email
+                </button>
                 <label className="block text-xs font-mono text-text-dim">
                   6-digit code (check your email)
                   <input
@@ -154,7 +221,7 @@ export default function SignInPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={sendCode}
+                  onClick={() => void sendCode()}
                   disabled={busy}
                   className="w-full text-xs font-mono text-text-dim hover:text-text"
                 >
@@ -163,7 +230,7 @@ export default function SignInPage() {
               </form>
             ) : (
               <button
-                onClick={sendCode}
+                onClick={() => void sendCode()}
                 disabled={busy || !email}
                 className={primaryBtn}
               >

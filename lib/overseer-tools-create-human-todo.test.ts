@@ -60,14 +60,14 @@ describe("createHumanTodoTool", () => {
     expect(row?.priority).toBe("high");
   });
 
-  it("does not link to a project when slug does not resolve (still creates the task)", async () => {
-    const out = await createHumanTodoTool.handler(
-      { title: "yo", projectSlug: "missing-thing" },
-      ctx()
-    );
-    const row = await prisma.humanTask.findUnique({ where: { id: out.id } });
-    expect(row?.projectId).toBeNull();
-    expect(row?.projectSlug).toBe("missing-thing");
+  it("66.1 — refuses a slug that does not resolve to a visible project", async () => {
+    // Was: created an unlinked task. A slug that doesn't resolve is now
+    // the same error as another tenant's project (no existence oracle).
+    const before = await prisma.humanTask.count();
+    await expect(
+      createHumanTodoTool.handler({ title: "yo", projectSlug: "missing-thing" }, ctx()),
+    ).rejects.toThrow(/Unknown project slug/);
+    expect(await prisma.humanTask.count()).toBe(before);
   });
 
   it("rejects unknown category via the registry", async () => {

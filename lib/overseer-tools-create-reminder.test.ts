@@ -33,6 +33,12 @@ beforeEach(async () => {
 
 describe("createReminderTool", () => {
   it("creates a reminder row with the given fields", async () => {
+    // 66.2 — a reminder may only watch a project that exists and is visible.
+    await prisma.project.upsert({
+      where: { slug: "ratracer" },
+      update: {},
+      create: { name: "ratracer", slug: "ratracer", path: "/p/ratracer" },
+    });
     const out = await createReminderTool.handler(
       {
         conditionType: "phase-complete",

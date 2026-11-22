@@ -13,6 +13,7 @@ interface Template {
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState<Template | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
@@ -26,6 +27,7 @@ export default function TemplatesPage() {
     const res = await fetch("/api/templates");
     const data = await res.json();
     if (Array.isArray(data)) setTemplates(data);
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -157,6 +159,15 @@ export default function TemplatesPage() {
       )}
 
       {/* Template list */}
+      {loaded && templates.length === 0 && (
+        <div className="p-6 border border-space-600 bg-space-800 text-center">
+          <p className="text-sm font-mono text-text">No templates yet.</p>
+          <p className="mt-1 text-xs font-mono text-text-dim">
+            Templates are the kickoff documents new projects start from. Add one above to
+            reuse your setup across projects.
+          </p>
+        </div>
+      )}
       <div className="space-y-3">
         {templates.map((t) => (
           <div

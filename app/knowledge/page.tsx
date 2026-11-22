@@ -153,7 +153,7 @@ export default function KnowledgePage() {
       {/* Knowledge gaps */}
       {!searchResults && !loading && gaps.length > 0 && (
         <div className="mb-6">
-          <GapSuggestions suggestions={gaps} />
+          <GapSuggestions suggestions={gaps} neutral={lessons.length === 0} />
         </div>
       )}
 

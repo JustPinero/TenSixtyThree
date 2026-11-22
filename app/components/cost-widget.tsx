@@ -37,8 +37,16 @@ export function CostWidget() {
       try {
         const res = await fetch("/api/usage/summary");
         if (!res.ok) return;
-        const data = (await res.json()) as UsageSummaryBody;
-        if (!cancelled) setSummary(data);
+        const data = (await res.json()) as Partial<UsageSummaryBody>;
+        // 60.2 — never render a malformed body (it crashed the dashboard).
+        if (
+          !cancelled &&
+          typeof data.estimatedCostUsd === "number" &&
+          typeof data.calls === "number" &&
+          typeof data.hitRate === "number"
+        ) {
+          setSummary(data as UsageSummaryBody);
+        }
       } catch {
         // Best-effort — keep last-known state.
       }

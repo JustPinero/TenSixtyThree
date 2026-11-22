@@ -105,7 +105,7 @@
   `tests/scenarios/`. Rewrite against the rig or delete; they cost CI time
   and give false confidence.
 
-- **[1.0.D3]** (2026-09-15, release optimize) `app/page.tsx` dashboard is a
+- ~~**[1.0.D3]**~~ CLOSED 2026-11-22 (phase 60.2: app/page.tsx is a server component; lib/project-list.ts shared with GET /api/projects) (2026-09-15, release optimize) `app/page.tsx` dashboard is a
   client component that fetches `/api/projects` on mount. The 1.0 pass fixed
   the double-scan and moved visibility resolution ahead of the fan-out, but
   the right shape is a server component that calls the engines directly

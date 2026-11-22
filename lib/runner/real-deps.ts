@@ -12,7 +12,7 @@
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, lstatSync, readlinkSync, realpathSync } from "node:fs";
+import { lstatSync, realpathSync } from "node:fs";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
@@ -100,10 +100,14 @@ const PATH_KEYS = ["file_path", "path", "notebook_path"];
  * of a new file), the deepest existing ancestor is resolved and the rest
  * appended.
  */
-function realResolve(path: string, depth = 0): string {
-  if (depth > 40) return path; // symlink loop — treat as unresolved
-  // Walk up to the deepest component that exists AS AN ENTRY (lstat:
-  // a dangling symlink exists even though its target doesn't).
+/**
+ * null = refuse: the path runs through a dangling symlink or a symlink
+ * loop. Security review — following a dangling link's target by text
+ * (`resolve` collapses `..`) can disagree with how the kernel walks it
+ * through other symlinks, so those paths fail closed instead.
+ */
+function realResolve(path: string): string | null {
+  // Deepest component that exists AS AN ENTRY (lstat sees dangling links).
   let existing = path;
   const tail: string[] = [];
   for (;;) {
@@ -118,15 +122,10 @@ function realResolve(path: string, depth = 0): string {
     }
   }
   try {
-    // Review: a dangling link would be "non-existent" to existsSync, so a
-    // Write through it escaped the check. Follow its target explicitly.
-    if (lstatSync(existing).isSymbolicLink() && !existsSync(existing)) {
-      const target = resolve(dirname(existing), readlinkSync(existing));
-      return realResolve(join(target, ...tail), depth + 1);
-    }
     return join(realpathSync(existing), ...tail);
   } catch {
-    return path;
+    // realpath fails on a dangling link (ENOENT) or a loop (ELOOP).
+    return null;
   }
 }
 
@@ -136,11 +135,14 @@ export function classifyToolUse(
   rawWorkdir: string,
 ): { allowed: true } | { allowed: false; reason: string } {
   if (!FILE_TOOLS.has(toolName)) return { allowed: true };
-  const workdir = realResolve(rawWorkdir);
+  const workdir = realResolve(rawWorkdir) ?? rawWorkdir;
   for (const key of PATH_KEYS) {
     const value = input[key];
     if (typeof value !== "string" || value.length === 0) continue;
     const resolved = realResolve(resolve(rawWorkdir, value));
+    if (resolved === null) {
+      return { allowed: false, reason: `${key} goes through a dangling or looping symlink` };
+    }
     if (resolved !== workdir && !resolved.startsWith(workdir + "/")) {
       return {
         allowed: false,

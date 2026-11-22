@@ -55,7 +55,34 @@ describe("60.4 [1.0.D5] — symlinks are resolved before the containment check",
     symlinkSync(join(base, "outside", "not-yet.md"), join(workdir, "notes.md"));
     symlinkSync(join(workdir, "later.md"), join(workdir, "inside-link.md"));
     expect(classifyToolUse("Write", { file_path: "notes.md" }, workdir).allowed).toBe(false);
-    expect(classifyToolUse("Write", { file_path: "inside-link.md" }, workdir).allowed).toBe(true);
+    // Security review: fail closed — ANY path through a dangling link is
+    // denied (text-normalizing its target can disagree with the kernel).
+    expect(classifyToolUse("Write", { file_path: "inside-link.md" }, workdir).allowed).toBe(false);
+  });
+
+  it("security review — a dangling link whose target walks '..' through another symlink is denied", async () => {
+    const { mkdtempSync, mkdirSync, symlinkSync, realpathSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "classify-differential-")));
+    const workdir = join(base, "work");
+    mkdirSync(join(workdir, "a"), { recursive: true });
+    mkdirSync(join(base, "deep", "x"), { recursive: true });
+    // "jump" resolves to ../deep/x; "jump/../../escape" textually stays
+    // inside the workdir but the kernel lands outside it.
+    symlinkSync(join(base, "deep", "x"), join(workdir, "jump"));
+    symlinkSync("jump/../../escape.md", join(workdir, "trap.md"));
+    expect(classifyToolUse("Write", { file_path: "trap.md" }, workdir).allowed).toBe(false);
+  });
+
+  it("security review — a symlink loop is denied, not passed through", async () => {
+    const { mkdtempSync, symlinkSync, realpathSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const workdir = realpathSync(mkdtempSync(join(tmpdir(), "classify-loop-")));
+    symlinkSync(join(workdir, "b"), join(workdir, "a"));
+    symlinkSync(join(workdir, "a"), join(workdir, "b"));
+    expect(classifyToolUse("Write", { file_path: "a" }, workdir).allowed).toBe(false);
   });
 });
 

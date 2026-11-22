@@ -27,7 +27,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "fleet",
     route: "/",
     selector: "#tour-fleet",
-    anchorFile: "app/page.tsx",
+    anchorFile: "app/dashboard-client.tsx", // 60.2 — the island owns the markup
     title: "Your fleet",
     text: "This is the fleet dashboard — every project's health, progress, and activity in one sweep. I watch all of it so you don't have to.",
   },

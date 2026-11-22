@@ -22,3 +22,26 @@ describe("classifyToolUse", () => {
     expect(classifyToolUse("WebFetch", { url: "https://x" }, W).allowed).toBe(true);
   });
 });
+
+describe("60.4 [1.0.D5] — symlinks are resolved before the containment check", () => {
+  it("a symlink inside the workspace that points outside is classified as outside", async () => {
+    const { mkdtempSync, mkdirSync, symlinkSync, writeFileSync, realpathSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "classify-")));
+    const workdir = join(base, "work");
+    const outside = join(base, "outside");
+    mkdirSync(workdir);
+    mkdirSync(outside);
+    writeFileSync(join(outside, "secret.txt"), "s");
+    symlinkSync(outside, join(workdir, "escape"));
+    mkdirSync(join(workdir, "src"));
+    symlinkSync(join(workdir, "src"), join(workdir, "alias"));
+
+    expect(classifyToolUse("Read", { file_path: "escape/secret.txt" }, workdir).allowed).toBe(false);
+    expect(classifyToolUse("Write", { file_path: "escape/new.txt" }, workdir).allowed).toBe(false);
+    // Inside-pointing links and not-yet-existing files inside stay allowed.
+    expect(classifyToolUse("Read", { file_path: "alias/x.ts" }, workdir).allowed).toBe(true);
+    expect(classifyToolUse("Write", { file_path: "src/new/deep.ts" }, workdir).allowed).toBe(true);
+  });
+});

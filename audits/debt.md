@@ -118,7 +118,7 @@
   fragile to key ordering. Add a nullable `dispatchId` column on
   ActivityEvent (indexed) and write it at emit time.
 
-- **[1.0.D5]** (2026-09-15, release bughunt, low) `classifyToolUse`
+- ~~**[1.0.D5]**~~ CLOSED 2026-11-22 (phase 60.4: classifyToolUse resolves symlinks) (2026-09-15, release bughunt, low) `classifyToolUse`
   (lib/runner/real-deps.ts) scopes file tools by lexical path prefix under
   the clone dir; a symlink created inside the workspace could point out of
   it. The uid drop ([52.D1]) already denies reads of anything sensitive, so

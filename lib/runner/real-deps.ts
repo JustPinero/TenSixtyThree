@@ -11,7 +11,8 @@
  */
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
@@ -92,16 +93,40 @@ const FILE_TOOLS = new Set([
 const PATH_KEYS = ["file_path", "path", "notebook_path"];
 
 /** File tools must stay inside the clone; everything else is allowed. */
+/**
+ * 60.4 [1.0.D5] — resolve symlinks before checking containment: a link
+ * inside the clone that points outside it (planted by the repo or the
+ * agent) must count as outside. For a path that doesn't exist yet (Write
+ * of a new file), the deepest existing ancestor is resolved and the rest
+ * appended.
+ */
+function realResolve(path: string): string {
+  let existing = path;
+  const tail: string[] = [];
+  while (!existsSync(existing)) {
+    const parent = dirname(existing);
+    if (parent === existing) return path;
+    tail.unshift(basename(existing));
+    existing = parent;
+  }
+  try {
+    return join(realpathSync(existing), ...tail);
+  } catch {
+    return path;
+  }
+}
+
 export function classifyToolUse(
   toolName: string,
   input: Record<string, unknown>,
-  workdir: string,
+  rawWorkdir: string,
 ): { allowed: true } | { allowed: false; reason: string } {
   if (!FILE_TOOLS.has(toolName)) return { allowed: true };
+  const workdir = realResolve(rawWorkdir);
   for (const key of PATH_KEYS) {
     const value = input[key];
     if (typeof value !== "string" || value.length === 0) continue;
-    const resolved = resolve(workdir, value);
+    const resolved = realResolve(resolve(rawWorkdir, value));
     if (resolved !== workdir && !resolved.startsWith(workdir + "/")) {
       return {
         allowed: false,

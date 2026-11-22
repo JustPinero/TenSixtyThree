@@ -96,16 +96,62 @@ export interface UsageSummary {
   hasUnknownModels: boolean;
 }
 
+const SUM_FIELDS = {
+  inputTokens: true,
+  outputTokens: true,
+  cacheReadInputTokens: true,
+  cacheCreationInputTokens: true,
+  cacheCreation5mTokens: true,
+  cacheCreation1hTokens: true,
+} as const;
+
+interface ModelGroup {
+  model: string;
+  _count: { _all: number };
+  _sum: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    cacheReadInputTokens: number | null;
+    cacheCreationInputTokens: number | null;
+    cacheCreation5mTokens: number | null;
+    cacheCreation1hTokens: number | null;
+  };
+}
+
+/** Tokens summed per model; pricing is linear, so pricing the sum is exact. */
+function priceGroup(g: ModelGroup): EventCost {
+  return estimateEventCostUsd({
+    model: g.model,
+    inputTokens: g._sum.inputTokens ?? 0,
+    outputTokens: g._sum.outputTokens ?? 0,
+    cacheReadInputTokens: g._sum.cacheReadInputTokens ?? 0,
+    cacheCreationInputTokens: g._sum.cacheCreationInputTokens ?? 0,
+    cacheCreation5mTokens: g._sum.cacheCreation5mTokens ?? 0,
+    cacheCreation1hTokens: g._sum.cacheCreation1hTokens ?? 0,
+  });
+}
+
+/**
+ * Phase 70 — aggregated in the database (`groupBy` model) instead of
+ * loading every row. `userId` (when given; null = the local operator)
+ * limits the summary to one person's calls.
+ */
 export async function getUsageSummary(
   prisma: PrismaClient,
-  opts: { since: Date }
+  opts: { since: Date; userId?: string | null }
 ): Promise<UsageSummary> {
-  const rows = await prisma.anthropicUsageEvent.findMany({
-    where: { createdAt: { gte: opts.since } },
+  const groups = await prisma.anthropicUsageEvent.groupBy({
+    by: ["model"],
+    where: {
+      createdAt: { gte: opts.since },
+      ...(opts.userId !== undefined ? { userId: opts.userId } : {}),
+    },
+    _count: { _all: true },
+    _sum: SUM_FIELDS,
   });
 
   const summary: UsageSummary = {
-    calls: rows.length,
+    calls: 0,
     inputTokens: 0,
     outputTokens: 0,
     cacheReadTokens: 0,
@@ -115,12 +161,13 @@ export async function getUsageSummary(
     hasUnknownModels: false,
   };
 
-  for (const row of rows) {
-    summary.inputTokens += row.inputTokens;
-    summary.outputTokens += row.outputTokens;
-    summary.cacheReadTokens += row.cacheReadInputTokens;
-    summary.cacheCreationTokens += row.cacheCreationInputTokens;
-    const cost = estimateEventCostUsd(row);
+  for (const g of groups) {
+    summary.calls += g._count._all;
+    summary.inputTokens += g._sum.inputTokens ?? 0;
+    summary.outputTokens += g._sum.outputTokens ?? 0;
+    summary.cacheReadTokens += g._sum.cacheReadInputTokens ?? 0;
+    summary.cacheCreationTokens += g._sum.cacheCreationInputTokens ?? 0;
+    const cost = priceGroup(g);
     summary.estimatedCostUsd += cost.usd;
     if (cost.unknownModel) summary.hasUnknownModels = true;
   }
@@ -130,4 +177,32 @@ export async function getUsageSummary(
   summary.hitRate = totalInput === 0 ? 0 : summary.cacheReadTokens / totalInput;
 
   return summary;
+}
+
+export interface UserSpend {
+  /** null = the local operator / unattributed. */
+  userId: string | null;
+  calls: number;
+  estimatedCostUsd: number;
+}
+
+/** Phase 70 — admin view: spend on the APP key, per user, most first. */
+export async function getAppKeySpendByUser(
+  prisma: PrismaClient,
+  opts: { since: Date }
+): Promise<UserSpend[]> {
+  const groups = await prisma.anthropicUsageEvent.groupBy({
+    by: ["userId", "model"],
+    where: { createdAt: { gte: opts.since }, keySource: "app" },
+    _count: { _all: true },
+    _sum: SUM_FIELDS,
+  });
+  const byUser = new Map<string | null, UserSpend>();
+  for (const g of groups) {
+    const row = byUser.get(g.userId) ?? { userId: g.userId, calls: 0, estimatedCostUsd: 0 };
+    row.calls += g._count._all;
+    row.estimatedCostUsd += priceGroup(g).usd;
+    byUser.set(g.userId, row);
+  }
+  return [...byUser.values()].sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd);
 }

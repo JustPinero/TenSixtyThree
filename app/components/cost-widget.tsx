@@ -13,6 +13,13 @@ import { useEffect, useState } from "react";
  * from the pricing table.
  */
 interface UsageSummaryBody {
+  /** Phase 70 — "mine" for a regular user, "fleet" for admins/local. */
+  scope?: "mine" | "fleet";
+  appKeyByUser?: {
+    userId: string | null;
+    calls: number;
+    estimatedCostUsd: number;
+  }[];
   calls: number;
   estimatedCostUsd: number;
   hitRate: number;
@@ -50,10 +57,16 @@ export function CostWidget() {
   const cost = `${approx}$${summary.estimatedCostUsd.toFixed(2)}`;
   const hitPct = Math.round(summary.hitRate * 100);
 
+  const mine = summary.scope === "mine";
+  const byUser = (summary.appKeyByUser ?? [])
+    .slice(0, 5)
+    .map((u) => `${u.userId ?? "operator"} $${u.estimatedCostUsd.toFixed(2)}`)
+    .join(", ");
   const title =
-    `Estimated Anthropic spend since local midnight — ` +
+    `Estimated Anthropic spend since local midnight${mine ? " (your calls)" : ""} — ` +
     `${summary.calls} API call${summary.calls === 1 ? "" : "s"}, ` +
     `${hitPct}% prompt-cache hit rate. ` +
+    (byUser ? `App-key spend by user: ${byUser}. ` : "") +
     `Breakdown: /observability/cache. Pricing table: lib/observability/usage-summary.ts.`;
 
   return (
@@ -62,7 +75,9 @@ export function CostWidget() {
       title={title}
       className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border border-space-600 text-text"
     >
-      <span>{cost} today</span>
+      <span>
+        {cost} {mine ? "yours today" : "today"}
+      </span>
       <span className="text-text/60">·</span>
       <span>{summary.calls} calls</span>
       <span className="text-text/60">·</span>

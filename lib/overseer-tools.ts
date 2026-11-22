@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import type { TenantScope } from "@/lib/tenant-scope";
+import type { UsageAttribution } from "./anthropic-usage-log";
 
 /**
  * Phase 12A.2 — Tool framework for the Overseer.
@@ -493,7 +494,10 @@ export async function runToolUseLoop(
  * counts; the cache columns default to zero pre-23.4 (no cache_control
  * markers yet), then climb once 23.4 ships.
  */
-export function defaultAnthropicCaller(apiKey: string): AnthropicCaller {
+export function defaultAnthropicCaller(
+  apiKey: string,
+  attribution: UsageAttribution = { userId: null, keySource: "app" },
+): AnthropicCaller {
   return async (params, options) => {
     const start = performance.now();
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -521,6 +525,7 @@ export function defaultAnthropicCaller(apiKey: string): AnthropicCaller {
       model: params.model,
       usage: json.usage as unknown as Parameters<typeof logUsage>[1]["usage"],
       durationMs: Math.round(performance.now() - start),
+      attribution,
     });
     return json;
   };

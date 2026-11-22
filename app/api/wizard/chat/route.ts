@@ -8,6 +8,7 @@ import { lessonWhere, scopeForViewer } from "@/lib/tenant-scope";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 import { jsonError, requireUser, viewerUserId } from "@/lib/access";
+import { attributionFor } from "@/lib/anthropic-usage-log";
 
 export async function POST(request: NextRequest) {
   const access = await requireUser(request);
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       );
     }
-    const { key: apiKey } = await resolveAnthropicKey(
+    const { key: apiKey, source: keySource } = await resolveAnthropicKey(
       prisma,
       byokSession?.user.id ?? null,
     );
@@ -115,6 +116,8 @@ export async function POST(request: NextRequest) {
           model: chatModel,
           usage: event.usage as Parameters<typeof logUsage>[1]["usage"],
           durationMs: Math.round(performance.now() - tapStart),
+          // Phase 70 — spend attribution.
+          attribution: attributionFor(byokSession?.user.id ?? null, keySource),
         });
       }
     }).catch(() => {

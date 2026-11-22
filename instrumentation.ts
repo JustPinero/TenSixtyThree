@@ -29,6 +29,14 @@ export async function register(): Promise<void> {
   startDispatchWatchdog();
   const { startSpoolDrain } = await import("@/lib/webhook-spool-runtime");
   startSpoolDrain();
+  // Phase 70 — 90-day telemetry retention, daily.
+  if (process.env.NODE_ENV !== "test") {
+    const [{ startRetentionSweep }, { prisma }] = await Promise.all([
+      import("@/lib/retention"),
+      import("@/lib/db"),
+    ]);
+    startRetentionSweep(prisma);
+  }
   try {
     const { copyCanonicalScript } = await import("@/scripts/install-hooks");
     copyCanonicalScript();

@@ -94,6 +94,7 @@ describe("logUsage", () => {
         },
       },
       durationMs: 1234,
+      attribution: { userId: null, keySource: "app" },
     });
     await flushMicrotasks();
     const rows = await rig.prisma.anthropicUsageEvent.findMany();
@@ -119,6 +120,7 @@ describe("logUsage", () => {
       model: "claude-haiku-4-5-20251001",
       usage: { input_tokens: 50, output_tokens: 30 },
       durationMs: 500,
+      attribution: { userId: null, keySource: "app" },
     });
     const elapsed = performance.now() - start;
     // The synchronous portion of logUsage is just one queueMicrotask
@@ -142,6 +144,7 @@ describe("logUsage", () => {
         model: "test",
         usage: undefined,
         durationMs: 0,
+        attribution: { userId: null, keySource: "app" },
       })
     ).not.toThrow();
     // Allow microtask to run; .catch should swallow.
@@ -155,6 +158,7 @@ describe("logUsage", () => {
       model: "claude-sonnet-4-6",
       usage: { input_tokens: 200, output_tokens: 400 },
       durationMs: 800,
+      attribution: { userId: null, keySource: "app" },
     });
     await flushMicrotasks();
     const row = await rig.prisma.anthropicUsageEvent.findFirst();
@@ -162,5 +166,33 @@ describe("logUsage", () => {
     expect(row?.cacheCreationInputTokens).toBe(0);
     expect(row?.cacheCreation5mTokens).toBe(0);
     expect(row?.cacheCreation1hTokens).toBe(0);
+  });
+});
+
+describe("70 — spend attribution", () => {
+  it("each row carries who ran the call and whose key paid", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    await rig.prisma.user.create({ data: { id: "u1", name: "u", email: "u@x.dev" } });
+    const { attributionFor } = await import("./anthropic-usage-log");
+    logUsage(rig.prisma, {
+      callSite: "project.chat",
+      model: "m",
+      usage: { input_tokens: 1, output_tokens: 1 },
+      durationMs: 1,
+      attribution: attributionFor("u1", "user"),
+    });
+    logUsage(rig.prisma, {
+      callSite: "wizard",
+      model: "m",
+      usage: { input_tokens: 1, output_tokens: 1 },
+      durationMs: 1,
+      attribution: attributionFor(null, "app"),
+    });
+    await flushMicrotasks();
+    const rows = await rig.prisma.anthropicUsageEvent.findMany({ orderBy: { id: "asc" } });
+    expect(rows.map((r) => [r.callSite, r.userId, r.keySource])).toEqual([
+      ["project.chat", "u1", "byok"],
+      ["wizard", null, "app"],
+    ]);
   });
 });

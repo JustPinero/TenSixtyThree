@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import { postAnthropicWithRetry } from "./anthropic-fetch";
 import path from "path";
 import type { PrismaClient, Prisma } from "@/app/generated/prisma/client";
+import type { UsageAttribution } from "./anthropic-usage-log";
 
 /**
  * Phase 11.2 — feature proposer.
@@ -110,6 +111,8 @@ export interface GenerateProposalDeps {
   callClaude?: (system: string, user: string) => Promise<string>;
   /** Phase 66.1 — the caller's resolved key (BYOK wins); default env. */
   apiKey?: string;
+  /** Phase 70 — who the spend belongs to. */
+  attribution?: UsageAttribution;
 }
 
 const DEFAULT_MAX_BYTES_PER_FILE = 4_000;
@@ -128,6 +131,7 @@ async function defaultCallClaude(
   system: string,
   user: string,
   resolvedKey?: string,
+  attribution?: UsageAttribution,
 ): Promise<string> {
   const apiKey = resolvedKey ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
@@ -170,6 +174,7 @@ async function defaultCallClaude(
       model: PROPOSER_MODEL,
       usage: data.usage as Parameters<typeof logUsage>[1]["usage"],
       durationMs: Math.round(performance.now() - start),
+      attribution: attribution ?? { userId: null, keySource: "app" },
     });
     return data.content?.[0]?.text ?? "";
   } finally {
@@ -207,7 +212,8 @@ export async function generateProposal(
 ): Promise<string> {
   const callClaude =
     deps.callClaude ??
-    ((system: string, user: string) => defaultCallClaude(system, user, deps.apiKey));
+    ((system: string, user: string) =>
+      defaultCallClaude(system, user, deps.apiKey, deps.attribution));
   const userPrompt = buildProposalUserPrompt(input);
   return await callClaude(PROPOSAL_SYSTEM_PROMPT, userPrompt);
 }

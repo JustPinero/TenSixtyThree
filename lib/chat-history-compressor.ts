@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/app/generated/prisma/client";
 import { postAnthropicWithRetry } from "./anthropic-fetch";
 import type { AnthropicMessage } from "@/lib/overseer-tools";
 import { UTILITY_MODEL } from "@/lib/model-config";
+import type { UsageAttribution } from "./anthropic-usage-log";
 
 /**
  * Phase 12E — history compression safety net.
@@ -175,7 +176,10 @@ export async function compressMessagesForSession(
  * caching can't fire), but telemetry still lets us see compression
  * latency / cost.
  */
-export function defaultSummarizer(apiKey: string): MessageSummarizer {
+export function defaultSummarizer(
+  apiKey: string,
+  attribution: UsageAttribution = { userId: null, keySource: "app" },
+): MessageSummarizer {
   const SUMMARIZER_MODEL = UTILITY_MODEL;
   return async (messages, options) => {
     const transcript = messages
@@ -216,6 +220,7 @@ export function defaultSummarizer(apiKey: string): MessageSummarizer {
       model: SUMMARIZER_MODEL,
       usage: json.usage,
       durationMs: Math.round(performance.now() - start),
+      attribution,
     });
     const content = (json.content as Array<{ type: string; text?: string }>) ?? [];
     return content

@@ -78,3 +78,38 @@ describe("CostWidget", () => {
     expect(container!.querySelector('[data-testid="cost-widget"]')).toBeNull();
   });
 });
+
+describe("70 — per-viewer spend", () => {
+  async function widget(body: unknown): Promise<HTMLElement> {
+    stubSummary(body);
+    let container: HTMLElement;
+    await act(async () => {
+      container = render(<CostWidget />).container;
+    });
+    return container!.querySelector('[data-testid="cost-widget"]') as HTMLElement;
+  }
+
+  it("labels a user's own spend as theirs", async () => {
+    const el = await widget({
+      scope: "mine",
+      calls: 3,
+      estimatedCostUsd: 0.5,
+      hitRate: 0,
+      hasUnknownModels: false,
+    });
+    expect(el.textContent).toContain("yours today");
+    expect(el.getAttribute("title")).toContain("(your calls)");
+  });
+
+  it("shows admins the app-key spend by user in the tooltip", async () => {
+    const el = await widget({
+      scope: "fleet",
+      calls: 9,
+      estimatedCostUsd: 2,
+      hitRate: 0,
+      hasUnknownModels: false,
+      appKeyByUser: [{ userId: "alice", calls: 2, estimatedCostUsd: 1.25 }],
+    });
+    expect(el.getAttribute("title")).toContain("alice $1.25");
+  });
+});

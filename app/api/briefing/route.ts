@@ -6,7 +6,7 @@ import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { reconcileFleet, formatDriftSection } from "@/lib/fleet-reconciler";
 import { computeInfraVersion } from "@/lib/infra-version";
 import { UTILITY_MODEL } from "@/lib/model-config";
-import { jsonError, requireUser } from "@/lib/access";
+import { jsonError, requireUser, viewerUserId } from "@/lib/access";
 import { activityWhere, scopeForViewer, taskWhere } from "@/lib/tenant-scope";
 
 /**
@@ -258,6 +258,8 @@ ${infraSection ?? "None — all projects clean of v3.5 remnants."}`;
       model: BRIEFING_MODEL,
       usage: data.usage,
       durationMs: Math.round(performance.now() - start),
+      // Phase 70 — briefings always run on the app key.
+      attribution: { userId: viewerUserId(access.viewer), keySource: "app" },
     });
     const briefing =
       data.content?.[0]?.text || "Unable to generate briefing.";

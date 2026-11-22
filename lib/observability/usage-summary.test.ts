@@ -1,7 +1,9 @@
 /**
  * Phase 39 [P8] — usage summary aggregation + cost math.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import { CHAT_MODEL_OPTIONS } from "@/lib/model-config";
 import { getUsageSummary, estimateEventCostUsd } from "./usage-summary";
 
@@ -14,14 +16,6 @@ type EventRow = {
   cacheCreation5mTokens: number;
   cacheCreation1hTokens: number;
 };
-
-function makePrisma(rows: EventRow[]) {
-  return {
-    anthropicUsageEvent: {
-      findMany: vi.fn(async () => rows),
-    },
-  } as unknown as Parameters<typeof getUsageSummary>[0];
-}
 
 function row(overrides: Partial<EventRow> = {}): EventRow {
   return {
@@ -138,9 +132,26 @@ describe("estimateEventCostUsd — current-generation rates", () => {
   });
 });
 
-describe("getUsageSummary", () => {
+describe("getUsageSummary (aggregated in Postgres, phase 70)", () => {
+  let rig: DispatchRig | null = null;
+  afterEach(async () => {
+    await rig?.dispose();
+    rig = null;
+  });
+
+  async function seed(rows: EventRow[], createdAt = new Date("2026-06-12T10:00:00")) {
+    rig = await createDispatchRig({ fakeTimers: false });
+    for (const r of rows) {
+      await rig.prisma.anthropicUsageEvent.create({
+        data: { ...r, callSite: "test", durationMs: 1, createdAt },
+      });
+    }
+    return rig.prisma;
+  }
+
   it("returns zeros on an empty range", async () => {
-    const summary = await getUsageSummary(makePrisma([]), {
+    const prisma = await seed([]);
+    const summary = await getUsageSummary(prisma, {
       since: new Date("2026-06-12T00:00:00"),
     });
     expect(summary).toEqual({
@@ -156,7 +167,7 @@ describe("getUsageSummary", () => {
   });
 
   it("aggregates tokens, cost, and weighted hit rate across events", async () => {
-    const prisma = makePrisma([
+    const prisma = await seed([
       row({
         inputTokens: 1_000_000,
         outputTokens: 1_000_000,
@@ -183,20 +194,11 @@ describe("getUsageSummary", () => {
     expect(summary.hasUnknownModels).toBe(false);
   });
 
-  it("passes the since filter through to the query", async () => {
-    const prisma = makePrisma([]);
-    const since = new Date("2026-06-12T00:00:00");
-    await getUsageSummary(prisma, { since });
-
-    const findMany = (
-      prisma as unknown as {
-        anthropicUsageEvent: { findMany: ReturnType<typeof vi.fn> };
-      }
-    ).anthropicUsageEvent.findMany;
-    expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { createdAt: { gte: since } },
-      })
-    );
+  it("excludes events before `since`", async () => {
+    const prisma = await seed([row({ inputTokens: 5 })], new Date("2026-06-11T23:00:00"));
+    const summary = await getUsageSummary(prisma, {
+      since: new Date("2026-06-12T00:00:00"),
+    });
+    expect(summary.calls).toBe(0);
   });
 });

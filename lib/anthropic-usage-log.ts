@@ -47,11 +47,27 @@ export function extractUsageFields(usage: AnthropicResponseUsage | undefined) {
   };
 }
 
+/** Phase 70 — who ran the call and whose key paid. */
+export interface UsageAttribution {
+  userId: string | null;
+  keySource: "byok" | "app";
+}
+
+/** Map lib/anthropic-key's ResolvedKey.source onto the stored column. */
+export function attributionFor(
+  userId: string | null,
+  source: "user" | "app" | "none",
+): UsageAttribution {
+  return { userId, keySource: source === "user" ? "byok" : "app" };
+}
+
 export interface UsageEventInput {
   callSite: string;
   model: string;
   usage: AnthropicResponseUsage | undefined;
   durationMs: number;
+  /** Required so no call site can forget it (phase 70). */
+  attribution: UsageAttribution;
 }
 
 /**
@@ -69,6 +85,8 @@ export function logUsage(prisma: PrismaClient, input: UsageEventInput): void {
     prisma.anthropicUsageEvent
       .create({
         data: {
+          userId: input.attribution.userId,
+          keySource: input.attribution.keySource,
           callSite: input.callSite,
           model: input.model,
           ...fields,

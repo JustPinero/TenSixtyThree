@@ -39,6 +39,7 @@ import {
 } from "@/lib/chat-history-compressor";
 import { isHosted, jsonError, requireUser } from "@/lib/access";
 import { scopeForViewer } from "@/lib/tenant-scope";
+import { attributionFor } from "@/lib/anthropic-usage-log";
 
 // Module-level singleton — the registry is pure and request-independent
 // after Phase 12, so rebuilding it on every request was wasted work.
@@ -254,7 +255,7 @@ export async function POST(request: NextRequest) {
         },
       );
     }
-    const { key: apiKey } = await resolveAnthropicKey(
+    const { key: apiKey, source: keySource } = await resolveAnthropicKey(
       prisma,
       byokSession?.user.id ?? null,
     );
@@ -321,7 +322,7 @@ export async function POST(request: NextRequest) {
       const results = await proposeForAll(prisma, {
         projectSlugs: projectSlugs.length > 0 ? projectSlugs : undefined,
         projectWhere: scope.projectWhere,
-        deps: { apiKey },
+        deps: { apiKey, attribution: attributionFor(scope.userId, keySource) },
       });
       const rendered = renderProposalReport(results);
       return new Response(sseFromText(rendered), {
@@ -494,13 +495,14 @@ export async function POST(request: NextRequest) {
           {
             threshold: 25,
             keepRecent: 10,
-            summarizer: defaultSummarizer(apiKey),
+            summarizer: defaultSummarizer(apiKey, attributionFor(scope.userId, keySource)),
             signal: abort.signal,
           },
         );
 
         const result = await runToolUseLoop({
           caller: defaultStreamingAnthropicCaller({
+            attribution: attributionFor(scope.userId, keySource),
             apiKey,
             onEvent: onUpstreamEvent,
           }),

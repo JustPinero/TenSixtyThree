@@ -21,6 +21,7 @@ import {
   createStreamAccumulator,
   type StreamEvent,
 } from "@/lib/streaming-accumulator";
+import type { UsageAttribution } from "./anthropic-usage-log";
 
 export type StreamingAnthropicCaller = (
   ...args: Parameters<AnthropicCaller>
@@ -30,6 +31,8 @@ interface StreamingCallerOptions {
   apiKey: string;
   /** Forwarded synchronously each time an SSE event arrives. */
   onEvent?: (event: StreamEvent) => void;
+  /** Phase 70 — who the spend belongs to. */
+  attribution?: UsageAttribution;
 }
 
 /**
@@ -85,6 +88,7 @@ export function defaultStreamingAnthropicCaller(
         typeof logUsage
       >[1]["usage"],
       durationMs: Math.round(performance.now() - start),
+      attribution: opts.attribution ?? { userId: null, keySource: "app" },
     });
 
     return assembled;

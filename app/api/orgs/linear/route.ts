@@ -27,6 +27,17 @@ export async function PUT(request: NextRequest) {
   if (!ctx.ok) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
+  // 66.4 — the org's integration key is an owner/admin decision.
+  const membership = await prisma.member.findFirst({
+    where: { organizationId: ctx.orgId, userId: ctx.session.user.id },
+    select: { role: true },
+  });
+  if (membership?.role !== "owner" && membership?.role !== "admin") {
+    return NextResponse.json(
+      { error: "Only an organization owner or admin can set the Linear key" },
+      { status: 403 },
+    );
+  }
   const body = await request.json();
   const key = typeof body.key === "string" ? body.key.trim() : "";
   if (!key.startsWith("lin_api_") || key.length < 20 || key.length > 200) {

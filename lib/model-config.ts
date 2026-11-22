@@ -78,6 +78,10 @@ async function dbConfig(prisma: PrismaClient) {
  * Resolution order: the user's own preference (66.3) → the admin-set
  * default (CascadeConfig.chatModel) → CASCADE_CHAT_MODEL → built-in.
  * `userId` null = the local operator, who uses the default directly.
+ *
+ * A personal preference is honored only when it is the user's own bill:
+ * they have a BYOK key, or they are an admin (security review: a user
+ * must not be able to pick an expensive model billed to the app key).
  */
 export async function resolveChatModel(
   prisma: PrismaClient,
@@ -87,10 +91,11 @@ export async function resolveChatModel(
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { chatModel: true },
+        select: { chatModel: true, anthropicKeyEnc: true, role: true },
       });
       const own = user?.chatModel?.trim();
-      if (own && VALID_MODEL_IDS.has(own)) return own;
+      const ownBill = Boolean(user?.anthropicKeyEnc) || user?.role === "admin";
+      if (own && ownBill && VALID_MODEL_IDS.has(own)) return own;
     } catch {
       // never block chat on a preference lookup
     }

@@ -107,6 +107,20 @@ export async function PATCH(req: Request): Promise<Response> {
     if (!userId) {
       return Response.json({ error: "Sign in to set a personal model" }, { status: 400 });
     }
+    // A personal model must run on the user's own bill (BYOK) — admins
+    // own the app key, so they may pick freely. Clearing is always fine.
+    if (body.model !== null) {
+      const me = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { anthropicKeyEnc: true, role: true },
+      });
+      if (!me?.anthropicKeyEnc && me?.role !== "admin") {
+        return Response.json(
+          { error: "Add your own Anthropic API key in Settings to choose a model" },
+          { status: 400 },
+        );
+      }
+    }
     await prisma.user.update({ where: { id: userId }, data: { chatModel: body.model } });
   }
 

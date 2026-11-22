@@ -40,6 +40,11 @@ beforeEach(async () => {
   rig = await createDispatchRig({ fakeTimers: false });
   (globalThis as Record<string, unknown>).__rigPrisma = rig.prisma;
   await seedTenants(rig.prisma);
+  // A personal model runs on the user's own key; alice has one, carol not.
+  await rig.prisma.user.updateMany({
+    where: { id: { in: ["alice", "bob"] } },
+    data: { anthropicKeyEnc: "sealed-test-key" },
+  });
 });
 
 afterEach(async () => {
@@ -111,5 +116,18 @@ describe("66.3 — per-user chat model", () => {
       requestAs("alice", "http://x/api/settings/model"),
     );
     expect(await asAlice.json()).toMatchObject({ canSetDefault: false });
+  });
+
+  it("without their own key a user cannot pick a model billed to the app key", async () => {
+    expect((await patch("carol", { model: A })).status).toBe(400);
+    // A preference that exists anyway (key removed later) is ignored.
+    await rig!.prisma.user.update({ where: { id: "carol" }, data: { chatModel: A } });
+    expect(await resolveChatModel(rig!.prisma, "carol")).toBe(DEFAULT_CHAT_MODEL);
+    expect(await modelOf("carol")).toBe(DEFAULT_CHAT_MODEL);
+  });
+
+  it("an admin's personal pick applies without BYOK (they own the bill)", async () => {
+    expect((await patch("admin", { model: A })).status).toBe(200);
+    expect(await modelOf("admin")).toBe(A);
   });
 });

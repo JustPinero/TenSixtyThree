@@ -480,6 +480,7 @@ function ModelPanel() {
   // 66.3 — the model is per user; admins can also set everyone's default.
   const [defaultModel, setDefaultModel] = useState("");
   const [canSetDefault, setCanSetDefault] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/model")
@@ -512,6 +513,9 @@ function ModelPanel() {
         setModel(d.model);
         setService(d.service);
         setDefaultModel(d.defaultModel ?? "");
+        setModelError(null);
+      } else {
+        setModelError(typeof d.error === "string" ? d.error : "Could not save");
       }
     } finally {
       setSaving(false);
@@ -579,6 +583,11 @@ function ModelPanel() {
           </div>
         )}
         <p className="text-micro font-mono text-muted">
+          {modelError && (
+            <span role="alert" className="block text-danger mb-1">
+              {modelError}
+            </span>
+          )}
           Also settable via CASCADE_AI_SERVICE / CASCADE_CHAT_MODEL env vars;
           this setting overrides both.
         </p>

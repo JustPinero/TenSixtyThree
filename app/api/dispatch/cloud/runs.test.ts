@@ -15,7 +15,13 @@ vi.mock("@/lib/db", () => {
   return { prisma: proxy };
 });
 
-import { GET as listRuns } from "./route";
+const verify = vi.fn(async (): Promise<{ ok: boolean; reason?: string }> => ({ ok: true }));
+vi.mock("@/lib/github-access", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-access")>()),
+  verifyRepoPushAccess: () => verify(),
+}));
+
+import { GET as listRuns, POST as enqueue } from "./route";
 import { POST as cancel } from "./[id]/cancel/route";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
@@ -136,3 +142,36 @@ describe("POST /api/dispatch/cloud/[id]/cancel", () => {
     expect((await cancelAs("bob", row.id)).status).toBe(404);
   });
 });
+
+describe("security review — push access is re-checked at dispatch time", () => {
+  beforeEach(async () => {
+    await rig!.prisma.project.update({
+      where: { id: t.projects.alices.id },
+      data: { githubRepo: "alice/app" },
+    });
+    await rig!.prisma.user.update({
+      where: { id: "alice" },
+      data: { anthropicKeyEnc: "sealed" },
+    });
+  });
+  const start = (u: TenantUser) =>
+    enqueue(
+      requestAs(u, "http://x/api/dispatch/cloud", {
+        method: "POST",
+        body: { slug: "alices", mode: "audit" },
+      }),
+    );
+
+  it("a user who lost push access since connecting cannot start a run", async () => {
+    verify.mockResolvedValueOnce({ ok: false, reason: "no-push" });
+    const res = await start("alice");
+    expect(res.status).toBe(403);
+    expect(await rig!.prisma.dispatch.count({ where: { runtime: "cloud" } })).toBe(0);
+  });
+
+  it("with push access the run is queued", async () => {
+    verify.mockResolvedValueOnce({ ok: true });
+    expect((await start("alice")).status).toBeLessThan(300);
+  });
+});
+

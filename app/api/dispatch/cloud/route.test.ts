@@ -1,5 +1,12 @@
 /** 52.1 — hosted users enqueue cloud dispatches. */
 import { describe, it, expect, afterEach, vi } from "vitest";
+
+// 68.2 — enqueue re-checks the user's own GitHub push access (network);
+// these suites cover the other rules, so the check passes here.
+vi.mock("@/lib/github-access", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-access")>()),
+  verifyRepoPushAccess: async () => ({ ok: true }),
+}));
 import { NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";

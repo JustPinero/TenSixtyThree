@@ -12,6 +12,7 @@ import { canSeeProject, canDispatchProject } from "@/lib/project-access";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { PUBLIC_DISPATCH_SELECT, publicDispatch } from "@/lib/runner/public-dispatch";
 import { cloudPermissionFor } from "@/lib/runner/autonomy";
+import { REPO_ACCESS_MESSAGE, verifyRepoPushAccess } from "@/lib/github-access";
 
 const MODES = ["continue", "audit", "investigate", "custom"];
 
@@ -85,6 +86,19 @@ export async function POST(request: NextRequest) {
   const limited = checkRateLimit(`cloud-dispatch:${session.user.id}`, 20, 3600_000);
   if (limited) return limited;
 
+  // (network call last: cheap refusals first)
+  // Security review (68.2 TOCTOU): the runner pushes with the operator's
+  // token, so a non-admin may only start a run on a repo their OWN GitHub
+  // account can push to — checked now, not just when it was connected.
+  if (!access.viewer.isAdmin) {
+    const check = await verifyRepoPushAccess(prisma, session.user.id, project.githubRepo);
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: REPO_ACCESS_MESSAGE[check.reason], reason: check.reason },
+        { status: 403 },
+      );
+    }
+  }
   const created = await prisma.dispatch.create({
     data: {
       projectId: project.id,

@@ -230,3 +230,25 @@ describe("Overseer tools are tenant-scoped", () => {
     expect(out.projects).toEqual([]);
   });
 });
+
+describe("69.1 — create tools are idempotent per session", () => {
+  it("the same todo twice in one session creates one row", async () => {
+    const r = await setup();
+    const ctx = await ctxFor(r, "carol");
+    const first = ok(await registry.execute("create_human_todo", { title: "Rotate key", category: "credential" }, ctx));
+    const second = ok(await registry.execute("create_human_todo", { title: "Rotate key", category: "credential" }, ctx));
+    expect(second.id).toBe(first.id);
+    expect(second.duplicate).toBe(true);
+    expect(await r.prisma.humanTask.count({ where: { title: "Rotate key" } })).toBe(1);
+  });
+
+  it("the same reminder twice in one session creates one row", async () => {
+    const r = await setup();
+    const ctx = await ctxFor(r, "carol");
+    const input = { message: "ping", conditionType: "custom", conditionValue: "v" };
+    const first = ok(await registry.execute("create_reminder", input, ctx));
+    const second = ok(await registry.execute("create_reminder", input, ctx));
+    expect(second.id).toBe(first.id);
+    expect(await r.prisma.reminder.count({ where: { message: "ping" } })).toBe(1);
+  });
+});

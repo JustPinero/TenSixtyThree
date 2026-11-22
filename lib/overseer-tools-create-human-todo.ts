@@ -1,4 +1,4 @@
-import type { Tool } from "@/lib/overseer-tools";
+import type { Tool, ToolContext } from "@/lib/overseer-tools";
 import { scopeOf } from "@/lib/tenant-scope";
 
 const VALID_CATEGORIES = [
@@ -25,7 +25,20 @@ interface CreateHumanTodoOutput {
   category: string;
   priority: string;
   projectSlug: string | null;
+  /** 69.1 — true when this session had already created the same todo. */
+  duplicate?: boolean;
 }
+
+/** 69.1 — rows this chat session already created are not created again. */
+async function sessionSince(ctx: ToolContext): Promise<Date | null> {
+  if (!ctx.sessionId) return null;
+  const session = await ctx.prisma.chatSession.findUnique({
+    where: { id: ctx.sessionId },
+    select: { startedAt: true },
+  });
+  return session?.startedAt ?? null;
+}
+
 
 export const createHumanTodoTool: Tool<CreateHumanTodoInput, CreateHumanTodoOutput> = {
   name: "create_human_todo",
@@ -78,6 +91,31 @@ export const createHumanTodoTool: Tool<CreateHumanTodoInput, CreateHumanTodoOutp
         throw new Error(`Unknown project slug "${input.projectSlug}".`);
       }
       projectId = project.id;
+    }
+
+    // 69.1 — a retried or repeated tool call in the same session must not
+    // create the same todo twice.
+    const since = await sessionSince(ctx);
+    if (since) {
+      const existing = await ctx.prisma.humanTask.findFirst({
+        where: {
+          title: input.title,
+          projectId,
+          ownerUserId: scope.userId,
+          createdBy: "delamain",
+          createdAt: { gte: since },
+        },
+      });
+      if (existing) {
+        return {
+          id: existing.id,
+          title: existing.title,
+          category: existing.category,
+          priority: existing.priority,
+          projectSlug: existing.projectSlug,
+          duplicate: true,
+        };
+      }
     }
 
     const created = await ctx.prisma.humanTask.create({

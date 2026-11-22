@@ -2,8 +2,11 @@
  * Phase 47.2 (partial) — shared POST helper for non-streaming Anthropic
  * Messages calls with retry/backoff. Previously all eight call sites were
  * bare fetch with zero retry: one 429 or transient network blip failed the
- * briefing/harvest/summarize/proposer path outright. Streaming callers are
- * NOT wrapped (mid-stream retry needs different handling; see plan 47.2).
+ * briefing/harvest/summarize/proposer path outright.
+ *
+ * Phase 69.1 — streaming callers use it too: fetch resolves when the
+ * response HEADERS arrive, so a 429/529/5xx is retried before a single
+ * byte of the stream has been read. Nothing mid-stream is ever retried.
  */
 export interface AnthropicPostOptions {
   apiKey: string;
@@ -11,9 +14,11 @@ export interface AnthropicPostOptions {
   fetchImpl?: typeof fetch;
   maxRetries?: number; // default 2 (3 attempts total)
   retryDelayMs?: number; // base delay, doubles per attempt
+  /** 69.1 — ask for an SSE stream (payload should carry stream: true). */
+  stream?: boolean;
 }
 
-const RETRYABLE = new Set([408, 429, 500, 502, 503, 529]);
+const RETRYABLE = new Set([408, 429, 500, 502, 503, 504, 529]);
 
 export async function postAnthropicWithRetry(
   payload: unknown,
@@ -35,6 +40,7 @@ export async function postAnthropicWithRetry(
           "content-type": "application/json",
           "x-api-key": opts.apiKey,
           "anthropic-version": "2023-06-01",
+          ...(opts.stream ? { accept: "text/event-stream" } : {}),
         },
         body: JSON.stringify(payload),
         signal: opts.signal,

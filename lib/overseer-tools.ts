@@ -77,11 +77,17 @@ export type ThinkingBlock = {
   thinking: string;
   signature: string;
 };
+/** Phase 69.1 — encrypted thinking; must round-trip untouched. */
+export type RedactedThinkingBlock = {
+  type: "redacted_thinking";
+  data: string;
+};
 export type ContentBlock =
   | TextBlock
   | ToolUseBlock
   | ToolResultBlock
-  | ThinkingBlock;
+  | ThinkingBlock
+  | RedactedThinkingBlock;
 
 export interface AnthropicMessage {
   role: "user" | "assistant";
@@ -239,8 +245,13 @@ export interface ToolUseLoopResult {
   /** Concatenated text of the terminal assistant turn. Empty if truncated before terminal. */
   finalText: string;
   toolCallsExecuted: number;
-  /** True if the loop bailed at maxIterations without reaching a terminal text turn. */
+  /** True if the loop stopped before a complete terminal answer. */
   truncated: boolean;
+  /**
+   * Phase 69.1 — why it stopped early: the iteration cap, the server
+   * timeout, any other abort, the model hitting max_tokens, or a refusal.
+   */
+  truncatedReason?: "iterations" | "timeout" | "aborted" | "max_tokens" | "refusal";
 }
 
 function extractToolUseBlocks(content: ContentBlock[]): ToolUseBlock[] {
@@ -324,7 +335,7 @@ export function withRollingCacheMarker(
   // The API rejects cache_control on thinking blocks. In practice the
   // last message before a call is always user-role (initial turn or
   // tool_results), so this guard is defensive.
-  if (tail.type === "thinking") return stripped;
+  if (tail.type === "thinking" || tail.type === "redacted_thinking") return stripped;
   blocks[blocks.length - 1] = {
     ...tail,
     cache_control: { type: "ephemeral" },
@@ -354,6 +365,8 @@ export async function runToolUseLoop(
 
   const messages: AnthropicMessage[] = [...initialMessages];
   let toolCallsExecuted = 0;
+  // 69.1 — text from pause_turn continuations, prepended to the answer.
+  let pausedText = "";
 
   // Phase 42 (P0.3) — the system breakpoint caches the tools+system
   // prefix (render order is tools → system → messages; the old
@@ -371,7 +384,13 @@ export async function runToolUseLoop(
     // Honor abort between iterations. Mid-iteration abort happens
     // inside the caller via the signal we pass down.
     if (signal?.aborted) {
-      return { messages, finalText: "", toolCallsExecuted, truncated: true };
+      return {
+        messages,
+        finalText: "",
+        toolCallsExecuted,
+        truncated: true,
+        truncatedReason: signal.reason === "timeout" ? "timeout" : "aborted",
+      };
     }
     const response = await caller(
       {
@@ -393,12 +412,41 @@ export async function runToolUseLoop(
     );
 
     const toolUseBlocks = extractToolUseBlocks(response.content);
+    const turnText = extractTextBlocks(response.content)
+      .map((b) => b.text)
+      .join("");
+
+    // 69.1 — branch on stop_reason before treating a turn as terminal.
+    if (response.stop_reason === "pause_turn") {
+      // The API paused a long turn; send it back to continue it.
+      messages.push({ role: "assistant", content: response.content });
+      pausedText += turnText;
+      continue;
+    }
+    if (response.stop_reason === "refusal") {
+      messages.push({ role: "assistant", content: pausedText + turnText });
+      return {
+        messages,
+        finalText: pausedText + turnText,
+        toolCallsExecuted,
+        truncated: true,
+        truncatedReason: "refusal",
+      };
+    }
+    if (response.stop_reason === "max_tokens" && toolUseBlocks.length === 0) {
+      messages.push({ role: "assistant", content: pausedText + turnText });
+      return {
+        messages,
+        finalText: pausedText + turnText,
+        toolCallsExecuted,
+        truncated: true,
+        truncatedReason: "max_tokens",
+      };
+    }
 
     if (toolUseBlocks.length === 0) {
       // Terminal text turn — concatenate all text blocks and return.
-      const finalText = extractTextBlocks(response.content)
-        .map((b) => b.text)
-        .join("");
+      const finalText = pausedText + turnText;
       messages.push({ role: "assistant", content: finalText });
       return { messages, finalText, toolCallsExecuted, truncated: false };
     }
@@ -479,7 +527,13 @@ export async function runToolUseLoop(
   }
 
   // Bailed at maxIterations.
-  return { messages, finalText: "", toolCallsExecuted, truncated: true };
+  return {
+    messages,
+    finalText: "",
+    toolCallsExecuted,
+    truncated: true,
+    truncatedReason: "iterations",
+  };
 }
 
 // -- Default Anthropic caller ----------------------------------------
@@ -500,14 +554,10 @@ export function defaultAnthropicCaller(
 ): AnthropicCaller {
   return async (params, options) => {
     const start = performance.now();
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(params),
+    // 69.1 — shared retry (429/529/5xx) before the response is read.
+    const { postAnthropicWithRetry } = await import("./anthropic-fetch");
+    const response = await postAnthropicWithRetry(params, {
+      apiKey,
       signal: options?.signal,
     });
     if (!response.ok) {

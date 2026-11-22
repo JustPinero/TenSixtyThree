@@ -22,6 +22,7 @@ import {
   type StreamEvent,
 } from "@/lib/streaming-accumulator";
 import type { UsageAttribution } from "./anthropic-usage-log";
+import { postAnthropicWithRetry } from "./anthropic-fetch";
 
 export type StreamingAnthropicCaller = (
   ...args: Parameters<AnthropicCaller>
@@ -33,6 +34,9 @@ interface StreamingCallerOptions {
   onEvent?: (event: StreamEvent) => void;
   /** Phase 70 — who the spend belongs to. */
   attribution?: UsageAttribution;
+  /** 69.1 — test seam + retry tuning. */
+  fetchImpl?: typeof fetch;
+  retryDelayMs?: number;
 }
 
 /**
@@ -46,17 +50,17 @@ export function defaultStreamingAnthropicCaller(
 ): AnthropicCaller {
   return async (params, callOptions) => {
     const start = performance.now();
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": opts.apiKey,
-        "anthropic-version": "2023-06-01",
-        accept: "text/event-stream",
+    // 69.1 — retried on 429/529/5xx before the first byte is read.
+    const response = await postAnthropicWithRetry(
+      { ...params, stream: true },
+      {
+        apiKey: opts.apiKey,
+        signal: callOptions?.signal,
+        stream: true,
+        fetchImpl: opts.fetchImpl,
+        retryDelayMs: opts.retryDelayMs,
       },
-      body: JSON.stringify({ ...params, stream: true }),
-      signal: callOptions?.signal,
-    });
+    );
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Anthropic API error: ${response.status} ${text}`);

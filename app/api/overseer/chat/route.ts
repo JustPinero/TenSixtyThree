@@ -83,6 +83,17 @@ function formatTruncationSurface(
     ? calls.map((c) => `- ${c.name} (${c.count}×)`).join("\n")
     : "- (no tool calls executed)";
 
+  // 69.1 — tell the truth about why the answer is incomplete.
+  if (result.truncatedReason === "max_tokens") {
+    return "\n\n[My reply hit the length limit and was cut off. Ask me to continue.]";
+  }
+  if (result.truncatedReason === "refusal") {
+    return "\n\n[I can't help with that request.]";
+  }
+  if (result.truncatedReason === "timeout") {
+    return "\n\n[I ran out of time (60 seconds) before finishing. Try a narrower question.]";
+  }
+  if (result.truncatedReason === "aborted") return "";
   return [
     "I hit my tool-use iteration limit before reaching a final answer.",
     "",
@@ -357,7 +368,9 @@ export async function POST(request: NextRequest) {
     // closed tab must not keep burning tool-loop iterations against
     // the wall timer with the output discarded.
     const abort = new AbortController();
-    const timeoutHandle = setTimeout(() => abort.abort(), 60_000);
+    // 69.1 — the reason travels with the signal so the user is told it
+    // was the time limit, not "iteration limit".
+    const timeoutHandle = setTimeout(() => abort.abort("timeout"), 60_000);
     linkAbort(request.signal, abort);
 
     // Phase 25.D1 — streaming migration.

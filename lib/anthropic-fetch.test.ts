@@ -66,3 +66,29 @@ describe("postAnthropicWithRetry", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("69.1 — the streaming Overseer caller retries before the first byte", () => {
+  it("a 529 then a good stream succeeds; the stream is read once", async () => {
+    const { defaultStreamingAnthropicCaller } = await import("./overseer-tools-streaming");
+    const sse = [
+      'event: message_start\ndata: {"type":"message_start","message":{"id":"m","type":"message","role":"assistant","model":"x","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":0}}}\n\n',
+      'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}\n\n',
+      'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ok"}}\n\n',
+      'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n',
+      'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n',
+      'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+    ].join("");
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("overloaded", { status: 529 }))
+      .mockResolvedValueOnce(new Response(sse, { status: 200 }));
+    const caller = defaultStreamingAnthropicCaller({
+      apiKey: "sk-test",
+      fetchImpl,
+      retryDelayMs: 1,
+    });
+    const res = await caller({ model: "x", system: [], messages: [], tools: [], max_tokens: 10 });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(res.content).toEqual([{ type: "text", text: "ok" }]);
+  });
+});

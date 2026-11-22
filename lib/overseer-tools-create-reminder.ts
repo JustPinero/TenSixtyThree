@@ -1,4 +1,4 @@
-import type { Tool } from "@/lib/overseer-tools";
+import type { Tool, ToolContext } from "@/lib/overseer-tools";
 import { scopeOf } from "@/lib/tenant-scope";
 import { reminderProjectsVisible } from "@/lib/reminders";
 
@@ -22,7 +22,20 @@ interface CreateReminderOutput {
   message: string;
   conditionType: string;
   conditionValue: string;
+  /** 69.1 — true when this session had already created the same reminder. */
+  duplicate?: boolean;
 }
+
+/** 69.1 — rows this chat session already created are not created again. */
+async function sessionSince(ctx: ToolContext): Promise<Date | null> {
+  if (!ctx.sessionId) return null;
+  const session = await ctx.prisma.chatSession.findUnique({
+    where: { id: ctx.sessionId },
+    select: { startedAt: true },
+  });
+  return session?.startedAt ?? null;
+}
+
 
 export const createReminderTool: Tool<CreateReminderInput, CreateReminderOutput> = {
   name: "create_reminder",
@@ -62,6 +75,29 @@ export const createReminderTool: Tool<CreateReminderInput, CreateReminderOutput>
     // 66.2 — never watch a project the chatting user can't see.
     if (!(await reminderProjectsVisible(ctx.prisma, scopeOf(ctx).projectWhere, input))) {
       throw new Error("Unknown project slug in reminder condition.");
+    }
+    // 69.1 — idempotent per session.
+    const since = await sessionSince(ctx);
+    if (since) {
+      const existing = await ctx.prisma.reminder.findFirst({
+        where: {
+          message: input.message,
+          conditionType: input.conditionType,
+          conditionValue: input.conditionValue,
+          ownerUserId: scopeOf(ctx).userId,
+          createdBy: "delamain",
+          createdAt: { gte: since },
+        },
+      });
+      if (existing) {
+        return {
+          id: existing.id,
+          message: existing.message,
+          conditionType: existing.conditionType,
+          conditionValue: existing.conditionValue,
+          duplicate: true,
+        };
+      }
     }
     const created = await ctx.prisma.reminder.create({
       data: {

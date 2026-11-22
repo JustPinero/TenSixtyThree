@@ -77,6 +77,27 @@ describe("runClaimedDispatch", () => {
     expect(events).toBeGreaterThanOrEqual(1);
   });
 
+  it("66.2 [1.0.D4] — progress events are cloud-progress rows linked by dispatchId", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { project, dispatch } = await claimed(rig);
+    async function* runAgent() {
+      for (const m of HAPPY) yield m;
+    }
+    await runClaimedDispatch(rig.prisma, dispatch, {
+      cloneRepo: vi.fn().mockResolvedValue("/tmp/c"),
+      runAgent,
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    });
+    const events = await rig.prisma.activityEvent.findMany({
+      where: { projectId: project.id },
+    });
+    expect(events.length).toBeGreaterThanOrEqual(1);
+    for (const e of events) {
+      expect(e.eventType).toBe("cloud-progress");
+      expect(e.dispatchId).toBe(dispatch.id);
+    }
+  });
+
   it("agent failure marks the row failed with the error, still cleans up", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const { dispatch } = await claimed(rig);

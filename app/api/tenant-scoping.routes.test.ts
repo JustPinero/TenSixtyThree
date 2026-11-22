@@ -329,4 +329,52 @@ describe("66.2 — dashboard routes through the visibility matrix", () => {
     );
     expect(bobPatch.status).toBe(404);
   });
+
+  it("reminders cannot watch a project the creator cannot see (no state oracle)", async () => {
+    const sneaky = await reminders.POST(
+      requestAs("carol", "http://x/api/reminders", {
+        method: "POST",
+        body: { message: "m", conditionType: "project-health", conditionValue: "alices:healthy" },
+      }),
+    );
+    expect(sneaky.status).toBe(404);
+    const viaSlug = await reminders.POST(
+      requestAs("carol", "http://x/api/reminders", {
+        method: "POST",
+        body: { message: "m", conditionType: "custom", conditionValue: "v", projectSlug: "alices" },
+      }),
+    );
+    expect(viaSlug.status).toBe(404);
+
+    // A row that slipped in anyway (legacy / direct write) never fires
+    // on another tenant's project state.
+    const p = rig!.prisma;
+    const planted = await p.reminder.create({
+      data: {
+        message: "planted",
+        conditionType: "project-deployed",
+        conditionValue: "alices",
+        ownerUserId: "carol",
+      },
+    });
+    await p.project.update({ where: { slug: "alices" }, data: { status: "deployed" } });
+    await reminders.GET(requestAs("carol", "http://x/api/reminders"));
+    expect(await p.reminder.findUniqueOrThrow({ where: { id: planted.id } })).toMatchObject({
+      status: "pending",
+    });
+
+    // ...while the owner's own reminder on the same project does fire.
+    const own = await p.reminder.create({
+      data: {
+        message: "own",
+        conditionType: "project-deployed",
+        conditionValue: "alices",
+        ownerUserId: "alice",
+      },
+    });
+    await reminders.GET(requestAs("alice", "http://x/api/reminders"));
+    expect(await p.reminder.findUniqueOrThrow({ where: { id: own.id } })).toMatchObject({
+      status: "triggered",
+    });
+  });
 });

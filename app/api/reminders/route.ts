@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { checkReminders } from "@/lib/reminders";
+import { checkReminders, reminderProjectsVisible } from "@/lib/reminders";
 import {
   jsonError,
   requireNonDemo,
@@ -46,6 +46,18 @@ export async function POST(request: NextRequest) {
         { error: "message, conditionType, and conditionValue are required" },
         { status: 400 }
       );
+    }
+
+    // 66.2 — never watch a project the creator can't see (state oracle).
+    const scope = await scopeForViewer(prisma, access.viewer);
+    if (
+      !(await reminderProjectsVisible(prisma, scope.projectWhere, {
+        conditionType: String(conditionType),
+        conditionValue: String(conditionValue),
+        projectSlug: projectSlug ? String(projectSlug) : null,
+      }))
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const reminder = await prisma.reminder.create({

@@ -6,8 +6,8 @@ import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { reconcileFleet, formatDriftSection } from "@/lib/fleet-reconciler";
 import { computeInfraVersion } from "@/lib/infra-version";
 import { UTILITY_MODEL } from "@/lib/model-config";
-import { jsonError, requireUser, viewerUserId } from "@/lib/access";
-import { visibleProjectFilter } from "@/lib/project-access";
+import { jsonError, requireUser } from "@/lib/access";
+import { activityWhere, scopeForViewer, taskWhere } from "@/lib/tenant-scope";
 
 /**
  * Timebox for per-repo `git fetch` during the briefing's reconciliation
@@ -68,16 +68,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Gather project states
+    // 66.2 — the same scope every dashboard route uses.
+    const scope = await scopeForViewer(prisma, access.viewer);
     const projects = await prisma.project.findMany({
-      where: await visibleProjectFilter(prisma, viewerUserId(access.viewer)),
+      where: scope.projectWhere,
       orderBy: { lastActivityAt: "desc" },
     });
-    const seesFleet =
-      access.viewer.kind === "local" || access.viewer.isAdmin;
-    const visibleIds = projects.map((p) => p.id);
-    const scopeToProjects = seesFleet
-      ? {}
-      : { projectId: { in: visibleIds } };
 
     // Phase 41.4 — reconcile the DB picture of the fleet against
     // filesystem/git reality (dead paths, dirty trees, ahead/behind,
@@ -128,7 +124,7 @@ export async function POST(request: NextRequest) {
     const recentEvents = await prisma.activityEvent.findMany({
       // Same visibility as the project list; project-less (fleet-wide)
       // events only for the local operator / admins.
-      where: { createdAt: { gte: since }, ...scopeToProjects },
+      where: { AND: [activityWhere(scope), { createdAt: { gte: since } }] },
       orderBy: { createdAt: "desc" },
       take: 30,
       include: { project: { select: { name: true, slug: true } } },
@@ -176,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     // Gather pending human tasks
     const pendingTasks = await prisma.humanTask.findMany({
-      where: { status: "pending", ...scopeToProjects },
+      where: { AND: [taskWhere(scope), { status: "pending" }] },
       include: { project: { select: { name: true } } },
     });
     const taskList =

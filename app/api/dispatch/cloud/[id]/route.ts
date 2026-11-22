@@ -32,7 +32,12 @@ export async function GET(
   const events = await prisma.activityEvent.findMany({
     where: {
       projectId: dispatch.projectId,
-      details: { contains: `"dispatchId":"${dispatch.id}"` },
+      // 66.2 [1.0.D4] — indexed column; the details match covers rows
+      // written before the column existed.
+      OR: [
+        { dispatchId: dispatch.id },
+        { dispatchId: null, details: { contains: `"dispatchId":"${dispatch.id}"` } },
+      ],
     },
     orderBy: { createdAt: "asc" },
     take: 200,

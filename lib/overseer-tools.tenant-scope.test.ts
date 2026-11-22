@@ -151,6 +151,16 @@ describe("Overseer tools are tenant-scoped", () => {
     expect(sneaky.ok).toBe(false);
   });
 
+  it("create_reminder refuses a condition on an invisible project", async () => {
+    const r = await setup();
+    const res = await registry.execute(
+      "create_reminder",
+      { message: "m", conditionType: "project-health", conditionValue: "alices:healthy" },
+      await ctxFor(r, "carol"),
+    );
+    expect(res.ok).toBe(false);
+  });
+
   it("create_reminder records the acting user", async () => {
     const r = await setup();
     const made = ok(

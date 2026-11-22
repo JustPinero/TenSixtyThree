@@ -97,7 +97,8 @@ export async function runClaimedDispatch(
         await prisma.activityEvent.create({
           data: {
             projectId: dispatch.projectId,
-            eventType: "session-complete",
+            eventType: "cloud-progress", // 66.2: progress is not a session end (no chime)
+            dispatchId: dispatch.id,
             summary: scrubSecrets(
               `[cloud ${dispatch.mode}] ${
                 message.type === "assistant"
@@ -122,7 +123,8 @@ export async function runClaimedDispatch(
           await prisma.activityEvent.create({
             data: {
               projectId: dispatch.projectId,
-              eventType: "session-complete",
+              eventType: "cloud-progress",
+              dispatchId: dispatch.id,
               summary: scrubSecrets(`[cloud ${dispatch.mode}] ${pushed.reason}`),
               details: JSON.stringify({ dispatchId: dispatch.id }),
             },

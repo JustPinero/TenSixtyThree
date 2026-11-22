@@ -1,5 +1,6 @@
 import type { Tool } from "@/lib/overseer-tools";
 import { scopeOf } from "@/lib/tenant-scope";
+import { reminderProjectsVisible } from "@/lib/reminders";
 
 const VALID_TYPES = [
   "project-health",
@@ -57,6 +58,10 @@ export const createReminderTool: Tool<CreateReminderInput, CreateReminderOutput>
       throw new Error(
         `Unknown conditionType "${input.conditionType}". Valid: ${VALID_TYPES.join(", ")}.`
       );
+    }
+    // 66.2 — never watch a project the chatting user can't see.
+    if (!(await reminderProjectsVisible(ctx.prisma, scopeOf(ctx).projectWhere, input))) {
+      throw new Error("Unknown project slug in reminder condition.");
     }
     const created = await ctx.prisma.reminder.create({
       data: {

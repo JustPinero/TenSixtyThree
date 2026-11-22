@@ -13,7 +13,7 @@ interface ActivityEvent {
   project: { name: string; slug: string } | null;
 }
 
-const NOTIFY_EVENT_TYPES = new Set([
+export const NOTIFY_EVENT_TYPES = new Set([
   "blocker-detected",
   "session-complete",
   "phase-complete",
@@ -31,6 +31,7 @@ const eventTypeColors: Record<string, string> = {
   "scan-complete": "text-cyan",
   "session-launched": "text-cyan",
   "session-completed": "text-success",
+  "cloud-progress": "text-muted",
   "deploy-complete": "text-amber",
 };
 
@@ -46,6 +47,7 @@ const eventTypeLabels: Record<string, string> = {
   "scan-complete": "SCAN",
   "session-launched": "LAUNCH",
   "session-completed": "DONE",
+  "cloud-progress": "CLOUD",
   "deploy-complete": "DEPLOY",
 };
 

@@ -1,4 +1,41 @@
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/app/generated/prisma/client";
+import { visibleProjectFilter } from "@/lib/project-access";
+
+/**
+ * Phase 66.2 — the project a reminder watches, if any. A reminder on a
+ * project its owner cannot see would leak that project's state when it
+ * fires, so creation validates this slug and the checker evaluates each
+ * reminder only against its owner's visible projects.
+ */
+export function reminderProjectSlugs(r: {
+  conditionType: string;
+  conditionValue: string;
+  projectSlug?: string | null;
+}): string[] {
+  const slugs = new Set<string>();
+  if (r.projectSlug) slugs.add(r.projectSlug);
+  if (r.conditionType === "project-health" || r.conditionType === "phase-complete") {
+    const slug = r.conditionValue.split(":")[0];
+    if (slug) slugs.add(slug);
+  } else if (r.conditionType === "project-deployed" && r.conditionValue) {
+    slugs.add(r.conditionValue);
+  }
+  return [...slugs];
+}
+
+/** True when every project the reminder names is in `projectWhere`. */
+export async function reminderProjectsVisible(
+  prisma: PrismaClient,
+  projectWhere: Prisma.ProjectWhereInput,
+  r: { conditionType: string; conditionValue: string; projectSlug?: string | null },
+): Promise<boolean> {
+  const slugs = reminderProjectSlugs(r);
+  if (slugs.length === 0) return true;
+  const count = await prisma.project.count({
+    where: { AND: [{ slug: { in: slugs } }, projectWhere] },
+  });
+  return count === slugs.length;
+}
 
 export interface ReminderData {
   id: number;
@@ -27,13 +64,28 @@ export async function checkReminders(
     return { triggered: 0, reminders: [] };
   }
 
-  const projects = await prisma.project.findMany();
-  const projectMap = new Map(projects.map((p) => [p.slug, p]));
+  // 66.2 — one project map per owner, built from what that owner can
+  // see. Owner null = operator reminder (the non-demo fleet).
+  type ProjectRow = Awaited<ReturnType<typeof prisma.project.findMany>>[number];
+  const mapsByOwner = new Map<string, Map<string, ProjectRow>>();
+  async function projectsFor(ownerUserId: string | null) {
+    const key = ownerUserId ?? "";
+    const cached = mapsByOwner.get(key);
+    if (cached) return cached;
+    const where: Prisma.ProjectWhereInput = ownerUserId
+      ? await visibleProjectFilter(prisma, ownerUserId)
+      : { isDemo: false };
+    const rows = await prisma.project.findMany({ where });
+    const map = new Map(rows.map((p) => [p.slug, p]));
+    mapsByOwner.set(key, map);
+    return map;
+  }
 
   const triggered: ReminderData[] = [];
 
   for (const reminder of pending) {
     let conditionMet = false;
+    const projectMap = await projectsFor(reminder.ownerUserId);
 
     switch (reminder.conditionType) {
       case "project-health": {

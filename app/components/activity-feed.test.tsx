@@ -93,3 +93,11 @@ describe("ActivityFeed", () => {
     expect(container!.textContent).toContain("Activity Log");
   });
 });
+
+describe("66.2 — cloud progress is quiet", () => {
+  it("cloud-progress events never trigger the alert sound", async () => {
+    const { NOTIFY_EVENT_TYPES } = await import("./activity-feed");
+    expect(NOTIFY_EVENT_TYPES.has("cloud-progress")).toBe(false);
+    expect(NOTIFY_EVENT_TYPES.has("session-complete")).toBe(true);
+  });
+});

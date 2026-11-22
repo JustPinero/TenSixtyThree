@@ -1,27 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { PrismaClient } from "@/app/generated/prisma/client";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import { generateAdvisories } from "./advisory-engine";
-import { pushTestSchema } from "@/lib/__test-utils__/prisma-push";
 import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 
-const TEST_DB_PATH = path.resolve(__dirname, "../prisma/test-advisory.db");
-const TEST_DB_URL = `file:${TEST_DB_PATH}`;
 const TEST_DIR = path.resolve(__dirname, "../.test-advisory");
 
 let prisma: PrismaClient;
+let rig: DispatchRig | null = null;
 
 beforeAll(async () => {
-  try { fs.unlinkSync(TEST_DB_PATH); } catch {}
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
   fs.mkdirSync(TEST_DIR, { recursive: true });
 
-  const adapter = new PrismaBetterSqlite3({ url: TEST_DB_URL });
-  prisma = new PrismaClient({ adapter });
-
-  pushTestSchema(TEST_DB_URL);
+  rig = await createDispatchRig({ fakeTimers: false });
+  prisma = rig.prisma;
 
   // Create project with issues
   const projPath = path.join(TEST_DIR, "issue-project");
@@ -65,8 +61,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
-  try { fs.unlinkSync(TEST_DB_PATH); } catch {}
+  await rig?.dispose();
+  rig = null;
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
 });
 

@@ -57,7 +57,7 @@ const FIXTURE_PROJECT_PATH = path.resolve(
   "cascade-test-project"
 );
 
-// Match the existing test pattern (lib/__test-utils__/prisma-push.ts):
+// (Historical: the retired lib/__test-utils__/prisma-push.ts used the same pattern.)
 // scratch DBs live inside the project's prisma/ directory, not /tmp.
 // File: URLs with absolute paths under /tmp don't reach the prisma CLI's
 // schema-push the same way relative-to-cwd paths do.

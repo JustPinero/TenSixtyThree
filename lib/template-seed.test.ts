@@ -1,14 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { PrismaClient } from "@/app/generated/prisma/client";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import { execSync } from "child_process";
-import { pgUrlForFileUrl } from "@/lib/__test-utils__/pg-file-url-compat";
-import { pushTestSchema } from "@/lib/__test-utils__/prisma-push";
 import fs from "fs";
 import path from "path";
 
-const TEST_DB_PATH = path.resolve(__dirname, "../prisma/test-seed.db");
-const TEST_DB_URL = `file:${TEST_DB_PATH}`;
 
 // Phase 30 — the `templates/` directory is gitignored (each user
 // populates it themselves) and may not exist on a fresh checkout.
@@ -22,27 +19,21 @@ const templatesAvailable = fs.existsSync(DEFAULT_TEMPLATE_PATH);
 const describeIfTemplates = templatesAvailable ? describe : describe.skip;
 
 let prisma: PrismaClient;
+let rig: DispatchRig | null = null;
 
 function runSeed() {
   execSync("npx tsx prisma/seed.ts", {
     cwd: path.resolve(__dirname, ".."),
     stdio: "pipe",
-    env: { ...process.env, DATABASE_URL: pgUrlForFileUrl(TEST_DB_URL) },
+    // The seed runs in a subprocess against THIS rig's database.
+    env: { ...process.env, DATABASE_URL: rig!.dbUrl },
   });
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   if (!templatesAvailable) return;
-  // Clean up any existing test database
-  try {
-    fs.unlinkSync(TEST_DB_PATH);
-  } catch {}
-
-  const adapter = new PrismaBetterSqlite3({ url: TEST_DB_URL });
-  prisma = new PrismaClient({ adapter });
-
-  // Push schema
-  pushTestSchema(TEST_DB_URL);
+  rig = await createDispatchRig({ fakeTimers: false });
+  prisma = rig.prisma;
 
   // Run seed
   runSeed();
@@ -50,10 +41,8 @@ beforeAll(() => {
 
 afterAll(async () => {
   if (!templatesAvailable) return;
-  await prisma.$disconnect();
-  try {
-    fs.rmSync(TEST_DB_PATH, { force: true, maxRetries: 10, retryDelay: 100 });
-  } catch {}
+  await rig?.dispose();
+  rig = null;
 });
 
 // The six canonical v4.0 kickoff templates and their expected

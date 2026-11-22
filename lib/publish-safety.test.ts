@@ -17,10 +17,7 @@ import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import path from "path";
 import type { PrismaClient } from "@/app/generated/prisma/client";
-import {
-  pushTestSchema,
-  gitInitWithAuthor,
-} from "@/lib/__test-utils__/prisma-push";
+import { gitInitWithAuthor } from "@/lib/__test-utils__/git";
 import {
   auditPublishSafety,
   syncPublishSafetyTasks,

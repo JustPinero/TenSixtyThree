@@ -1,71 +1,33 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { pushTestSchema } from "@/lib/__test-utils__/prisma-push";
-import path from "path";
-import fs from "fs";
-
-const TEST_DB_PATH = path.resolve(
-  __dirname,
-  "../../../../prisma/test-session-state-route.db"
-);
-const TEST_DB_URL = `file:${TEST_DB_PATH}`;
-
-// Mock @/lib/db so the route reads from our test DB. The mock returns
-// a thin proxy that lazy-creates the PrismaClient on first property
-// access — this avoids vi.mock's "no top-level vars in the factory"
-// constraint while still routing all reads/writes to the same DB the
-// helpers below use.
+import type { PrismaClient } from "@/app/generated/prisma/client";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
+// Route the handler's @/lib/db to this suite's rig (injected per run) —
+// the same proxy pattern as the other rig-based route tests ([1.0.D1]).
 vi.mock("@/lib/db", () => {
-  let lazy: PrismaClient | null = null;
-  const getClient = () => {
-    if (!lazy) {
-      const adapter = new PrismaBetterSqlite3({
-        url: `file:${path.resolve(
-          __dirname,
-          "../../../../prisma/test-session-state-route.db"
-        )}`,
-      });
-      lazy = new PrismaClient({ adapter });
-    }
-    return lazy;
-  };
-  const handler: ProxyHandler<object> = {
-    get(_t, prop) {
-      const client = getClient() as unknown as Record<string | symbol, unknown>;
-      return client[prop];
+  const proxy = new Proxy({} as Record<string, unknown>, {
+    get(_target, prop) {
+      const inj = (globalThis as Record<string, unknown>).__rigPrisma;
+      if (!inj) throw new Error("rig prisma not injected");
+      return (inj as Record<string, unknown>)[prop as string];
     },
-  };
-  return { prisma: new Proxy({}, handler) };
+  });
+  return { prisma: proxy };
 });
 
 let prisma: PrismaClient;
-
-// Phase 27 — `fs.rmSync({force, maxRetries})` retries on EBUSY, which
-// Windows raises when SQLite still holds the file handle from a crashed
-// or fast-exiting previous run. The retry handles beforeAll cleanup
-// (stale lock from a prior run). The outer try/catch handles afterAll
-// cleanup, where better-sqlite3's native handle isn't fully released
-// even after `$disconnect()` on Windows — the leftover file is harmless;
-// the next run's beforeAll will retry the delete.
-function removeIfExists(p: string) {
-  try {
-    fs.rmSync(p, { force: true, maxRetries: 10, retryDelay: 100 });
-  } catch {
-    // best-effort cleanup
-  }
-}
+let rig: DispatchRig | null = null;
 
 beforeAll(async () => {
-  removeIfExists(TEST_DB_PATH);
-  const adapter = new PrismaBetterSqlite3({ url: TEST_DB_URL });
-  prisma = new PrismaClient({ adapter });
-  pushTestSchema(TEST_DB_URL);
+  rig = await createDispatchRig({ fakeTimers: false });
+  prisma = rig.prisma;
+  (globalThis as Record<string, unknown>).__rigPrisma = rig.prisma;
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
-  removeIfExists(TEST_DB_PATH);
+  delete (globalThis as Record<string, unknown>).__rigPrisma;
+  await rig?.dispose();
+  rig = null;
 });
 
 beforeEach(async () => {

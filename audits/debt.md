@@ -17,7 +17,7 @@
   0_init` → deploy), which rides the batch deploy with Justin's yes; see
   deployment-landmines.md. Close this entry after that.
 
-- **[1.0.D1]** (2026-09-15, release test-audit) 47 legacy test files still
+- ~~**[1.0.D1]**~~ CLOSED 2026-11-22 (phase 60.1: every DB test on the rig; alias, shim, prisma-push and the better-sqlite3 dependency removed) (2026-09-15, release test-audit) 47 legacy test files still
   build their Prisma client through the `@prisma/adapter-better-sqlite3` →
   pg compat alias in `vitest.config.ts` (`lib/__test-utils__/pg-file-url-compat.ts`).
   They run green against Postgres, but the alias is a shim over a retired

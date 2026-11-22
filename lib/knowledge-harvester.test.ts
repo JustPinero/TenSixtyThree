@@ -1,31 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { PrismaClient } from "@/app/generated/prisma/client";
+import { createDispatchRig } from "@/tests/harness/dispatch-rig";
+import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import { harvestKnowledge } from "./knowledge-harvester";
-import { pushTestSchema } from "@/lib/__test-utils__/prisma-push";
 import fs from "fs/promises";
 import path from "path";
 
-const TEST_DB_PATH = path.resolve(__dirname, "../prisma/test-harvest.db");
-const TEST_DB_URL = `file:${TEST_DB_PATH}`;
 const TEST_DIR = path.resolve(__dirname, "../.test-harvest");
 // Scratch brain dir so the mirror (41.6) never touches the real ~/kilroy-brain.
 const BRAIN_DIR = path.join(TEST_DIR, "scratch-brain");
 
 let prisma: PrismaClient;
+let rig: DispatchRig | null = null;
 
 beforeAll(async () => {
-  // Clean up
-  try {
-    const fss = await import("fs");
-    fss.unlinkSync(TEST_DB_PATH);
-  } catch {}
   await fs.rm(TEST_DIR, { recursive: true, force: true });
 
-  const adapter = new PrismaBetterSqlite3({ url: TEST_DB_URL });
-  prisma = new PrismaClient({ adapter });
-
-  pushTestSchema(TEST_DB_URL);
+  rig = await createDispatchRig({ fakeTimers: false });
+  prisma = rig.prisma;
 
   // Scratch brain dir must exist so the mirror writes here (not real brain).
   await fs.mkdir(BRAIN_DIR, { recursive: true });
@@ -83,11 +75,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
-  try {
-    const fss = await import("fs");
-    fss.unlinkSync(TEST_DB_PATH);
-  } catch {}
+  await rig?.dispose();
+  rig = null;
   await fs.rm(TEST_DIR, { recursive: true, force: true });
 });
 

@@ -166,7 +166,7 @@ export function OverseerChat({
   useEffect(() => {
     if (historyLoaded.current) return;
     historyLoaded.current = true;
-    fetch("/api/overseer/history")
+    fetch(`/api/overseer/history?date=${localToday()}`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -532,15 +532,17 @@ export function OverseerChat({
       }
 
       // Persist the new messages to history
+      // 69.3 — one ordered write per turn, under the local date.
       fetch("/api/overseer/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "user", content: userMessage.content }),
-      }).catch(() => {});
-      fetch("/api/overseer/history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "assistant", content: assistantContent }),
+        body: JSON.stringify({
+          sessionDate: localToday(),
+          messages: [
+            { role: "user", content: userMessage.content },
+            ...(assistantContent ? [{ role: "assistant", content: assistantContent }] : []),
+          ],
+        }),
       }).catch(() => {});
 
       // Try to extract dispatch actions from the response

@@ -422,3 +422,40 @@ describe("70 — tasks rank by priority explicitly", () => {
   });
 });
 
+describe("69.3 — one POST per chat turn", () => {
+  it("a turn saves both messages, in order, under the client's local date", async () => {
+    const res = await history.POST(
+      requestAs("carol", "http://x/api/overseer/history", {
+        method: "POST",
+        body: {
+          sessionDate: "2026-11-21",
+          messages: [
+            { role: "user", content: "question" },
+            { role: "assistant", content: "answer" },
+          ],
+        },
+      }),
+    );
+    expect(res.status).toBe(201);
+    const list = await history.GET(
+      requestAs("carol", "http://x/api/overseer/history?date=2026-11-21"),
+    );
+    const rows = (await list.json()) as { role: string; content: string }[];
+    expect(rows.map((r) => [r.role, r.content])).toEqual([
+      ["user", "question"],
+      ["assistant", "answer"],
+    ]);
+  });
+
+  it("rejects a malformed turn without writing anything", async () => {
+    const res = await history.POST(
+      requestAs("carol", "http://x/api/overseer/history", {
+        method: "POST",
+        body: { messages: [{ role: "user", content: "ok" }, { role: "system", content: "x" }] },
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(await rig!.prisma.chatMessage.count({ where: { userId: "carol" } })).toBe(0);
+  });
+});
+

@@ -10,6 +10,8 @@ import { validateMessages } from "@/lib/chat-validation";
 import { jsonError, requireUser, viewerUserId } from "@/lib/access";
 import { attributionFor } from "@/lib/anthropic-usage-log";
 
+const MAX_TEMPLATE_CHARS = 60_000;
+
 export async function POST(request: NextRequest) {
   const access = await requireUser(request);
   if (!access.ok) return access.response;
@@ -53,10 +55,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!templateContent) {
+    if (!templateContent || typeof templateContent !== "string") {
       return NextResponse.json(
         { error: "templateContent is required" },
         { status: 400 }
+      );
+    }
+    // 69.3 — the template rides in the system prompt; cap it so a client
+    // can't send megabytes per turn on the operator's (or their own) key.
+    if (templateContent.length > MAX_TEMPLATE_CHARS) {
+      return NextResponse.json(
+        { error: `templateContent is limited to ${MAX_TEMPLATE_CHARS} characters` },
+        { status: 413 }
       );
     }
 

@@ -222,4 +222,26 @@ describe("compressMessagesForSession", () => {
     });
     expect(summarizer).toHaveBeenCalledTimes(1);
   });
+
+  it("69.3 — same count but different older messages is a cache miss (keyed by content)", async () => {
+    const session = await prisma.chatSession.create({ data: {} });
+    const summarizer: MessageSummarizer = vi
+      .fn()
+      .mockResolvedValueOnce("summary of A")
+      .mockResolvedValueOnce("summary of B");
+    await compressMessagesForSession(prisma, session.id, makeMessages(30), {
+      threshold: 25,
+      keepRecent: 10,
+      summarizer,
+    });
+    const other = makeMessages(30).map((m, i) => (i < 20 ? { ...m, content: `different ${i}` } : m));
+    const out = await compressMessagesForSession(prisma, session.id, other, {
+      threshold: 25,
+      keepRecent: 10,
+      summarizer,
+    });
+    expect(summarizer).toHaveBeenCalledTimes(2);
+    expect(summaryText(out[0])).toContain("summary of B");
+  });
 });
+

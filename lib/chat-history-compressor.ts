@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import { postAnthropicWithRetry } from "./anthropic-fetch";
 import type { AnthropicMessage } from "@/lib/overseer-tools";
@@ -36,6 +37,13 @@ export type MessageSummarizer = (
 interface CachedSummary {
   summarizedThroughMessageCount: number;
   summary: string;
+  /** 69.3 — hash of the summarized messages: count alone can't tell
+   *  two different conversations of the same length apart. */
+  prefixHash?: string;
+}
+
+function hashMessages(messages: AnthropicMessage[]): string {
+  return createHash("sha256").update(JSON.stringify(messages)).digest("hex");
 }
 
 function parseCachedSummary(raw: string | null): CachedSummary | null {
@@ -109,7 +117,12 @@ export async function compressMessagesForSession(
   }
 
   const cached = parseCachedSummary(session.compressedHistory);
-  if (cached && cached.summarizedThroughMessageCount === olderMessages.length) {
+  const prefixHash = hashMessages(olderMessages);
+  if (
+    cached &&
+    cached.summarizedThroughMessageCount === olderMessages.length &&
+    cached.prefixHash === prefixHash
+  ) {
     return [formatSummaryAsMessage(cached.summary), ...recentMessages];
   }
 
@@ -159,6 +172,7 @@ export async function compressMessagesForSession(
       compressedHistory: JSON.stringify({
         summarizedThroughMessageCount: olderMessages.length,
         summary,
+        prefixHash,
       }),
     },
   });

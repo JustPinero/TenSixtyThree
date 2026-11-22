@@ -24,7 +24,9 @@ export default defineConfig({
      */
     maxWorkers: 2,
     include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["node_modules", ".next", "e2e"],
+    // .claude/worktrees: agent worktrees hold other checkouts of the repo;
+    // their tests must never run in this checkout's suite.
+    exclude: ["node_modules", ".next", "e2e", ".claude/**"],
     // Phase 23.7 — push schema to a template DB once per test run.
     // Rigs copy this template instead of re-pushing per-test, which
     // serializes the Prisma client regen and prevents flaky races

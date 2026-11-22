@@ -477,6 +477,9 @@ function ModelPanel() {
   >([]);
   const [services, setServices] = useState<string[]>(["claude"]);
   const [saving, setSaving] = useState(false);
+  // 66.3 — the model is per user; admins can also set everyone's default.
+  const [defaultModel, setDefaultModel] = useState("");
+  const [canSetDefault, setCanSetDefault] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings/model")
@@ -484,13 +487,19 @@ function ModelPanel() {
       .then((d) => {
         setService(d.service);
         setModel(d.model);
+        setDefaultModel(d.defaultModel ?? "");
+        setCanSetDefault(d.canSetDefault === true);
         setOptions(d.options ?? []);
         setServices([...(d.services ?? ["claude"])]);
       })
       .catch(() => {});
   }, []);
 
-  async function save(next: { model?: string; service?: string }) {
+  async function save(next: {
+    model?: string;
+    service?: string;
+    scope?: "user" | "default";
+  }) {
     setSaving(true);
     try {
       const res = await fetch("/api/settings/model", {
@@ -502,6 +511,7 @@ function ModelPanel() {
       if (res.ok) {
         setModel(d.model);
         setService(d.service);
+        setDefaultModel(d.defaultModel ?? "");
       }
     } finally {
       setSaving(false);
@@ -541,8 +551,18 @@ function ModelPanel() {
             <div>
               <span className="text-sm font-mono text-text-bright">Model</span>
               <p className="text-micro font-mono text-muted mt-0.5">
-                {note ?? "Chat model for all conversational surfaces"}
+                {note ?? "Your chat model for all conversational surfaces"}
               </p>
+              {canSetDefault && model && defaultModel && model !== defaultModel && (
+                <button
+                  type="button"
+                  onClick={() => save({ model, scope: "default" })}
+                  disabled={saving}
+                  className="mt-1 min-h-6 text-micro font-mono text-cyan underline focus-ring"
+                >
+                  Make this everyone&apos;s default
+                </button>
+              )}
             </div>
             <select
               value={model}

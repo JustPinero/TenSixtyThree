@@ -74,7 +74,27 @@ async function dbConfig(prisma: PrismaClient) {
   }
 }
 
-export async function resolveChatModel(prisma: PrismaClient): Promise<string> {
+/**
+ * Resolution order: the user's own preference (66.3) → the admin-set
+ * default (CascadeConfig.chatModel) → CASCADE_CHAT_MODEL → built-in.
+ * `userId` null = the local operator, who uses the default directly.
+ */
+export async function resolveChatModel(
+  prisma: PrismaClient,
+  userId: string | null = null,
+): Promise<string> {
+  if (userId) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { chatModel: true },
+      });
+      const own = user?.chatModel?.trim();
+      if (own && VALID_MODEL_IDS.has(own)) return own;
+    } catch {
+      // never block chat on a preference lookup
+    }
+  }
   const cfg = await dbConfig(prisma);
   const dbModel = cfg?.chatModel?.trim();
   if (dbModel && VALID_MODEL_IDS.has(dbModel)) return dbModel;

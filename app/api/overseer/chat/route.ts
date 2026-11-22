@@ -384,7 +384,7 @@ export async function POST(request: NextRequest) {
     >();
     const writer = writable.getWriter();
     const enc = new TextEncoder();
-    const aggregateModel = await resolveChatModel(prisma);
+    const aggregateModel = await resolveChatModel(prisma, scope.userId);
 
     function writeFrame(name: string, data: unknown): void {
       writer

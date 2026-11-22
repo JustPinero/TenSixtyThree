@@ -8,7 +8,7 @@ import { projectPersonaBlock } from "@/lib/persona-prompt";
 import { canSeeProject } from "@/lib/project-access";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
-import { jsonError, requireUser } from "@/lib/access";
+import { jsonError, requireUser, viewerUserId } from "@/lib/access";
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function POST(
 ) {
   const access = await requireUser(request);
   if (!access.ok) return access.response;
-  const chatModel = await resolveChatModel(prisma);
+  const chatModel = await resolveChatModel(prisma, viewerUserId(access.viewer));
   const limited = checkRateLimit(
     getRateLimitKey(request, "project-chat"),
     20,

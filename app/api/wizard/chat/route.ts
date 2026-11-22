@@ -6,12 +6,12 @@ import { resolveChatModel } from "@/lib/model-config";
 import { buildWizardSystemPrompt } from "@/lib/wizard-prompt";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
-import { jsonError, requireUser } from "@/lib/access";
+import { jsonError, requireUser, viewerUserId } from "@/lib/access";
 
 export async function POST(request: NextRequest) {
   const access = await requireUser(request);
   if (!access.ok) return access.response;
-  const chatModel = await resolveChatModel(prisma);
+  const chatModel = await resolveChatModel(prisma, viewerUserId(access.viewer));
   const limited = checkRateLimit(
     getRateLimitKey(request, "wizard"),
     20,

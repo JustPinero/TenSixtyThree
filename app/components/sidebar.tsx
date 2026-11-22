@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, useEffect, useRef } from "react";
+import { useState, useSyncExternalStore, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { NavLink } from "./nav-link";
 import { ReminderWidget } from "./reminder-widget";
@@ -9,7 +9,6 @@ import { Portrait } from "./portrait";
 import { useTheme } from "./theme-provider";
 import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
-import { getOverseerSettings } from "@/lib/overseer-settings";
 import {
   isLocalOnlyPath,
   isOperatorOnlyPath,
@@ -17,6 +16,7 @@ import {
 } from "@/lib/deployment-mode";
 import { useDeploymentMode, useIsOperator } from "./deployment-mode";
 import { AccountMenu } from "./account-menu";
+import { usePersona } from "./use-persona";
 
 function DashboardIcon() {
   return (
@@ -28,7 +28,7 @@ function DashboardIcon() {
 
 function DelamainIcon() {
   return (
-    <img src="/delamain.jpg" alt="Delamain" className="w-5 h-5 rounded-full" />
+    <img src="/delamain.jpg" alt="" aria-hidden className="w-5 h-5 rounded-full" />
   );
 }
 
@@ -253,18 +253,7 @@ function subscribeToDesktop(callback: () => void) {
 const isDesktopNow = () =>
   typeof window.matchMedia !== "function" || window.matchMedia(DESKTOP_QUERY).matches;
 
-function subscribeToOverseer(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
 
-function overseerRaw(): string {
-  try {
-    return localStorage.getItem("cascade-overseer") ?? "";
-  } catch {
-    return "";
-  }
-}
 
 /** Phase 68.1 — the nav for a deployment mode (snapshot-tested). */
 export function visibleNavItems(mode: DeploymentMode, isOperator = true) {
@@ -293,21 +282,8 @@ export function Sidebar() {
     if (mobileOpen) closeRef.current?.focus();
   }, [mobileOpen]);
   const { theme } = useTheme();
-  // Persona lives in localStorage; the storage event (same signal the
-  // theme provider uses) keeps the header avatar live across pack
-  // switches, and the "" server snapshot keeps hydration consistent.
-  const overseerVersion = useSyncExternalStore(
-    subscribeToOverseer,
-    overseerRaw,
-    () => "",
-  );
-  const { portraitSrc, assistantName } = useMemo(() => {
-    if (!overseerVersion) {
-      return { portraitSrc: "/delamain.jpg", assistantName: "Overseer" };
-    }
-    const s = getOverseerSettings();
-    return { portraitSrc: s.portraitIdle, assistantName: s.name };
-  }, [overseerVersion]);
+  // 68.5 — persona name/portrait from the shared hook.
+  const { portraitSrc, name: assistantName } = usePersona();
 
   // Phase 62.4 — without this the open drawer is a keyboard trap: the
   // only dismiss affordance was a click on the scrim.
@@ -421,12 +397,13 @@ export function Sidebar() {
         {/* Footer */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-space-600">
           <img
-            src="/delamain.jpg"
-            alt="Delamain"
+            src={portraitSrc}
+            alt=""
+            aria-hidden
             className="w-4 h-4 rounded-full opacity-60"
           />
           <p className="text-xs font-mono text-muted uppercase tracking-widest">
-            Delamain v1
+            {assistantName} · TenSixtyThree
           </p>
         </div>
       </aside>

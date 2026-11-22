@@ -101,13 +101,16 @@ describe("Sidebar", () => {
     });
   });
 
-  it("shows version in footer", async () => {
+  it("68.5 — footer names the persona and the product, never a hardcoded Delamain", async () => {
     let container: HTMLElement;
     await act(async () => {
       const result = render(<Sidebar />);
       container = result.container;
     });
-    expect(container!.textContent).toContain("Delamain v1");
+    expect(container!.textContent).toContain("Overseer · TenSixtyThree");
+    // (The theme picker may list a pack whose persona IS named Delamain —
+    // that's persona data, not a hardcoded label.)
+    expect(container!.textContent).not.toContain("Delamain v1");
   });
 });
 

@@ -69,7 +69,7 @@ export function LaunchStep({ state }: LaunchStepProps) {
       <div className="p-3 border border-cyan/30 bg-cyan/5 text-xs font-mono text-cyan">
         Click &quot;Launch&quot; to create the project directory, initialize git,
         {state.createGithubRepo && " create GitHub repo,"} and register in
-        Cascade.
+        TenSixtyThree.
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { sendNotification } from "@/lib/notify";
 import { playAlertSound } from "@/lib/sounds";
+import { personaNameNow } from "./use-persona";
 
 interface ActivityEvent {
   id: number;
@@ -99,7 +100,7 @@ export function ActivityFeed({
                   eventTypeLabels[event.eventType] || event.eventType;
                 playAlertSound();
                 sendNotification(
-                  `Delamain: [${label}]${event.project ? ` ${event.project.name}` : ""}`,
+                  `${personaNameNow()}: [${label}]${event.project ? ` ${event.project.name}` : ""}`,
                   {
                     body: event.summary,
                     tag: `cascade-event-${event.id}`,

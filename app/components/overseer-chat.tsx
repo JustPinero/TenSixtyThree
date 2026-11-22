@@ -720,7 +720,7 @@ export function OverseerChat({
 
     onDispatch(allResults);
     sendNotification(
-      `Delamain auto-dispatched ${actions.length} project${actions.length > 1 ? "s" : ""} (continue)`,
+      `${overseerName} auto-dispatched ${actions.length} project${actions.length > 1 ? "s" : ""} (continue)`,
       {
         body: actions.map((a) => a.project).join(", "),
         tag: "auto-dispatch",
@@ -850,8 +850,8 @@ export function OverseerChat({
               onClick={toggleTts}
               title={
                 ttsEnabled
-                  ? "Mute Delamain (TTS on)"
-                  : "Have Delamain speak responses (TTS off)"
+                  ? `Mute ${overseerName} (TTS on)`
+                  : `Have ${overseerName} speak responses (TTS off)`
               }
               className={`flex items-center gap-1.5 px-2 py-0.5 min-h-6 text-micro font-mono uppercase border transition-colors ${
                 ttsEnabled
@@ -935,10 +935,11 @@ export function OverseerChat({
             </p>
             <div className="space-y-1">
               {[
-                "Finish the auth system on ratracer and run audits on everything else",
-                "Fix the deploy on pointpartner, it's been broken since yesterday",
+                // 68.5 — generic examples; no operator's project names.
+                "What needs my attention today?",
+                "Which projects are blocked, and why?",
                 "Run a full audit on all projects and tell me what needs attention",
-                "Focus on sitelift and medipal today, everything else can wait",
+                "Plan this week's work across my projects",
               ].map((s) => (
                 <button
                   key={s}

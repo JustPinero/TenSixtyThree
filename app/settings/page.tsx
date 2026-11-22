@@ -22,6 +22,7 @@ import { Toggle } from "@/app/components/ui/toggle";
 import { LocalOnly } from "../components/deployment-mode";
 import { PasswordPanel } from "../components/password-panel";
 import { version as APP_VERSION } from "../../package.json";
+import { usePersona } from "../components/use-persona";
 
 interface AuthStatus {
   service: string;
@@ -407,6 +408,7 @@ function NotificationsPanel() {
 }
 
 function SoundsPanel() {
+  const persona = usePersona();
   const [enabled, setEnabled] = useState(() => getSoundPreference());
 
   function handleToggle() {
@@ -419,15 +421,15 @@ function SoundsPanel() {
     <div className="flex flex-wrap items-center justify-between gap-2 p-3 border border-space-600 bg-space-800 mt-2">
       <div>
         <span className="text-sm font-mono text-text-bright">
-          Delamain Sound Effects
+          Assistant Sound Effects
         </span>
         <p className="text-micro font-mono text-muted mt-0.5">
-          Chimes when Delamain starts and finishes responding, alerts on
+          Chimes when {persona.name} starts and finishes responding, alerts on
           blockers
         </p>
       </div>
       <Toggle
-        label="Delamain sound effects"
+        label={`${persona.name} sound effects`}
         checked={enabled}
         onChange={handleToggle}
       />
@@ -436,6 +438,7 @@ function SoundsPanel() {
 }
 
 function AutomationPanel() {
+  const persona = usePersona();
   const [autoDispatch, setAutoDispatch] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("cascade-auto-dispatch") === "true";
@@ -458,7 +461,7 @@ function AutomationPanel() {
             Auto-Dispatch (Continue)
           </span>
           <p className="text-micro font-mono text-muted mt-0.5">
-            When Delamain suggests only &quot;continue&quot; on healthy
+            When {persona.name} suggests only &quot;continue&quot; on healthy
             projects, execute immediately without waiting for approval
           </p>
         </div>
@@ -847,6 +850,7 @@ function OverseerPanel() {
 }
 
 function VoicePanel() {
+  const persona = usePersona();
   const [enabled, setEnabled] = useState(
     () => getOverseerSettings().voiceEnabled,
   );
@@ -891,7 +895,7 @@ function VoicePanel() {
   }
 
   function handleTest() {
-    speak("Delamain reporting in. Voice output is configured and ready.", {
+    speak(`${persona.name} reporting in. Voice output is configured and ready.`, {
       voiceEnabled: true,
       voiceURI,
       voiceRate: rate,
@@ -918,7 +922,7 @@ function VoicePanel() {
             </span>
           </label>
           <p className="text-micro font-mono text-muted mt-1 ml-6">
-            Delamain speaks responses aloud after streaming completes. Uses your
+            {persona.name} speaks responses aloud after streaming completes. Uses your
             browser&apos;s built-in voices — no network call.
           </p>
         </div>
@@ -965,7 +969,7 @@ function VoicePanel() {
             className="w-full h-6 accent-cyan"
           />
           <p className="text-micro font-mono text-muted mt-1">
-            How fast Delamain speaks. 1.0 is normal speed.
+            How fast {persona.name} speaks. 1.0 is normal speed.
           </p>
         </div>
 

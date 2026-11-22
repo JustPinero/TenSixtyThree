@@ -5,6 +5,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   useDraggable,
@@ -13,6 +14,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { ScopeSelect, useActiveOrg, type Scope } from "../components/scope-select";
+import { TicketDialog } from "./ticket-dialog";
 
 /**
  * 54.4 — kanban boards. Personal + active-org boards; drag tickets
@@ -37,6 +39,8 @@ interface Ticket {
   priority: string;
   position: number;
   linearIssueId: string | null;
+  assigneeUserId?: string | null;
+  milestoneId?: string | null;
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -68,33 +72,87 @@ function TicketCard({
   );
 }
 
-function DraggableTicket({ ticket }: { ticket: Ticket }) {
+function DraggableTicket({
+  ticket,
+  columns,
+  onOpen,
+  onMove,
+}: {
+  ticket: Ticket;
+  columns: Column[];
+  onOpen: (ticket: Ticket) => void;
+  onMove: (ticketId: string, columnId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: ticket.id,
   });
+  // 72 — the drag handle has a name (Space lifts it with the keyboard
+  // sensor); Edit and "Move to…" are real controls outside the handle so
+  // they never start a drag.
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={isDragging ? "opacity-30" : ""}
-    >
-      <TicketCard ticket={ticket} />
+    <div className={isDragging ? "opacity-30" : ""}>
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        aria-label={`Ticket ${ticket.title}, ${ticket.priority} priority. Press space to drag.`}
+        aria-roledescription="draggable ticket"
+      >
+        <TicketCard ticket={ticket} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-1">
+        <button
+          type="button"
+          onClick={() => onOpen(ticket)}
+          aria-label={`Edit ticket ${ticket.title}`}
+          className="min-h-6 text-micro font-mono text-cyan underline focus-ring"
+        >
+          Edit
+        </button>
+        <label htmlFor={`move-${ticket.id}`} className="sr-only">
+          Move {ticket.title} to
+        </label>
+        <select
+          id={`move-${ticket.id}`}
+          value=""
+          onChange={(e) => {
+            if (e.target.value) onMove(ticket.id, e.target.value);
+          }}
+          className="bg-space-900 border border-space-600 px-1 py-0.5 text-micro font-mono text-text"
+        >
+          <option value="">Move to…</option>
+          {columns
+            .filter((c) => c.id !== ticket.columnId)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+        </select>
+      </div>
     </div>
   );
 }
 
 function DroppableColumn({
   column,
+  columns,
   tickets,
   onAdd,
+  onOpen,
+  onMove,
 }: {
   column: Column;
+  columns: Column[];
   tickets: Ticket[];
-  onAdd: (title: string) => void;
+  /** Resolves true when the ticket was created (72: the draft stays otherwise). */
+  onAdd: (title: string) => Promise<boolean>;
+  onOpen: (ticket: Ticket) => void;
+  onMove: (ticketId: string, columnId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [draft, setDraft] = useState("");
+  const [adding, setAdding] = useState(false);
   return (
     <div
       ref={setNodeRef}
@@ -105,15 +163,18 @@ function DroppableColumn({
       </h3>
       <div className="space-y-2 mb-2 min-h-8">
         {tickets.map((t) => (
-          <DraggableTicket key={t.id} ticket={t} />
+          <DraggableTicket key={t.id} ticket={t} columns={columns} onOpen={onOpen} onMove={onMove} />
         ))}
       </div>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (draft.trim()) {
-            onAdd(draft.trim());
-            setDraft("");
+          if (!draft.trim() || adding) return;
+          setAdding(true);
+          try {
+            if (await onAdd(draft.trim())) setDraft("");
+          } finally {
+            setAdding(false);
           }
         }}
         className="flex gap-1"
@@ -130,7 +191,7 @@ function DroppableColumn({
         />
         <button
           type="submit"
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || adding}
           className="border border-space-600 px-2 text-xs font-mono text-text-dim hover:text-cyan hover:border-cyan disabled:opacity-40"
           aria-label={`Add ticket to ${column.name}`}
         >
@@ -155,7 +216,13 @@ export default function BoardsPage() {
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // 72 — drag with the keyboard too (Space to lift, arrows, Space to drop).
+    useSensor(KeyboardSensor),
   );
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  // 72 — who a ticket on this board may be assigned to.
+  const [assignees, setAssignees] = useState<{ userId: string; label: string }[]>([]);
+  const [boardError, setBoardError] = useState<string | null>(null);
 
   const refreshBoards = useCallback(async () => {
     try {
@@ -189,6 +256,34 @@ export default function BoardsPage() {
   }, []);
 
   useEffect(() => {
+    const current = boards?.find((b) => b.id === activeBoard);
+    if (!current) return;
+    let cancelled = false;
+    const load: Promise<{ userId: string; label: string }[]> = current.organizationId
+      ? fetch("/api/orgs/members")
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) =>
+            Array.isArray(data?.members)
+              ? data.members.map((m: { userId: string; name: string; email: string }) => ({
+                  userId: m.userId,
+                  label: m.name || m.email,
+                }))
+              : [],
+          )
+      : fetch("/api/account")
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => (data?.user?.id ? [{ userId: data.user.id, label: "Me" }] : []));
+    load
+      .then((list) => {
+        if (!cancelled) setAssignees(list);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [boards, activeBoard]);
+
+  useEffect(() => {
     if (activeBoard) refreshBoard(activeBoard);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoard]);
@@ -198,6 +293,12 @@ export default function BoardsPage() {
     const ticketId = String(event.active.id);
     const overColumn = event.over ? String(event.over.id) : null;
     if (!overColumn) return;
+    await moveTicket(ticketId, overColumn);
+  }
+
+  /** Drag and "Move to…" share one path; a failure refetches and says so. */
+  async function moveTicket(ticketId: string, overColumn: string) {
+    setBoardError(null);
     const ticket = tickets.find((t) => t.id === ticketId);
     if (!ticket || ticket.columnId === overColumn) return;
     const columnTickets = tickets.filter((t) => t.columnId === overColumn);
@@ -213,7 +314,7 @@ export default function BoardsPage() {
           : t,
       ),
     );
-    await fetch("/api/tickets", {
+    const ok = await fetch("/api/tickets", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -221,8 +322,11 @@ export default function BoardsPage() {
         columnId: overColumn,
         position: lastPos + 1024,
       }),
-    });
-    if (activeBoard) refreshBoard(activeBoard);
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
+    if (!ok) setBoardError("Couldn't move that ticket. The board has been refreshed.");
+    if (activeBoard) await refreshBoard(activeBoard);
   }
 
   if (signedOut) {
@@ -359,11 +463,15 @@ export default function BoardsPage() {
               <DroppableColumn
                 key={col.id}
                 column={col}
+                columns={columns}
+                onOpen={setOpenTicket}
+                onMove={(id, to) => void moveTicket(id, to)}
                 tickets={tickets
                   .filter((t) => t.columnId === col.id)
                   .sort((a, b) => a.position - b.position)}
                 onAdd={async (title) => {
-                  await fetch("/api/tickets", {
+                  setBoardError(null);
+                  const ok = await fetch("/api/tickets", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -371,8 +479,15 @@ export default function BoardsPage() {
                       columnId: col.id,
                       title,
                     }),
-                  });
-                  refreshBoard(board.id);
+                  })
+                    .then((res) => res.ok)
+                    .catch(() => false);
+                  if (!ok) {
+                    setBoardError("Couldn't add that ticket. Your text is still in the box.");
+                    return false;
+                  }
+                  await refreshBoard(board.id);
+                  return true;
                 }}
               />
             ))}
@@ -381,7 +496,24 @@ export default function BoardsPage() {
             {dragTicket ? <TicketCard ticket={dragTicket} dragging /> : null}
           </DragOverlay>
         </DndContext>
-      ) : (
+      ) : null}
+      {boardError && (
+        <p role="alert" className="text-xs font-mono text-danger mt-2">
+          {boardError}
+        </p>
+      )}
+      {board && openTicket && (
+        <TicketDialog
+          ticket={openTicket}
+          assignees={assignees}
+          onClose={() => setOpenTicket(null)}
+          onSaved={() => {
+            setOpenTicket(null);
+            void refreshBoard(board.id);
+          }}
+        />
+      )}
+      {board ? null : (
         <p className="text-sm font-mono text-text-dim">
           No boards yet — create one above. Org boards appear when your active
           organization has them.

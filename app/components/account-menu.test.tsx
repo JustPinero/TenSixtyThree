@@ -11,7 +11,7 @@ import {
 import type { ReactNode } from "react";
 
 const signOut = vi.fn(async () => ({}));
-const changePassword = vi.fn(async (_args: unknown) => ({ error: null }));
+const changePassword = vi.fn<(args: unknown) => Promise<{ error: null }>>(async () => ({ error: null }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     signOut: () => signOut(),

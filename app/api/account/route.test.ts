@@ -40,6 +40,7 @@ describe("GET /api/account", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       user: {
+        id: "alice",
         name: "alice",
         email: "alice@tenants.test",
         role: "user",

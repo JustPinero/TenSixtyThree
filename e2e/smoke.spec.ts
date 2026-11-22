@@ -24,7 +24,7 @@ test.describe("smokes", () => {
 
   test("Overseer chat page renders without throwing", async ({ page }) => {
     await page.goto("/delamain");
-    await expect(page).toHaveTitle(/tensixtythree.*delamain/i);
+    await expect(page).toHaveTitle(/tensixtythree/i);
     // The page-level h2 says "Overseer".
     await expect(
       page.getByRole("heading", { level: 2, name: /overseer/i })

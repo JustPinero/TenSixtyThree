@@ -76,7 +76,7 @@ export function MilestonesPanel() {
           setDraft("");
           refresh();
         }}
-        className="flex gap-2 mb-3"
+        className="flex flex-wrap gap-2 mb-3 min-w-0"
       >
         <label htmlFor="new-milestone" className="sr-only">
           New milestone
@@ -94,7 +94,7 @@ export function MilestonesPanel() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="New milestone…"
-          className="bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
+          className="flex-1 min-w-0 bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
         />
         <button
           type="submit"

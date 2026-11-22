@@ -78,7 +78,7 @@ export default async function ToolsObservabilityPage({
             name="toolName"
             defaultValue={sp.toolName ?? ""}
             placeholder="query_project"
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <label className="flex flex-col text-xs">
@@ -88,7 +88,7 @@ export default async function ToolsObservabilityPage({
             name="sessionId"
             defaultValue={sp.sessionId ?? ""}
             placeholder="cuid…"
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <label className="flex flex-col text-xs">
@@ -96,7 +96,7 @@ export default async function ToolsObservabilityPage({
           <select
             name="success"
             defaultValue={sp.success ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           >
             <option value="">All</option>
             <option value="true">Success</option>
@@ -109,7 +109,7 @@ export default async function ToolsObservabilityPage({
             type="date"
             name="since"
             defaultValue={sp.since ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <label className="flex flex-col text-xs">
@@ -118,7 +118,7 @@ export default async function ToolsObservabilityPage({
             type="date"
             name="until"
             defaultValue={sp.until ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <button

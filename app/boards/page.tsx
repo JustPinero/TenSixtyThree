@@ -118,7 +118,7 @@ function DraggableTicket({
           onChange={(e) => {
             if (e.target.value) onMove(ticket.id, e.target.value);
           }}
-          className="bg-space-900 border border-space-600 px-1 py-0.5 text-micro font-mono text-text"
+          className="min-h-6 bg-space-900 border border-space-600 px-1 py-0.5 text-micro font-mono text-text"
         >
           <option value="">Move to…</option>
           {columns
@@ -393,7 +393,7 @@ export default function BoardsPage() {
               refreshBoards();
             }
           }}
-          className="flex gap-2"
+          className="flex flex-wrap gap-2 min-w-0"
         >
           <label htmlFor="new-board" className="sr-only">
             New board name
@@ -411,7 +411,7 @@ export default function BoardsPage() {
             value={newBoard}
             onChange={(e) => setNewBoard(e.target.value)}
             placeholder="New board"
-            className="bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
+            className="flex-1 min-w-0 bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text-bright"
           />
           <button
             type="submit"

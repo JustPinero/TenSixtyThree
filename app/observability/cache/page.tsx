@@ -83,7 +83,7 @@ export default async function CacheObservabilityPage({
           <select
             name="callSite"
             defaultValue={sp.callSite ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           >
             <option value="">All</option>
             {callSites.map((cs) => (
@@ -100,7 +100,7 @@ export default async function CacheObservabilityPage({
             name="model"
             defaultValue={sp.model ?? ""}
             placeholder="claude-..."
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <label className="flex flex-col text-xs">
@@ -109,7 +109,7 @@ export default async function CacheObservabilityPage({
             type="date"
             name="since"
             defaultValue={sp.since ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <label className="flex flex-col text-xs">
@@ -118,7 +118,7 @@ export default async function CacheObservabilityPage({
             type="date"
             name="until"
             defaultValue={sp.until ?? ""}
-            className="input text-sm"
+            className="input text-sm px-2 py-1 min-h-6"
           />
         </label>
         <button

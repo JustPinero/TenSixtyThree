@@ -252,3 +252,96 @@ describe("OverseerChat — smoke", () => {
     });
   });
 });
+
+describe("OverseerChat — 69.2 rendering and input", () => {
+  function baseHandler(chat: () => ReturnType<FetchHandler>, history: unknown[] = []): FetchHandler {
+    return async (url, init) => {
+      if (url.includes("/api/overseer/chat") && init?.method === "POST") return chat();
+      if (url.includes("/api/overseer/history")) {
+        return { ok: true, status: 200, json: async () => history };
+      }
+      return { ok: true, status: 200, json: async () => ({ exists: false }) };
+    };
+  }
+
+  async function mount() {
+    let container: HTMLElement;
+    await act(async () => {
+      container = render(<OverseerChat onDispatch={() => {}} />).container;
+    });
+    return container!;
+  }
+
+  it("assistant replies render as markdown (bold, code, links), inside a polite log", async () => {
+    installFetchMock(
+      baseHandler(
+        async () => ({ ok: true, status: 200, json: async () => ({}) }),
+        [{ role: "assistant", content: "**Blocked**: run `pnpm test`, see [L-7]." }],
+      ),
+    );
+    const container = await mount();
+    await waitFor(() => expect(container.querySelector("strong")?.textContent).toBe("Blocked"));
+    expect(container.querySelector("code")?.textContent).toBe("pnpm test");
+    expect(container.querySelector('a[href="/knowledge/lesson/7"]')).not.toBeNull();
+    const log = container.querySelector('[role="log"]');
+    expect(log?.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("Shift+Enter keeps a newline; Enter sends the multi-line text", async () => {
+    const fetchMock = installFetchMock(
+      baseHandler(async () => ({ ok: false, status: 500, json: async () => ({ error: "x" }) })),
+    );
+    const container = await mount();
+    const box = container.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "line one\nline two" } });
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    const chatPosts = () =>
+      fetchMock.mock.calls.filter(([u, i]) => String(u).includes("/api/overseer/chat") && i?.method === "POST");
+    expect(chatPosts()).toHaveLength(0);
+    expect(box.value).toBe("line one\nline two");
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "Enter" });
+    });
+    await waitFor(() => expect(chatPosts()).toHaveLength(1));
+    const body = JSON.parse(String(chatPosts()[0][1]?.body)) as {
+      messages: { content: string }[];
+    };
+    expect(body.messages.at(-1)?.content).toBe("line one\nline two");
+  });
+
+  it("a failed send gives the draft back and offers Retry", async () => {
+    installFetchMock(
+      baseHandler(async () => ({ ok: false, status: 503, json: async () => ({ error: "Overloaded" }) })),
+    );
+    const container = await mount();
+    const box = container.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "plan my week" } });
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "Enter" });
+    });
+    await waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toMatch(/overloaded/i));
+    expect(box.value).toBe("plan my week");
+    expect(container.querySelector('[role="alert"] button')?.textContent).toMatch(/retry/i);
+  });
+
+  it("does not yank the view down while the reader is scrolled up", async () => {
+    installFetchMock(
+      baseHandler(async () => ({ ok: false, status: 500, json: async () => ({ error: "x" }) })),
+    );
+    const container = await mount();
+    const log = container.querySelector('[role="log"]') as HTMLElement;
+    Object.defineProperty(log, "scrollHeight", { configurable: true, value: 2000 });
+    Object.defineProperty(log, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(log, "scrollTop", { configurable: true, value: 100, writable: true });
+    fireEvent.scroll(log);
+    const scrollTo = vi.mocked(Element.prototype.scrollTo);
+    scrollTo.mockClear();
+    const box = container.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "hello" } });
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "Enter" });
+    });
+    await waitFor(() => expect(container.querySelector('[role="alert"]')).not.toBeNull());
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+});

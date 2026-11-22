@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { readSse } from "@/lib/sse-client";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -55,38 +56,24 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
         return;
       }
 
-      const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!res.body) return;
 
+      // 69.1 — shared reader: frames split across chunks are reassembled
+      // instead of silently dropped.
       let assistantContent = "";
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.type === "content_block_delta") {
-                assistantContent += parsed.delta?.text || "";
-                setMessages([
-                  ...newMessages,
-                  { role: "assistant", content: assistantContent },
-                ]);
-              }
-            } catch {
-              // Skip unparseable chunks
-            }
-          }
+      await readSse(res.body, (event) => {
+        const parsed = event.data as {
+          type?: string;
+          delta?: { type?: string; text?: string };
+        } | null;
+        if (parsed?.type === "content_block_delta" && parsed.delta?.type !== "thinking_delta") {
+          assistantContent += parsed.delta?.text || "";
+          setMessages([
+            ...newMessages,
+            { role: "assistant", content: assistantContent },
+          ]);
         }
-      }
+      });
 
       setMessages([
         ...newMessages,

@@ -6,26 +6,37 @@
  * Parsing to an AST — rather than to an HTML string — means nothing is
  * ever handed to dangerouslySetInnerHTML, so briefing content (which can
  * quote project names, paths and log lines) can never inject markup.
+ *
+ * Phase 69.2 — Overseer replies render through the same parser, so it
+ * also understands fenced code blocks, [text](url) links (http(s) or
+ * same-site paths only — anything else stays text), [L-42] lesson
+ * citations, and (with `breaks`) single newlines inside a paragraph.
  */
 
 export type Inline =
   | { type: "text"; value: string }
   | { type: "strong"; value: string }
-  | { type: "code"; value: string };
+  | { type: "code"; value: string }
+  | { type: "link"; value: string; href: string }
+  | { type: "break" };
 
 export type Block =
   | { type: "heading"; level: 2 | 3; children: Inline[] }
   | { type: "paragraph"; children: Inline[] }
-  | { type: "list"; ordered: boolean; items: Inline[][] };
+  | { type: "list"; ordered: boolean; items: Inline[][] }
+  | { type: "codeblock"; lang: string; value: string };
+
+const FENCE = /^\s*```\s*([\w+-]*)\s*$/;
+const SAFE_HREF = /^(https?:\/\/|\/(?!\/))/i;
 
 const HEADING = /^(#{2,3})\s+(.*)$/;
 const BULLET = /^\s*[-*]\s+(.*)$/;
 const NUMBERED = /^\s*\d+[.)]\s+(.*)$/;
 
-/** Split a line into text / **strong** / `code` runs. */
+/** Split a line into text / **strong** / `code` / link / citation runs. */
 function parseInline(line: string): Inline[] {
   const out: Inline[] = [];
-  const re = /\*\*(.+?)\*\*|`([^`]+)`/g;
+  const re = /\*\*(.+?)\*\*|`([^`]+)`|\[L-(\d+)\]|\[([^\]]+)\]\(([^)\s]+)\)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(line)) !== null) {
@@ -33,23 +44,39 @@ function parseInline(line: string): Inline[] {
       out.push({ type: "text", value: line.slice(last, m.index) });
     }
     if (m[1] !== undefined) out.push({ type: "strong", value: m[1] });
-    else out.push({ type: "code", value: m[2] });
+    else if (m[2] !== undefined) out.push({ type: "code", value: m[2] });
+    else if (m[3] !== undefined) {
+      out.push({ type: "link", value: `[L-${m[3]}]`, href: `/knowledge/lesson/${m[3]}` });
+    } else if (SAFE_HREF.test(m[5])) {
+      out.push({ type: "link", value: m[4], href: m[5] });
+    } else {
+      out.push({ type: "text", value: m[0] }); // javascript:, data:, … stay text
+    }
     last = m.index + m[0].length;
   }
   if (last < line.length) out.push({ type: "text", value: line.slice(last) });
   return out.length > 0 ? out : [{ type: "text", value: line }];
 }
 
-export function parseMarkdownLite(src: string): Block[] {
+export function parseMarkdownLite(
+  src: string,
+  opts: { breaks?: boolean } = {},
+): Block[] {
   const blocks: Block[] = [];
   const lines = src.split("\n");
+  let fence: { lang: string; lines: string[] } | null = null;
 
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: Inline[][] } | null = null;
 
   const flushParagraph = () => {
     if (paragraph.length === 0) return;
-    blocks.push({ type: "paragraph", children: parseInline(paragraph.join(" ")) });
+    const children: Inline[] = opts.breaks
+      ? paragraph.flatMap((l, i) =>
+          i === 0 ? parseInline(l) : [{ type: "break" } as Inline, ...parseInline(l)],
+        )
+      : parseInline(paragraph.join(" "));
+    blocks.push({ type: "paragraph", children });
     paragraph = [];
   };
   const flushList = () => {
@@ -64,6 +91,23 @@ export function parseMarkdownLite(src: string): Block[] {
 
   for (const raw of lines) {
     const line = raw.trimEnd();
+
+    // Fenced code: everything verbatim until the closing fence.
+    const fenceMatch = line.match(FENCE);
+    if (fence) {
+      if (fenceMatch && fenceMatch[1] === "") {
+        blocks.push({ type: "codeblock", lang: fence.lang, value: fence.lines.join("\n") });
+        fence = null;
+      } else {
+        fence.lines.push(raw);
+      }
+      continue;
+    }
+    if (fenceMatch) {
+      flushAll();
+      fence = { lang: fenceMatch[1], lines: [] };
+      continue;
+    }
 
     if (line.trim() === "") {
       flushAll();
@@ -98,5 +142,7 @@ export function parseMarkdownLite(src: string): Block[] {
   }
 
   flushAll();
+  // An unclosed fence still shows its content rather than vanishing.
+  if (fence) blocks.push({ type: "codeblock", lang: fence.lang, value: fence.lines.join("\n") });
   return blocks;
 }

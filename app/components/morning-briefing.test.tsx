@@ -34,3 +34,25 @@ describe("MorningBriefing", () => {
     expect(tooltip.length).toBeLessThanOrEqual(60);
   });
 });
+
+describe("MorningBriefing — 69.2 failure state", () => {
+  it("a failed briefing shows an error with Try again (instead of disappearing)", async () => {
+    localStorage.removeItem("cascade-last-briefing-date");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "API down" }) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "API down" }) });
+    global.fetch = fetchMock;
+    let container: HTMLElement;
+    await act(async () => {
+      container = render(<MorningBriefing />).container;
+    });
+    const alert = container!.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("API down");
+    const retry = Array.from(alert!.querySelectorAll("button")).find((b) => /try again/i.test(b.textContent ?? ""));
+    await act(async () => {
+      retry!.click();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

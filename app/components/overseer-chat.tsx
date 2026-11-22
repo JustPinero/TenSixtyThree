@@ -5,7 +5,6 @@ import {
   useRef,
   useEffect,
   useCallback,
-  type ReactNode,
 } from "react";
 import { sendNotification } from "@/lib/notify";
 import { playStartSound, playEndSound } from "@/lib/sounds";
@@ -23,6 +22,8 @@ import {
   type SilenceDetector,
 } from "@/lib/silence-detector";
 import { Portrait } from "@/app/components/portrait";
+import { readSse } from "@/lib/sse-client";
+import { Markdown } from "./ui/markdown";
 
 // SpeechRecognition types for browser API. Extended in Phase 21
 // to surface `length` and `isFinal` so Conversation Mode can iterate
@@ -97,40 +98,6 @@ function stripTagsForSpeech(text: string): string {
  * no SSE plumbing. The trade-off is documented in
  * lib/overseer-tools-knowledge-citations.ts.
  */
-const CITATION_PATTERN = /\[L-(\d+)\]/g;
-function renderWithCitations(text: string): ReactNode {
-  // Fast path — no markers at all.
-  if (!CITATION_PATTERN.test(text)) {
-    CITATION_PATTERN.lastIndex = 0;
-    return text;
-  }
-  CITATION_PATTERN.lastIndex = 0;
-
-  const out: ReactNode[] = [];
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-  while ((match = CITATION_PATTERN.exec(text)) !== null) {
-    if (match.index > cursor) {
-      out.push(text.slice(cursor, match.index));
-    }
-    const id = match[1];
-    out.push(
-      <a
-        key={`${match.index}-L${id}`}
-        href={`/knowledge/lesson/${id}`}
-        className="text-cyan hover:text-text-bright underline decoration-dotted underline-offset-2 align-super text-xs ml-0.5"
-        title={`Lesson L-${id}`}
-      >
-        [L-{id}]
-      </a>,
-    );
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < text.length) {
-    out.push(text.slice(cursor));
-  }
-  return out;
-}
 
 interface OverseerChatProps {
   onDispatch: (results: unknown[]) => void;
@@ -162,7 +129,8 @@ export function OverseerChat({
     null,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const historyLoaded = useRef(false);
 
@@ -438,8 +406,13 @@ export function OverseerChat({
     return () => window.removeEventListener("keydown", onKey);
   }, [stopConversationListening]);
 
+  // 69.2 — follow new text only if the reader is already at the bottom;
+  // someone scrolled up to read back is left where they are.
+  const atBottomRef = useRef(true);
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    if (atBottomRef.current) {
+      scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    }
   }, [messages, pendingActions]);
 
   async function sendMessage() {
@@ -457,6 +430,7 @@ export function OverseerChat({
     accumulatedTranscriptRef.current = "";
 
     const userMessage: ChatMessage = { role: "user", content: input.trim() };
+    setSendError(null);
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
@@ -498,46 +472,32 @@ export function OverseerChat({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        setMessages([
-          ...newMessages,
-          { role: "assistant", content: `Error: ${err.error}` },
-        ]);
+        const err = await res.json().catch(() => ({}));
+        // 69.2 — the draft survives a failed send: back into the box.
+        setMessages(messages);
+        setInput(userMessage.content);
+        setSendError(typeof err.error === "string" ? err.error : `Couldn't reach ${overseerName}.`);
         return;
       }
 
-      const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!res.body) return;
 
+      // 69.1 — shared reader: frames split across chunks are reassembled
+      // instead of silently dropped.
       let assistantContent = "";
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.type === "content_block_delta") {
-                assistantContent += parsed.delta?.text || "";
-                setMessages([
-                  ...newMessages,
-                  { role: "assistant", content: assistantContent },
-                ]);
-              }
-            } catch {
-              // skip
-            }
-          }
+      await readSse(res.body, (event) => {
+        const parsed = event.data as {
+          type?: string;
+          delta?: { type?: string; text?: string };
+        } | null;
+        if (parsed?.type === "content_block_delta" && parsed.delta?.type !== "thinking_delta") {
+          assistantContent += parsed.delta?.text || "";
+          setMessages([
+            ...newMessages,
+            { role: "assistant", content: assistantContent },
+          ]);
         }
-      }
+      });
 
       const finalMessages: ChatMessage[] = [
         ...newMessages,
@@ -634,10 +594,15 @@ export function OverseerChat({
         }).catch(() => {});
       }
     } catch {
-      setMessages([
-        ...newMessages,
-        { role: "assistant", content: `Failed to connect to ${overseerName}.` },
-      ]);
+      // 69.2 — keep whatever streamed, but give the draft back for a retry
+      // when nothing came through.
+      setMessages((current) => {
+        const last = current[current.length - 1];
+        const gotText = last?.role === "assistant" && last.content.length > 0;
+        if (!gotText) setInput(userMessage.content);
+        return gotText ? current : messages;
+      });
+      setSendError(`Lost the connection to ${overseerName}.`);
     } finally {
       clearTimeout(turnTimeout);
       setStreaming(false);
@@ -926,6 +891,13 @@ export function OverseerChat({
       {/* Messages */}
       <div
         ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label={`Conversation with ${overseerName}`}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        }}
         className={`${fullPage ? "flex-1" : "h-56"} overflow-y-auto ${fullPage ? "p-6 space-y-4" : "p-3 space-y-3"}`}
       >
         {messages.length === 0 && (
@@ -967,13 +939,23 @@ export function OverseerChat({
             <span
               className={`${fullPage ? "text-xs" : "text-micro"} uppercase text-muted block mb-0.5`}
             >
-              {msg.role === "user" ? "you" : "delamain"}
+              {msg.role === "user" ? "you" : overseerName}
             </span>
-            <div
-              className={`whitespace-pre-wrap ${fullPage ? "leading-7" : "leading-relaxed"}`}
-            >
-              {renderWithCitations(msg.content)}
-            </div>
+            {msg.role === "assistant" ? (
+              // 69.2 — replies render as markdown (code fences, links,
+              // [L-n] citations); no raw HTML on the path.
+              <Markdown
+                source={msg.content}
+                breaks
+                className={fullPage ? "leading-7" : "leading-relaxed"}
+              />
+            ) : (
+              <div
+                className={`whitespace-pre-wrap ${fullPage ? "leading-7" : "leading-relaxed"}`}
+              >
+                {msg.content}
+              </div>
+            )}
           </div>
         ))}
         {streaming && (
@@ -1004,6 +986,20 @@ export function OverseerChat({
             className="mt-2 px-3 py-1 text-micro font-mono border border-success text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
           >
             {dispatching ? "Dispatching..." : "Execute Sprint"}
+          </button>
+        </div>
+      )}
+
+      {sendError && (
+        <div role="alert" className="mx-3 mb-2 flex flex-wrap items-center gap-2 text-micro font-mono text-danger">
+          <span>{sendError}</span>
+          <button
+            type="button"
+            onClick={() => void sendMessage()}
+            disabled={streaming || !input.trim()}
+            className="min-h-6 underline text-cyan disabled:opacity-50 focus-ring"
+          >
+            Retry
           </button>
         </div>
       )}
@@ -1079,12 +1075,22 @@ export function OverseerChat({
             </svg>
           </button>
         )}
-        <input
+        <label htmlFor="overseer-input" className="sr-only">
+          Message {overseerName}
+        </label>
+        <textarea
+          id="overseer-input"
           ref={inputRef}
-          type="text"
+          rows={fullPage ? 2 : 1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => {
+            // 69.2 — Enter sends; Shift+Enter is a newline (pastes keep theirs).
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void sendMessage();
+            }
+          }}
           placeholder={
             listening
               ? "Listening..."
@@ -1093,7 +1099,7 @@ export function OverseerChat({
                 : "What should we work on today?"
           }
           disabled={streaming}
-          className={`flex-1 min-w-0 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50`}
+          className={`flex-1 min-w-0 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50 resize-none`}
         />
         <button
           onClick={sendMessage}

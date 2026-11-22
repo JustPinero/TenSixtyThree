@@ -17,6 +17,8 @@ export function MorningBriefing() {
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [shouldShow, setShouldShow] = useState(false);
+  // 69.2 — a failed briefing says so (with a retry) instead of vanishing.
+  const [error, setError] = useState<string | null>(null);
   const autoAttemptedRef = useRef(false);
   const settings = getOverseerSettings();
 
@@ -31,6 +33,7 @@ export function MorningBriefing() {
 
   const generateBriefing = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/briefing", { method: "POST" });
       if (res.ok) {
@@ -38,7 +41,18 @@ export function MorningBriefing() {
         setBriefing(data);
         const today = new Date().toISOString().split("T")[0];
         localStorage.setItem("cascade-last-briefing-date", today);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError(
+          res.status === 429
+            ? "Too many briefings for now. Try again in a few minutes."
+            : typeof body.error === "string"
+              ? body.error
+              : "Couldn't prepare the briefing.",
+        );
       }
+    } catch {
+      setError("Couldn't reach the server for the briefing.");
     } finally {
       setLoading(false);
     }
@@ -90,6 +104,29 @@ export function MorningBriefing() {
             {settings.name} is preparing your morning briefing...
           </span>
         </div>
+      </div>
+    );
+  }
+
+  if (!briefing && error) {
+    return (
+      <div role="alert" className="mb-6 p-4 border border-danger/40 bg-space-900 flex flex-wrap items-center gap-3">
+        <span className="text-xs font-mono text-danger">{error}</span>
+        <button
+          type="button"
+          onClick={() => void generateBriefing()}
+          disabled={loading}
+          className="min-h-6 text-xs font-mono text-cyan underline disabled:opacity-50 focus-ring"
+        >
+          Try again
+        </button>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="min-h-6 text-xs font-mono text-text-dim underline focus-ring"
+        >
+          Dismiss
+        </button>
       </div>
     );
   }

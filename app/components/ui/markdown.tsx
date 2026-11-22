@@ -17,6 +17,20 @@ function renderInline(children: Inline[]) {
         </strong>
       );
     }
+    if (node.type === "break") return <br key={i} />;
+    if (node.type === "link") {
+      const external = /^https?:/i.test(node.href);
+      return (
+        <a
+          key={i}
+          href={node.href}
+          className="text-cyan underline underline-offset-2 hover:text-text-bright focus-ring"
+          {...(external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
+        >
+          {node.value}
+        </a>
+      );
+    }
     if (node.type === "code") {
       return (
         <code key={i} className="px-1 py-0.5 bg-space-900 border border-space-600 text-cyan">
@@ -29,6 +43,16 @@ function renderInline(children: Inline[]) {
 }
 
 function renderBlock(block: Block, key: number) {
+  if (block.type === "codeblock") {
+    return (
+      <pre
+        key={key}
+        className="overflow-x-auto max-w-full bg-space-900 border border-space-600 p-3 text-xs"
+      >
+        <code data-lang={block.lang || undefined}>{block.value}</code>
+      </pre>
+    );
+  }
   if (block.type === "heading") {
     const Tag = block.level === 2 ? "h2" : "h3";
     return (
@@ -60,8 +84,17 @@ function renderBlock(block: Block, key: number) {
   return <p key={key}>{renderInline(block.children)}</p>;
 }
 
-export function Markdown({ source, className }: { source: string; className?: string }) {
-  const blocks = parseMarkdownLite(source);
+export function Markdown({
+  source,
+  className,
+  breaks = false,
+}: {
+  source: string;
+  className?: string;
+  /** 69.2 — keep single newlines (chat replies). */
+  breaks?: boolean;
+}) {
+  const blocks = parseMarkdownLite(source, { breaks });
   return (
     <div className={`space-y-3 ${className ?? ""}`.trim()}>
       {blocks.map(renderBlock)}

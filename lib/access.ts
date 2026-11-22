@@ -92,6 +92,17 @@ async function resolve(request: Request): Promise<Viewer | null> {
   return isHosted() ? null : { kind: "local" };
 }
 
+/**
+ * Phase 66.2 — the same resolution for server components, which get a
+ * Headers object (`await headers()`) instead of a Request. null = nobody
+ * (hosted, no valid session).
+ */
+export async function viewerFromHeaders(headers: Headers): Promise<Viewer | null> {
+  const user = await lookup(headers.get("cookie") ?? "");
+  if (user) return user;
+  return isHosted() ? null : { kind: "local" };
+}
+
 /** Any authenticated caller; local operator in local mode. */
 export async function requireUser(request: Request): Promise<Gate> {
   const viewer = await resolve(request);

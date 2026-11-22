@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/app/generated/prisma/client";
 import { readIfExists } from "./file-utils";
 
 /**
@@ -10,7 +10,9 @@ import { readIfExists } from "./file-utils";
 export async function buildProjectSystemPrompt(
   prisma: PrismaClient,
   projectPath: string,
-  projectName: string
+  projectName: string,
+  /** Phase 66.2 — lessons the viewer may see (lessonWhere(scope)). */
+  lessonFilter: Prisma.KnowledgeLessonWhereInput,
 ): Promise<string> {
   const [claudeMdRaw, handoffRaw, debtRaw] = await Promise.all([
     readIfExists(path.join(projectPath, "CLAUDE.md")),
@@ -48,7 +50,7 @@ export async function buildProjectSystemPrompt(
 
   // Get relevant knowledge lessons
   const lessons = await prisma.knowledgeLesson.findMany({
-    where: { severity: { in: ["critical", "important"] } },
+    where: { AND: [lessonFilter, { severity: { in: ["critical", "important"] } }] },
     take: 10,
     select: { title: true, category: true, content: true },
   });

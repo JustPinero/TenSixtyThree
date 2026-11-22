@@ -126,6 +126,7 @@ Timeline of project events.
 | summary | String | — | Event description |
 | details | String? | null | JSON details |
 | createdAt | DateTime | now() | — |
+| dispatchId | String? | null | 66.2 [1.0.D4] — set on cloud runner `cloud-progress` events (indexed); legacy rows carry it only in `details` |
 
 **Relations:** project?
 **Indexes:** createdAt, (projectId, createdAt) — phase 31
@@ -195,6 +196,7 @@ that the Overseer reads and writes via tools (replaces the prior
 | activeFlow | String? | null | "inventory_walk", "dispatch_planning", "incident_triage", or null |
 | workingMemory | String | "{}" | JSON document; deep-merged via `mergeWorkingMemory` |
 | compressedHistory | String? | null | Phase 12E — JSON: `{summarizedThroughMessageCount, summary}`. Cached summary of older messages |
+| userId | String? | null | 66.1 — FK User (cascade). Session key = (userId, UTC day); null = local operator |
 
 **Relations:** messages (1:N → ChatMessage)
 **Indexes:** startedAt, closedAt
@@ -210,6 +212,7 @@ Overseer conversation history, grouped by date and (going forward) by ChatSessio
 | sessionDate | String | — | YYYY-MM-DD grouping key (legacy, kept for backfill compatibility) |
 | sessionId | String? | null | Phase 12A.1 — links to ChatSession; backfill via scripts/backfill-chat-sessions.ts |
 | toolCalls | String? | null | Phase 12A.1 — JSON string of structured tool invocations on assistant turns |
+| userId | String? | null | 66.1 — FK User (cascade); history routes read only the viewer's rows |
 | createdAt | DateTime | now() | — |
 
 **Relations:** session (N:1 → ChatSession, optional during transition)
@@ -229,6 +232,7 @@ Conditional alerts triggered by project state changes.
 | createdBy | String | "overseer" | overseer or user |
 | createdAt | DateTime | now() | — |
 | triggeredAt | DateTime? | null | — |
+| ownerUserId | String? | null | 66.2 — FK User (cascade). null = operator reminder; a reminder may only watch projects its owner can see |
 
 ## UpstreamFeature (phase 11.1)
 Vendor-agnostic catalog of upstream AI capabilities Cascade tracks.
@@ -417,7 +421,9 @@ User (54.1 admin plugin): + role String? ("user"/"admin"), banned Boolean?, banR
 | sharedById | String | — | user id |
 | createdAt | DateTime | now() | — |
 
-User (54.2): + anthropicKeyEnc String? (BYOK, sealed by lib/crypto-box).
+User (54.2): + anthropicKeyEnc String? (BYOK, sealed by lib/crypto-box). (66.3): + chatModel String? — personal Overseer model, honored only with BYOK or for admins.
+
+Member (66.4): unique (userId, organizationId).
 
 ## Milestone (54.4 — roadmap)
 Org-scoped (`organizationId`) or personal (`ownerUserId`); exactly one set — app-level rule in `lib/boards.ts`/`/api/milestones`, no DB FK (bare ids).

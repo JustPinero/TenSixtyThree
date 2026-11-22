@@ -1,3 +1,4 @@
+import { LOCAL_SCOPE } from "@/lib/tenant-scope";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
@@ -46,7 +47,7 @@ afterAll(async () => {
 
 describe("Reports API logic", () => {
   it("generates single project report with all sections", async () => {
-    const report = await generateSingleReport(prisma, "report-proj");
+    const report = await generateSingleReport(prisma, "report-proj", LOCAL_SCOPE);
     expect(report).not.toBeNull();
     expect(report!.projectName).toBe("Report Project");
     expect(report!.audits).toHaveLength(1);
@@ -55,13 +56,13 @@ describe("Reports API logic", () => {
   });
 
   it("generates cross-project report", async () => {
-    const report = await generateCrossProjectReport(prisma);
+    const report = await generateCrossProjectReport(prisma, LOCAL_SCOPE);
     expect(report.projects).toHaveLength(1);
     expect(report.totalLessons).toBe(1);
   });
 
   it("converts single report to markdown", async () => {
-    const report = await generateSingleReport(prisma, "report-proj");
+    const report = await generateSingleReport(prisma, "report-proj", LOCAL_SCOPE);
     const md = reportToMarkdown(report!);
     expect(md).toContain("# Project Report");
     expect(md).toContain("bughunt");
@@ -69,20 +70,20 @@ describe("Reports API logic", () => {
   });
 
   it("converts single report to PDF with valid header", async () => {
-    const report = await generateSingleReport(prisma, "report-proj");
+    const report = await generateSingleReport(prisma, "report-proj", LOCAL_SCOPE);
     const pdf = reportToPdf(report!);
     expect(pdf.subarray(0, 4).toString("ascii")).toBe("%PDF");
     expect(pdf.length).toBeGreaterThan(1000);
   });
 
   it("converts cross report to PDF", async () => {
-    const report = await generateCrossProjectReport(prisma);
+    const report = await generateCrossProjectReport(prisma, LOCAL_SCOPE);
     const pdf = reportToPdf(report);
     expect(pdf.subarray(0, 4).toString("ascii")).toBe("%PDF");
   });
 
   it("returns null for nonexistent project", async () => {
-    const report = await generateSingleReport(prisma, "does-not-exist");
+    const report = await generateSingleReport(prisma, "does-not-exist", LOCAL_SCOPE);
     expect(report).toBeNull();
   });
 

@@ -111,7 +111,7 @@
   the right shape is a server component that calls the engines directly
   (one round-trip, no waterfall, streaming-friendly).
 
-- **[1.0.D4]** (2026-09-15, release bughunt, low) `/api/admin/ops`
+- ~~**[1.0.D4]**~~ CLOSED 2026-11-22 (phase 66.2: `ActivityEvent.dispatchId` + `cloud-progress` type) (2026-09-15, release bughunt, low) `/api/admin/ops`
   `cloud-events` and `/api/dispatch/cloud/[id]` find a dispatch's ActivityEvents with a
   JSON-substring `contains: '"dispatchId":"…"'` on the `details` String
   column. Works because the writer is ours, but it is a seq-scan and
@@ -242,3 +242,10 @@ now: dispatches run only operator/owner repos (full-autonomy posture matches
 local dispatches) and the container is the boundary. Real fix: spawn the CLI
 as an unprivileged user (SDK spawnClaudeCodeProcess override + useradd in
 image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
+
+- **[66.D1]** (2026-11-22, phase 66, low) Hosted chat rows written before
+  migration `20261122000000_tenant_scoping` have `userId` null, so no hosted
+  user sees them after deploy (local operator rows are unaffected). The data
+  is kept. If the old hosted Overseer history matters, backfill it to the
+  admin's user id with one UPDATE after deploy.
+

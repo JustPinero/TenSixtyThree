@@ -40,34 +40,34 @@ afterAll(async () => {
 
 describe("buildProjectSystemPrompt", () => {
   it("includes project CLAUDE.md content", async () => {
-    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project");
+    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project", {});
     expect(prompt).toContain("TypeScript strict");
   });
 
   it("includes handoff content", async () => {
-    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project");
+    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project", {});
     expect(prompt).toContain("fixed auth bug");
   });
 
   it("includes debt log", async () => {
-    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project");
+    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project", {});
     expect(prompt).toContain("Fix login timeout");
   });
 
   it("includes knowledge lessons", async () => {
-    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project");
+    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project", {});
     expect(prompt).toContain("Always validate inputs");
   });
 
   it("includes project name", async () => {
-    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project");
+    const prompt = await buildProjectSystemPrompt(prisma, TEST_DIR, "Test Project", {});
     expect(prompt).toContain("Test Project");
   });
 
   it("handles missing files gracefully", async () => {
     const emptyDir = path.join(TEST_DIR, "empty");
     fs.mkdirSync(emptyDir, { recursive: true });
-    const prompt = await buildProjectSystemPrompt(prisma, emptyDir, "Empty");
+    const prompt = await buildProjectSystemPrompt(prisma, emptyDir, "Empty", {});
     expect(prompt).toContain("No CLAUDE.md found");
   });
 });

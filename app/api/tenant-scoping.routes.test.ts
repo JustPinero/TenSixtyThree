@@ -25,6 +25,7 @@ import * as tasks from "./tasks/route";
 import * as reminders from "./reminders/route";
 import * as attention from "./attention/route";
 import * as recommendations from "./recommendations/route";
+import * as reports from "./reports/generate/route";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
 import {
@@ -378,3 +379,29 @@ describe("66.2 — dashboard routes through the visibility matrix", () => {
     });
   });
 });
+
+describe("66.2 — reports go through the visibility matrix", () => {
+  const gen = (u: TenantUser, body: Record<string, unknown>) =>
+    reports.POST(requestAs(u, "http://x/api/reports/generate", { method: "POST", body }));
+
+  it("a single-project report on someone else's project is a 404", async () => {
+    expect((await gen("carol", { type: "single", slug: "alices" })).status).toBe(404);
+    expect((await gen("alice", { type: "single", slug: "alices" })).status).toBe(200);
+  });
+
+  it("the cross-project report covers only visible projects", async () => {
+    for (const proj of Object.values(t.projects)) {
+      await rig!.prisma.activityEvent.create({
+        data: { projectId: proj.id, eventType: "commit", summary: `evt-${proj.slug}` },
+      });
+    }
+    const res = await gen("bob", { type: "cross-project" });
+    expect(res.status).toBe(200);
+    const text = JSON.stringify(await res.json());
+    expect(text).toContain("shared");
+    for (const hidden of ["alices", "carols", "operator", "demo1-proj", "demo2-proj"]) {
+      expect(text).not.toContain(hidden);
+    }
+  });
+});
+

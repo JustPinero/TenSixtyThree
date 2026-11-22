@@ -7,12 +7,14 @@ import {
 } from "@/lib/report-generator";
 import { reportToPdf } from "@/lib/report-pdf";
 import { jsonError, requireUser } from "@/lib/access";
+import { scopeForViewer } from "@/lib/tenant-scope";
 
 export async function POST(request: NextRequest) {
   const access = await requireUser(request);
   if (!access.ok) return access.response;
   try {
     const { type, slug, format = "markdown" } = await request.json();
+    const scope = await scopeForViewer(prisma, access.viewer);
 
     if (type === "single") {
       if (!slug) {
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const report = await generateSingleReport(prisma, slug);
+      const report = await generateSingleReport(prisma, String(slug), scope);
       if (!report) {
         return NextResponse.json(
           { error: "Project not found" },
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "cross-project") {
-      const report = await generateCrossProjectReport(prisma);
+      const report = await generateCrossProjectReport(prisma, scope);
 
       if (format === "pdf") {
         const pdfBuffer = reportToPdf(report);

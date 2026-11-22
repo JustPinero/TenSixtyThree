@@ -3,6 +3,7 @@
  * The alias path spawned two `execSync` psql processes per file; the rig
  * clones the template over an in-process pg connection instead.
  */
+import { LOCAL_SCOPE } from "@/lib/tenant-scope";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
 import type { DispatchRig } from "@/tests/harness/dispatch-rig.types";
@@ -69,7 +70,7 @@ afterAll(async () => {
 
 describe("report-generator", () => {
   it("generates single project report", async () => {
-    const report = await generateSingleReport(prisma, "report-test");
+    const report = await generateSingleReport(prisma, "report-test", LOCAL_SCOPE);
     expect(report).not.toBeNull();
     expect(report!.projectName).toBe("Report Test");
     expect(report!.health).toBe("warning");
@@ -78,19 +79,19 @@ describe("report-generator", () => {
   });
 
   it("returns null for missing project", async () => {
-    const report = await generateSingleReport(prisma, "nonexistent");
+    const report = await generateSingleReport(prisma, "nonexistent", LOCAL_SCOPE);
     expect(report).toBeNull();
   });
 
   it("generates cross-project report", async () => {
-    const report = await generateCrossProjectReport(prisma);
+    const report = await generateCrossProjectReport(prisma, LOCAL_SCOPE);
     expect(report.projects).toHaveLength(1);
     expect(report.totalLessons).toBe(1);
     expect(report.lessonsByCategory.testing).toBe(1);
   });
 
   it("converts single report to markdown", async () => {
-    const report = await generateSingleReport(prisma, "report-test");
+    const report = await generateSingleReport(prisma, "report-test", LOCAL_SCOPE);
     const md = reportToMarkdown(report!);
     expect(md).toContain("# Project Report: Report Test");
     expect(md).toContain("test-audit");
@@ -98,7 +99,7 @@ describe("report-generator", () => {
   });
 
   it("converts cross-project report to markdown", async () => {
-    const report = await generateCrossProjectReport(prisma);
+    const report = await generateCrossProjectReport(prisma, LOCAL_SCOPE);
     const md = reportToMarkdown(report);
     expect(md).toContain("# Cross-Project Summary Report");
     expect(md).toContain("Report Test");

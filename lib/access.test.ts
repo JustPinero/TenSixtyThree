@@ -178,3 +178,23 @@ describe("jsonError (64.5)", () => {
     expect(text).not.toMatch(/constraint|Project\.slug/);
   });
 });
+
+describe("viewerFromHeaders (66.2 — server components)", () => {
+  it("resolves a session cookie to the user", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    rig = await createDispatchRig({ fakeTimers: false });
+    await user(rig, "pagetok");
+    const { viewerFromHeaders } = await load(rig);
+    const v = await viewerFromHeaders(req("pagetok").headers);
+    expect(v).toMatchObject({ kind: "user", userId: "u-pagetok" });
+  });
+
+  it("hosted without a session is nobody; local mode is the operator", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const { viewerFromHeaders } = await load(rig);
+    process.env.AUTH_REQUIRED = "true";
+    expect(await viewerFromHeaders(new Headers())).toBeNull();
+    delete process.env.AUTH_REQUIRED;
+    expect(await viewerFromHeaders(new Headers())).toEqual({ kind: "local" });
+  });
+});

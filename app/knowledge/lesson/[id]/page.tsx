@@ -10,6 +10,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { parseLessonTags } from "@/lib/lesson-utils";
+import { headers } from "next/headers";
+import { viewerFromHeaders } from "@/lib/access";
+import { DENY_SCOPE, lessonWhere, scopeForViewer } from "@/lib/tenant-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +31,11 @@ export default async function LessonDetailPage({
   const id = Number(idStr);
   if (!Number.isInteger(id) || id <= 0) notFound();
 
-  const lesson = await prisma.knowledgeLesson.findUnique({
-    where: { id },
+  // Phase 66.2 — only lessons from projects the viewer can see.
+  const viewer = await viewerFromHeaders(await headers());
+  const scope = viewer ? await scopeForViewer(prisma, viewer) : DENY_SCOPE;
+  const lesson = await prisma.knowledgeLesson.findFirst({
+    where: { AND: [{ id }, lessonWhere(scope)] },
     include: { sourceProject: true },
   });
   if (!lesson) notFound();

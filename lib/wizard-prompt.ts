@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/app/generated/prisma/client";
 
 /**
  * Build the system prompt for the Claude wizard conversation.
@@ -6,11 +6,13 @@ import { PrismaClient } from "@/app/generated/prisma/client";
  */
 export async function buildWizardSystemPrompt(
   prisma: PrismaClient,
-  templateContent: string
+  templateContent: string,
+  /** Phase 66.2 — lessons the viewer may see (lessonWhere(scope)). */
+  lessonFilter: Prisma.KnowledgeLessonWhereInput,
 ): Promise<string> {
   // Fetch recent knowledge lessons for context
   const lessons = await prisma.knowledgeLesson.findMany({
-    where: { severity: { in: ["critical", "important"] } },
+    where: { AND: [lessonFilter, { severity: { in: ["critical", "important"] } }] },
     orderBy: { timesReferenced: "desc" },
     take: 20,
     select: { title: true, content: true, category: true },

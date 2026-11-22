@@ -4,6 +4,7 @@ import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildProjectSystemPrompt } from "@/lib/project-chat";
+import { lessonWhere, scopeForViewer } from "@/lib/tenant-scope";
 import { projectPersonaBlock } from "@/lib/persona-prompt";
 import { canSeeProject } from "@/lib/project-access";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
@@ -64,7 +65,12 @@ export async function POST(
     // 53.4 — per-project persona appended after the cached project block,
     // so the prompt-cache prefix stays stable per project.
     const systemPrompt =
-      (await buildProjectSystemPrompt(prisma, project.path, project.name)) +
+      (await buildProjectSystemPrompt(
+        prisma,
+        project.path,
+        project.name,
+        lessonWhere(await scopeForViewer(prisma, access.viewer)),
+      )) +
       projectPersonaBlock(project.themeKey);
 
     const controller = new AbortController();

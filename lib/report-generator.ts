@@ -1,4 +1,9 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
+import {
+  activityWhere,
+  lessonWhere,
+  type TenantScope,
+} from "@/lib/tenant-scope";
 
 export interface SingleProjectReport {
   type: "single";
@@ -34,10 +39,12 @@ export interface CrossProjectReport {
  */
 export async function generateSingleReport(
   prisma: PrismaClient,
-  slug: string
+  slug: string,
+  /** Phase 66.2 — whose report this is; an invisible project is null. */
+  scope: TenantScope,
 ): Promise<SingleProjectReport | null> {
-  const project = await prisma.project.findUnique({
-    where: { slug },
+  const project = await prisma.project.findFirst({
+    where: { AND: [{ slug }, scope.projectWhere] },
     include: {
       auditSnapshots: {
         orderBy: { capturedAt: "desc" },
@@ -88,16 +95,21 @@ export async function generateSingleReport(
  * Generate a cross-project summary report.
  */
 export async function generateCrossProjectReport(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  /** Phase 66.2 — only the viewer's visible projects and their rows. */
+  scope: TenantScope,
 ): Promise<CrossProjectReport> {
   const [projects, lessons, recentEvents] = await Promise.all([
     prisma.project.findMany({
+      where: scope.projectWhere,
       orderBy: { lastActivityAt: "desc" },
     }),
     prisma.knowledgeLesson.findMany({
+      where: lessonWhere(scope),
       select: { category: true },
     }),
     prisma.activityEvent.findMany({
+      where: activityWhere(scope),
       orderBy: { createdAt: "desc" },
       take: 50,
       include: {

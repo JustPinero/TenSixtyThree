@@ -4,6 +4,7 @@ import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildWizardSystemPrompt } from "@/lib/wizard-prompt";
+import { lessonWhere, scopeForViewer } from "@/lib/tenant-scope";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 import { jsonError, requireUser, viewerUserId } from "@/lib/access";
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = await buildWizardSystemPrompt(
       prisma,
-      templateContent
+      templateContent,
+      lessonWhere(await scopeForViewer(prisma, access.viewer)),
     );
 
     const controller = new AbortController();

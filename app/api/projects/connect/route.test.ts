@@ -15,6 +15,12 @@ vi.mock("@/lib/db", () => {
   return { prisma: proxy };
 });
 
+const verify = vi.fn(async (): Promise<{ ok: boolean; reason?: string }> => ({ ok: true }));
+vi.mock("@/lib/github-access", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-access")>()),
+  verifyRepoPushAccess: () => verify(),
+}));
+
 import { POST } from "./route";
 import { GET as listProjects } from "../route";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
@@ -94,4 +100,20 @@ describe("POST /api/projects/connect", () => {
     expect((await connect("demo1", { githubRepo: "x/y" })).status).toBe(403);
     expect((await connect(null, { githubRepo: "x/y" })).status).toBe(401);
   });
+
+  it("security review: refused when the user's own GitHub can't push to the repo", async () => {
+    verify.mockResolvedValueOnce({ ok: false, reason: "not-found" });
+    const res = await connect("carol", { githubRepo: "operator/private-client-repo" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { reason: string }).reason).toBe("not-found");
+    expect(await rig!.prisma.project.count({ where: { githubRepo: "operator/private-client-repo" } })).toBe(0);
+  });
+
+  it("admins (the operator) are not checked against their own token", async () => {
+    verify.mockClear();
+    const res = await connect("admin", { githubRepo: "operator/fleet-repo" });
+    expect(res.status).toBe(201);
+    expect(verify).not.toHaveBeenCalled();
+  });
 });
+

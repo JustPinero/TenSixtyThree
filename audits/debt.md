@@ -249,3 +249,11 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   is kept. If the old hosted Overseer history matters, backfill it to the
   admin's user id with one UPDATE after deploy.
 
+
+- **[68.D1]** (2026-11-22, phase 68 security review, medium) The cloud runner
+  clones and pushes every project with the operator's `GITHUB_TOKEN`.
+  `POST /api/projects/connect` now requires the user's own GitHub token to
+  have push on the repo (lib/github-access.ts), which closes the confused
+  deputy for new projects. Defense in depth still owed: user-owned projects
+  should run with a per-user or per-installation token (GitHub App), so the
+  operator token never touches a repo only a user vouched for.

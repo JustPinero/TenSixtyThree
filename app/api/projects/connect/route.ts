@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { jsonError, requireSignedIn } from "@/lib/access";
 import { normalizeGithubRepo } from "@/lib/github-repo";
+import { REPO_ACCESS_MESSAGE, verifyRepoPushAccess } from "@/lib/github-access";
 
 function slugify(name: string): string {
   return (
@@ -35,6 +36,19 @@ export async function POST(request: NextRequest) {
       );
     }
     const userId = access.viewer.userId;
+
+    // Security review (critical): the runner clones and pushes with the
+    // operator's token, so a user may only connect a repo THEIR OWN GitHub
+    // account can push to. Admins are the operator — the token is theirs.
+    if (!access.viewer.isAdmin) {
+      const check = await verifyRepoPushAccess(prisma, userId, githubRepo);
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: REPO_ACCESS_MESSAGE[check.reason], reason: check.reason },
+          { status: 403 },
+        );
+      }
+    }
 
     const existing = await prisma.project.findFirst({
       where: {

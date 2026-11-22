@@ -52,13 +52,24 @@ const eventTypeLabels: Record<string, string> = {
   "deploy-complete": "DEPLOY",
 };
 
-function formatTimestamp(dateStr: string): string {
+/**
+ * 72 — "14:05" alone is ambiguous for anything older than today; older
+ * events also show the date ("Nov 20 14:05").
+ */
+export function formatTimestamp(dateStr: string, now: Date = new Date()): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString("en-US", {
+  const time = date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
+  if (date.toDateString() === now.toDateString()) return time;
+  const day = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+  return `${day} ${time}`;
 }
 
 interface ActivityFeedProps {

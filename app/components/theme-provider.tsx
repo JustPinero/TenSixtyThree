@@ -5,6 +5,8 @@ import {
   useContext,
   useSyncExternalStore,
   useCallback,
+  useEffect,
+  useLayoutEffect,
 } from "react";
 import { resolveThemeKey, type ThemeKey } from "@/lib/theme-registry";
 import { THEME_STORAGE_KEY } from "@/lib/theme-boot";
@@ -34,6 +36,9 @@ function subscribeToTheme(callback: () => void) {
   return () => window.removeEventListener("storage", callback);
 }
 
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(
     subscribeToTheme,
@@ -41,10 +46,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     () => "cyberpunk" as Theme,
   );
 
-  // Apply data-theme attribute
-  if (typeof document !== "undefined") {
+  // 72 — applied in a layout effect, never during render: a render-time
+  // write ran during hydration with the SERVER snapshot ("cyberpunk") and
+  // overwrote the pack the boot script had already stamped (a flash on
+  // every load for anyone not on the default). Layout effects run before
+  // paint, after React has switched to the real client snapshot.
+  useIsomorphicLayoutEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-  }
+  }, [theme]);
 
   const handleSetTheme = useCallback((newTheme: Theme) => {
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);

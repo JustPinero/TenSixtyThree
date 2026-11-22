@@ -101,3 +101,13 @@ describe("66.2 — cloud progress is quiet", () => {
     expect(NOTIFY_EVENT_TYPES.has("session-complete")).toBe(true);
   });
 });
+
+describe("72 — activity timestamps", () => {
+  it("today shows the time; older events show the date too", async () => {
+    const { formatTimestamp } = await import("./activity-feed");
+    const now = new Date(2026, 10, 22, 15, 0);
+    expect(formatTimestamp(new Date(2026, 10, 22, 14, 5).toISOString(), now)).toBe("14:05");
+    expect(formatTimestamp(new Date(2026, 10, 20, 9, 30).toISOString(), now)).toBe("Nov 20 09:30");
+    expect(formatTimestamp(new Date(2025, 11, 31, 23, 0).toISOString(), now)).toBe("Dec 31, 2025 23:00");
+  });
+});

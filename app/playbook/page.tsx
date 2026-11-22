@@ -5,6 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 export default function PlaybookPage() {
   const [content, setContent] = useState("");
   const [saved, setSaved] = useState(false);
+  // 72 — a failed save says so instead of claiming "Saved".
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchPlaybook = useCallback(async () => {
@@ -23,13 +26,27 @@ export default function PlaybookPage() {
   }, []);
 
   async function handleSave() {
-    await fetch("/api/playbook", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/playbook", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(typeof data.error === "string" ? data.error : "Couldn't save the playbook.");
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError("Couldn't reach the server. Your edits are still here.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -50,10 +67,18 @@ export default function PlaybookPage() {
         </div>
         <div className="flex items-center gap-3">
           {saved && (
-            <span className="text-xs font-mono text-success">Saved</span>
+            <span role="status" className="text-xs font-mono text-success">
+              Saved
+            </span>
+          )}
+          {saveError && (
+            <span role="alert" className="text-xs font-mono text-danger">
+              {saveError}
+            </span>
           )}
           <button
             onClick={handleSave}
+            disabled={saving}
             className="px-4 py-2 text-sm font-mono border border-cyan text-cyan hover:bg-cyan/10 transition-colors"
           >
             Save Playbook

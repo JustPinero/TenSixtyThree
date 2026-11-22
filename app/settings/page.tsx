@@ -12,7 +12,6 @@ import {
   getOverseerSettings,
   setOverseerSettings,
 } from "@/lib/overseer-settings";
-import { getSoundPreference, setSoundPreference } from "@/lib/sounds";
 import { speak, listVoices } from "@/lib/speak";
 import { Portrait } from "@/app/components/portrait";
 // Phase 53 — theme cards come from the pack registry.
@@ -23,6 +22,7 @@ import { LocalOnly } from "../components/deployment-mode";
 import { PasswordPanel } from "../components/password-panel";
 import { version as APP_VERSION } from "../../package.json";
 import { usePersona } from "../components/use-persona";
+import { useStoredFlag } from "../components/use-stored-flag";
 
 interface AuthStatus {
   service: string;
@@ -409,12 +409,11 @@ function NotificationsPanel() {
 
 function SoundsPanel() {
   const persona = usePersona();
-  const [enabled, setEnabled] = useState(() => getSoundPreference());
+  // 72 — useSyncExternalStore-backed: no hydration mismatch.
+  const [enabled, setEnabled] = useStoredFlag("cascade-sounds", true, (raw) => raw !== "false");
 
   function handleToggle() {
-    const newValue = !enabled;
-    setEnabled(newValue);
-    setSoundPreference(newValue);
+    setEnabled(!enabled);
   }
 
   return (
@@ -439,15 +438,14 @@ function SoundsPanel() {
 
 function AutomationPanel() {
   const persona = usePersona();
-  const [autoDispatch, setAutoDispatch] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("cascade-auto-dispatch") === "true";
-  });
+  const [autoDispatch, setAutoDispatch] = useStoredFlag(
+    "cascade-auto-dispatch",
+    false,
+    (raw) => raw === "true",
+  );
 
   function handleToggle() {
-    const newValue = !autoDispatch;
-    setAutoDispatch(newValue);
-    localStorage.setItem("cascade-auto-dispatch", String(newValue));
+    setAutoDispatch(!autoDispatch);
   }
 
   return (

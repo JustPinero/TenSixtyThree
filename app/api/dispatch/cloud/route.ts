@@ -103,3 +103,30 @@ export async function POST(request: NextRequest) {
   });
   return NextResponse.json({ dispatch: publicDispatch(created) });
 }
+
+/**
+ * 67.4 — a project's cloud run history (newest first), so the panel
+ * survives navigation instead of living in client state. Visibility
+ * follows the project; strangers and unknown slugs get the same 404.
+ */
+export async function GET(request: NextRequest) {
+  const access = await requireSignedIn(request);
+  if (!access.ok) return access.response;
+  const slug = request.nextUrl.searchParams.get("projectSlug") ?? "";
+  const project = slug
+    ? await prisma.project.findUnique({ where: { slug }, select: { id: true } })
+    : null;
+  if (!project || !(await canSeeProject(prisma, access.viewer.userId, project.id))) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+  const rows = await prisma.dispatch.findMany({
+    where: { projectId: project.id, runtime: "cloud" },
+    orderBy: { enqueuedAt: "desc" },
+    take: 25,
+    select: PUBLIC_DISPATCH_SELECT,
+  });
+  return NextResponse.json(
+    { runs: rows.map(publicDispatch) },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}

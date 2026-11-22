@@ -48,3 +48,12 @@ describe("composePr", () => {
     expect(composePr(BASE).body.toLowerCase()).toContain("review");
   });
 });
+
+describe("67.2 — result branch names", () => {
+  it("one branch per attempt, partial work labelled", async () => {
+    const { resultBranchName } = await import("./pr-body");
+    expect(resultBranchName({ id: "abc", attempts: 2 }, false)).toBe("cloud/abc-2");
+    expect(resultBranchName({ id: "abc", attempts: 2 }, true)).toBe("cloud/abc-2-partial");
+    expect(resultBranchName({ id: "abc", attempts: 0 }, false)).toBe("cloud/abc-1");
+  });
+});

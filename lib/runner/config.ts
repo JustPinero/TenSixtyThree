@@ -6,6 +6,8 @@ export interface RunnerConfig {
   maxTurns: number;
   maxBudgetUsd: number;
   pollMs: number;
+  /** 67.2 — wall-clock limit per job (ms). */
+  maxWallMs: number;
 }
 
 function positiveNumber(
@@ -29,5 +31,6 @@ export function parseRunnerConfig(
     maxTurns: Math.floor(positiveNumber(env, "RUNNER_MAX_TURNS", 40)),
     maxBudgetUsd: positiveNumber(env, "RUNNER_MAX_BUDGET_USD", 5),
     pollMs: positiveNumber(env, "RUNNER_POLL_MS", 5000),
+    maxWallMs: positiveNumber(env, "RUNNER_MAX_WALL_MINUTES", 45) * 60_000,
   };
 }

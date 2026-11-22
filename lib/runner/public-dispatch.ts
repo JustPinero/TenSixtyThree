@@ -18,6 +18,8 @@ export const PUBLIC_DISPATCH_SELECT = {
   resultBranch: true,
   resultPrUrl: true,
   errorMessage: true,
+  attempts: true,
+  cancelRequested: true,
 } as const;
 
 export interface PublicDispatch {
@@ -33,6 +35,8 @@ export interface PublicDispatch {
   resultBranch: string | null;
   resultPrUrl: string | null;
   errorMessage: string | null;
+  attempts: number;
+  cancelRequested: boolean;
 }
 
 export function publicDispatch(d: PublicDispatch): PublicDispatch {
@@ -49,5 +53,7 @@ export function publicDispatch(d: PublicDispatch): PublicDispatch {
     resultBranch: d.resultBranch,
     resultPrUrl: d.resultPrUrl,
     errorMessage: d.errorMessage ? scrubSecrets(d.errorMessage).slice(0, 300) : null,
+    attempts: d.attempts,
+    cancelRequested: d.cancelRequested,
   };
 }

@@ -8,13 +8,21 @@
  */
 import type { PrismaClient, Dispatch } from "@/app/generated/prisma/client";
 
+/** 67.2 — a job gets this many claims before it is dead-lettered. */
+export const MAX_ATTEMPTS = 3;
+
+export function deadLetterMessage(reason: string): string {
+  return `Gave up after ${MAX_ATTEMPTS} attempts (${reason}).`;
+}
+
 export async function claimNextCloudDispatch(
   prisma: PrismaClient,
   runnerId: string,
 ): Promise<Dispatch | null> {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE "Dispatch"
-    SET "status" = 'started', "runnerId" = ${runnerId}, "startedAt" = NOW()
+    SET "status" = 'started', "runnerId" = ${runnerId}, "startedAt" = NOW(),
+        "attempts" = "attempts" + 1
     WHERE "id" = (
       SELECT "id" FROM "Dispatch"
       WHERE "runtime" = 'cloud' AND "status" = 'queued'
@@ -34,12 +42,19 @@ export async function requeueStaleClaims(
   maxAgeMs: number,
 ): Promise<number> {
   const cutoff = new Date(Date.now() - maxAgeMs);
-  const result = await prisma.dispatch.updateMany({
-    where: {
-      runtime: "cloud",
-      status: "started",
-      startedAt: { lt: cutoff },
+  const stale = { runtime: "cloud", status: "started", startedAt: { lt: cutoff } };
+  // 67.2 — a job that has already used its last claim is dead-lettered,
+  // not requeued forever.
+  await prisma.dispatch.updateMany({
+    where: { ...stale, attempts: { gte: MAX_ATTEMPTS } },
+    data: {
+      status: "failed",
+      completedAt: new Date(),
+      errorMessage: deadLetterMessage("the runner stopped responding each time"),
     },
+  });
+  const result = await prisma.dispatch.updateMany({
+    where: stale,
     data: { status: "queued", runnerId: null, startedAt: null },
   });
   return result.count;
@@ -72,7 +87,7 @@ export async function finalizeIfOwned(
   dispatchId: string,
   runnerId: string,
   data: {
-    status: "completed" | "failed";
+    status: "completed" | "failed" | "timeout";
     costUsd?: number | null;
     errorMessage?: string;
     resultBranch?: string | null;
@@ -84,4 +99,50 @@ export async function finalizeIfOwned(
     data: { ...data, completedAt: new Date() },
   });
   return result.count === 1;
+}
+
+/**
+ * 67.1 — the runner is shutting down (SIGTERM on deploy) mid-job. Put the
+ * row back in the queue for the next runner, or dead-letter it when this
+ * was the last attempt. Conditioned on still owning the claim.
+ */
+export async function requeueInterrupted(
+  prisma: PrismaClient,
+  dispatch: Pick<Dispatch, "id" | "attempts">,
+  runnerId: string,
+): Promise<boolean> {
+  const owned = { id: dispatch.id, runnerId, status: "started" };
+  if (dispatch.attempts >= MAX_ATTEMPTS) {
+    const r = await prisma.dispatch.updateMany({
+      where: owned,
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        errorMessage: deadLetterMessage("interrupted by runner restarts"),
+      },
+    });
+    return r.count === 1;
+  }
+  const r = await prisma.dispatch.updateMany({
+    where: owned,
+    data: {
+      status: "queued",
+      runnerId: null,
+      startedAt: null,
+      errorMessage: `Interrupted by a runner restart; requeued (attempt ${dispatch.attempts} of ${MAX_ATTEMPTS}).`,
+    },
+  });
+  return r.count === 1;
+}
+
+/** 67.2 — has someone asked to cancel this run? */
+export async function isCancelRequested(
+  prisma: PrismaClient,
+  dispatchId: string,
+): Promise<boolean> {
+  const row = await prisma.dispatch.findUnique({
+    where: { id: dispatchId },
+    select: { cancelRequested: true },
+  });
+  return row?.cancelRequested === true;
 }

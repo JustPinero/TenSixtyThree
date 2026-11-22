@@ -11,6 +11,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { cloudPermissionFor } from "@/lib/runner/autonomy";
+import { normalizeGithubRepo } from "@/lib/github-repo";
 
 function authorized(request: NextRequest): "disabled" | "no" | "yes" {
   const secret = process.env.OPS_SECRET;
@@ -40,8 +41,9 @@ export async function POST(request: NextRequest) {
   if (body.op === "seed-project") {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const slug = typeof body.slug === "string" ? body.slug : "";
+    // 67.3 — stored as owner/repo whatever form it arrives in.
     const githubRepo =
-      typeof body.githubRepo === "string" ? body.githubRepo : "";
+      normalizeGithubRepo(typeof body.githubRepo === "string" ? body.githubRepo : "") ?? "";
     if (!name || !SLUG_RE.test(slug) || !REPO_RE.test(githubRepo)) {
       return NextResponse.json(
         { error: "name, slug, githubRepo required" },

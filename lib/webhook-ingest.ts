@@ -26,6 +26,7 @@ import { getDispatchQueue } from "@/lib/dispatch-queue";
 import { auditProjectFeatureUsage } from "@/lib/anthropic-feature-check";
 import { isInsideProjectsDir } from "@/lib/validators";
 import path from "path";
+import { writeEscalationSignals } from "./session-signals";
 
 export interface IngestInput {
   projectPath: string;
@@ -196,57 +197,18 @@ export async function ingestSessionComplete(
     const signalTypes: string[] = [];
     if (logs.length > 0) {
       const signals = detectEscalations(logs[0].content);
-      for (const signal of signals) {
-        signalTypes.push(signal.type);
-        // [41.D4] — per-signal writes are guarded: by this point the dispatch
-        // row may already be flipped to completed, and a retried spool entry
-        // would dedup and permanently skip this outcome. Losing one analytics
-        // row beats aborting the whole ingest.
-        try {
-
-        // Auto-create human tasks from [HUMAN TODO] signals.
-        // Phase 23.2 — dedup on (projectSlug, title) when a Dispatch
-        // is in scope; same-message duplicates from a re-fired hook
-        // produce one task, not two.
-        if (signal.type === "human-todo") {
-          const existing = dispatch
-            ? await prisma.humanTask.findFirst({
-                where: {
-                  projectSlug: slug,
-                  title: signal.message,
-                },
-              })
-            : null;
-          if (!existing) {
-            await prisma.humanTask.create({
-              data: {
-                title: signal.message,
-                projectId: project.id,
-                projectSlug: slug,
-                createdBy: "claude",
-              },
-            });
-          }
-        }
-
-        const eventTypeMap: Record<string, string> = {
-          "needs-attention": "blocker-detected",
-          lesson: "lesson-harvested",
-          "test-failure": "blocker-detected",
-          "phase-complete": "phase-complete",
-          "human-todo": "blocker-detected",
-        };
-        await prisma.activityEvent.create({
-          data: {
-            projectId: project.id,
-            eventType: eventTypeMap[signal.type] || signal.type,
-            summary: `[${signal.type}] ${signal.message}`,
-          },
-        });
-        } catch (err) {
-          console.error("[webhook-ingest] signal write failed (non-fatal):", err);
-        }
-      }
+      signalTypes.push(...signals.map((signal) => signal.type));
+      // 67.3 — the same writer cloud runs use (guarded per signal, [41.D4]).
+      await writeEscalationSignals(
+        prisma,
+        {
+          projectId: project.id,
+          projectSlug: slug,
+          ownerUserId: dispatch?.ownerUserId ?? null,
+          dedupTasks: Boolean(dispatch),
+        },
+        signals,
+      );
     }
 
     // Record DispatchOutcome — keyed off the Dispatch row. Key-less pings

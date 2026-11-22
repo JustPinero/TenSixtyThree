@@ -25,6 +25,7 @@ import {
 import { resolveAnthropicKey } from "../anthropic-key";
 import { ensureAgentUser, type AgentUser } from "./agent-user";
 import { parseRunnerConfig } from "./config";
+import { resultBranchName } from "./pr-body";
 import {
   pristineClone,
   agentWorktree,
@@ -172,6 +173,7 @@ export function buildRealDeps(
     async *runAgent(args: {
       workdir: string;
       dispatch: Dispatch;
+      signal?: AbortSignal;
     }): AsyncGenerator<RunnerMessage> {
       const job = jobs.get(args.workdir);
       if (!job) throw new Error("runAgent called for an unknown workdir");
@@ -235,9 +237,15 @@ export function buildRealDeps(
       // canUseTool entirely and acceptEdits auto-approves file edits
       // without it; both would drop the path scoping below.
       try {
+        // 67.1/67.2 — shutdown, timeout, cancel and a lost claim all stop
+        // the agent through this controller.
+        const abortController = new AbortController();
+        if (args.signal?.aborted) abortController.abort();
+        args.signal?.addEventListener("abort", () => abortController.abort(), { once: true });
         const stream = query({
           prompt,
           options: {
+            abortController,
             cwd: args.workdir,
             maxTurns: config.maxTurns,
             maxBudgetUsd: config.maxBudgetUsd,
@@ -301,6 +309,7 @@ export function buildRealDeps(
     async pushBranch(args: {
       workdir: string;
       dispatch: Dispatch;
+      partial?: boolean;
     }): Promise<{ pushed: boolean; branch: string | null; reason?: string }> {
       const job = jobs.get(args.workdir);
       if (!job) return { pushed: false, branch: null, reason: "unknown workdir" };
@@ -326,7 +335,7 @@ export function buildRealDeps(
         pristine: job.pristine,
         bundle: exported.bundle,
         base: job.base,
-        branch: `cloud/${args.dispatch.id}`,
+        branch: resultBranchName(args.dispatch, args.partial === true),
         remoteUrl: repoUrl(job.githubRepo),
         token: process.env.GITHUB_TOKEN ?? null,
         allowWorkflowChanges: false,

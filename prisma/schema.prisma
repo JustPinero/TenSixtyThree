@@ -144,6 +144,9 @@ model DispatchOutcome {
   goalCondition    String?
   goalAchieved     Boolean?
   goalReason       String?
+  // 67.3 — cloud runs record what they spent (local runs leave null).
+  costUsd          Float?
+  turns            Int?
 
   project  Project   @relation(fields: [projectId], references: [id])
   dispatch Dispatch? @relation(fields: [dispatchId], references: [id])
@@ -184,6 +187,10 @@ model Dispatch {
   resultBranch     String?
   // 52.5 — PR opened for resultBranch (null = none opened)
   resultPrUrl      String?
+  // 67.2 — bounded retries (claim increments; dead-letter at 3) and a
+  // cooperative cancel flag the runner polls.
+  attempts         Int       @default(0)
+  cancelRequested  Boolean   @default(false)
 
   outcome      DispatchOutcome?
   project      Project          @relation(fields: [projectId], references: [id])

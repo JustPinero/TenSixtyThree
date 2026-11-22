@@ -149,6 +149,8 @@ Tracks what the Overseer recommended vs what actually happened.
 | goalCondition | String? | null | Phase 41.2 — /goal condition composed at dispatch from the request's acceptance criteria (null for ad-hoc dispatches) |
 | goalAchieved | Boolean? | null | Phase 41.2 — goal-evaluator verdict parsed from the session log; null = no verdict surfaced |
 | goalReason | String? | null | Phase 41.2 — evaluator's stated reason, when the log marker carried one |
+| costUsd | Float? | null | 67.3 — cloud runs: spend from the SDK result (null for local) |
+| turns | Int? | null | 67.3 — cloud runs: agent turns |
 
 **Relations:** project, dispatch?
 
@@ -178,6 +180,8 @@ First-class lifecycle row for a Claude Code dispatch. Written at enqueue, transi
 | costUsd | Float? | null | 52.1 — from the SDK result message (budget stops salvaged) |
 | resultBranch | String? | null | 52.4 — `cloud/<dispatch-id>` the runner pushed (null = nothing pushed) |
 | resultPrUrl | String? | null | 52.5 — PR opened for resultBranch |
+| attempts | Int | 0 | 67.2 — claims so far; the claim increments it; dead-lettered (failed, "Gave up after 3 attempts") at 3 |
+| cancelRequested | Boolean | false | 67.2 — set by POST /api/dispatch/cloud/[id]/cancel; the runner polls it and stops the run |
 
 **Relations:** project, outcome? (1:1 → DispatchOutcome.dispatchId), organization?, owner?
 **Indexes:** (projectId, status), expectedBy, status

@@ -144,21 +144,25 @@ export async function reconcileOrphanedDispatches(
   prisma: PrismaClient,
   now: Date = new Date()
 ): Promise<ReconcileResult> {
+  // 67.1 — local rows only: cloud rows belong to the runner service,
+  // which a web deploy does not restart.
   const orphans = await prisma.dispatch.findMany({
-    where: { status: "queued" },
+    where: { status: "queued", runtime: "local" },
     select: { id: true, idempotencyKey: true, projectId: true },
   });
 
   const keys: string[] = [];
   for (const row of orphans) {
-    await prisma.dispatch.update({
-      where: { id: row.id },
+    // Conditional: a row the dispatcher started since we read it is live.
+    const changed = await prisma.dispatch.updateMany({
+      where: { id: row.id, status: "queued" },
       data: {
         status: "failed",
         errorMessage: "orphaned by server restart",
         completedAt: now,
       },
     });
+    if (changed.count === 0) continue;
     await prisma.activityEvent.create({
       data: {
         projectId: row.projectId,
@@ -173,5 +177,5 @@ export async function reconcileOrphanedDispatches(
     });
     keys.push(row.idempotencyKey);
   }
-  return { orphaned: orphans.length, keys };
+  return { orphaned: keys.length, keys };
 }

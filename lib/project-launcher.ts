@@ -4,6 +4,7 @@ import { execFileSync, execSync } from "child_process";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { createGitHubRepo } from "./github";
 import { isValidGithubUrl, isValidSlug } from "./validators";
+import { normalizeGithubRepo } from "./github-repo";
 
 function detectGitAuthor(): { name: string; email: string } {
   let name = "Cascade User";
@@ -147,7 +148,8 @@ export async function launchProject(
         autonomyMode: config.autonomyMode,
         agentTeamsEnabled: config.agentTeamsEnabled,
         prWorkflowEnabled: config.prWorkflowEnabled,
-        githubRepo: githubUrl,
+        // 67.3 — owner/repo, not the clone URL (the runner builds its own).
+        githubRepo: normalizeGithubRepo(githubUrl),
         stack: JSON.stringify({ projectType: config.projectType }),
       },
     });

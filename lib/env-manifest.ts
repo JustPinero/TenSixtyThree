@@ -175,6 +175,11 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
     description: "Spend cap per run in USD (default 5). Non-numeric → boot refuses (a NaN used to remove the cap).",
   },
   {
+    name: "RUNNER_MAX_WALL_MINUTES",
+    scope: "runner-optional",
+    description: "Wall-clock limit per run in minutes (default 45); past it the run stops as timeout and partial work is pushed.",
+  },
+  {
     name: "RUNNER_POLL_MS",
     scope: "runner-optional",
     description: "Queue poll interval (default 5000).",

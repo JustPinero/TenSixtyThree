@@ -31,6 +31,26 @@ export interface RunnerOutcome {
   signals: string[];
   costUsd: number | null;
   turns: number | null;
+  /** 67.3 — why a failed run failed, in words a person can act on. */
+  errorMessage?: string;
+}
+
+/** 67.3 — the SDK result subtype as a sentence. */
+export function describeResultSubtype(
+  subtype: string,
+  turns: number | null,
+  costUsd: number | null,
+): string {
+  switch (subtype) {
+    case "error_max_turns":
+      return `Stopped: hit the turn limit${turns ? ` after ${turns} turns` : ""}.`;
+    case "error_max_budget_usd":
+      return `Stopped: hit the budget limit${costUsd !== null ? ` (USD ${costUsd.toFixed(2)} spent)` : ""}.`;
+    case "error_during_execution":
+      return "The agent hit an error during execution.";
+    default:
+      return `The run ended with "${subtype}".`;
+  }
 }
 
 export interface FoldedRun {
@@ -73,6 +93,7 @@ export function foldRunnerMessages(messages: RunnerMessage[]): FoldedRun {
         signals: [...signals],
         costUsd: null,
         turns: null,
+        errorMessage: "The agent stream ended without a result.",
       },
     };
   }
@@ -90,6 +111,15 @@ export function foldRunnerMessages(messages: RunnerMessage[]): FoldedRun {
       signals: [...signals],
       costUsd: result.totalCostUsd,
       turns: result.numTurns,
+      ...(succeeded
+        ? {}
+        : {
+            errorMessage: describeResultSubtype(
+              result.subtype,
+              result.numTurns,
+              result.totalCostUsd,
+            ),
+          }),
     },
   };
 }

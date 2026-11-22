@@ -30,6 +30,25 @@ const RUNNER_ID = process.env.RUNNER_ID ?? `${hostname()}-${process.pid}`;
 const POLL_MS = config.pollMs;
 const once = process.argv.includes("--once");
 
+// 67.1 — deploys send SIGTERM and allow a grace window (Railway: 30s by
+// default). Stop claiming, abort the running agent (the job requeues its
+// row as "interrupted"), and exit before the platform SIGKILLs us.
+const SHUTDOWN_GRACE_MS = 25_000;
+const shutdown = new AbortController();
+let currentTick: Promise<unknown> | null = null;
+function onSignal(sig: string) {
+  if (shutdown.signal.aborted) return;
+  console.log(`[runner ${RUNNER_ID}] ${sig}: finishing up`);
+  shutdown.abort();
+  const forceExit = setTimeout(() => process.exit(1), SHUTDOWN_GRACE_MS);
+  forceExit.unref();
+  Promise.resolve(currentTick)
+    .catch(() => {})
+    .finally(() => process.exit(0));
+}
+process.on("SIGTERM", () => onSignal("SIGTERM"));
+process.on("SIGINT", () => onSignal("SIGINT"));
+
 function startHealthServer() {
   const port = Number(process.env.PORT ?? 8080);
   createServer((req, res) => {
@@ -47,8 +66,9 @@ function startHealthServer() {
 
 async function main() {
   const deps = buildRealDeps(prisma);
+  const opts = { signal: shutdown.signal, wallClockMs: config.maxWallMs };
   if (once) {
-    const worked = await runnerTick(prisma, RUNNER_ID, deps);
+    const worked = await runnerTick(prisma, RUNNER_ID, deps, opts);
     console.log(
       `[runner ${RUNNER_ID}] --once: ${worked ? "ran a dispatch" : "queue empty"}`,
     );
@@ -59,9 +79,10 @@ async function main() {
   console.log(`[runner ${RUNNER_ID}] polling every ${POLL_MS}ms`);
   // Sequential by design: one CLI subprocess per runner instance;
   // scale with Railway replicas, not in-process concurrency.
-  for (;;) {
+  while (!shutdown.signal.aborted) {
     try {
-      const worked = await runnerTick(prisma, RUNNER_ID, deps);
+      currentTick = runnerTick(prisma, RUNNER_ID, deps, opts);
+      const worked = await currentTick;
       if (!worked) await new Promise((r) => setTimeout(r, POLL_MS));
     } catch (error) {
       console.error(`[runner ${RUNNER_ID}] tick failed:`, error);

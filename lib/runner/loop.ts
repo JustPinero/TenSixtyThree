@@ -5,7 +5,7 @@
  */
 import type { PrismaClient } from "@/app/generated/prisma/client";
 import { claimNextCloudDispatch, requeueStaleClaims } from "./claim";
-import { runClaimedDispatch, type RunnerDeps } from "./job";
+import { runClaimedDispatch, type RunnerDeps, type RunOptions } from "./job";
 
 const STALE_CLAIM_MS = 60 * 60_000;
 
@@ -13,10 +13,13 @@ export async function runnerTick(
   prisma: PrismaClient,
   runnerId: string,
   deps: RunnerDeps,
+  opts: RunOptions = {},
 ): Promise<boolean> {
+  // 67.1 — a runner that is shutting down never takes new work.
+  if (opts.signal?.aborted) return false;
   await requeueStaleClaims(prisma, STALE_CLAIM_MS);
   const dispatch = await claimNextCloudDispatch(prisma, runnerId);
   if (!dispatch) return false;
-  await runClaimedDispatch(prisma, dispatch, deps);
+  await runClaimedDispatch(prisma, dispatch, deps, opts);
   return true;
 }

@@ -65,3 +65,15 @@ export function composePr(input: PrInput): { title: string; body: string } {
 
   return { title, body: lines.join("\n") };
 }
+
+/**
+ * 67.2 — a retried job must not push over the previous attempt's branch,
+ * and a run that did not finish says so in its branch name.
+ */
+export function resultBranchName(
+  dispatch: { id: string; attempts: number },
+  partial: boolean,
+): string {
+  const attempt = Math.max(1, dispatch.attempts);
+  return `cloud/${dispatch.id}-${attempt}${partial ? "-partial" : ""}`;
+}

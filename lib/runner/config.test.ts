@@ -8,6 +8,7 @@ describe("parseRunnerConfig", () => {
       maxTurns: 40,
       maxBudgetUsd: 5,
       pollMs: 5000,
+      maxWallMs: 45 * 60_000,
     });
   });
 
@@ -23,5 +24,10 @@ describe("parseRunnerConfig", () => {
         /RUNNER_MAX_TURNS/,
       );
     }
+  });
+
+  it("67.2 — wall-clock limit in minutes; bad values refuse", () => {
+    expect(parseRunnerConfig({ RUNNER_MAX_WALL_MINUTES: "10" }).maxWallMs).toBe(600_000);
+    expect(() => parseRunnerConfig({ RUNNER_MAX_WALL_MINUTES: "soon" })).toThrow();
   });
 });

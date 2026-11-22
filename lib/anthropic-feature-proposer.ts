@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import { postAnthropicWithRetry } from "./anthropic-fetch";
 import path from "path";
-import type { PrismaClient } from "@/app/generated/prisma/client";
+import type { PrismaClient, Prisma } from "@/app/generated/prisma/client";
 
 /**
  * Phase 11.2 — feature proposer.
@@ -108,6 +108,8 @@ export interface GenerateProposalInput {
 export interface GenerateProposalDeps {
   /** Override Claude call. Default uses ANTHROPIC_API_KEY + raw fetch. */
   callClaude?: (system: string, user: string) => Promise<string>;
+  /** Phase 66.1 — the caller's resolved key (BYOK wins); default env. */
+  apiKey?: string;
 }
 
 const DEFAULT_MAX_BYTES_PER_FILE = 4_000;
@@ -122,8 +124,12 @@ function truncateForPrompt(text: string, maxBytes: number): string {
 
 import { resolveChatModelSync } from "./model-config";
 
-async function defaultCallClaude(system: string, user: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+async function defaultCallClaude(
+  system: string,
+  user: string,
+  resolvedKey?: string,
+): Promise<string> {
+  const apiKey = resolvedKey ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
   const PROPOSER_MODEL = resolveChatModelSync();
@@ -199,7 +205,9 @@ export async function generateProposal(
   input: GenerateProposalInput,
   deps: GenerateProposalDeps = {},
 ): Promise<string> {
-  const callClaude = deps.callClaude ?? defaultCallClaude;
+  const callClaude =
+    deps.callClaude ??
+    ((system: string, user: string) => defaultCallClaude(system, user, deps.apiKey));
   const userPrompt = buildProposalUserPrompt(input);
   return await callClaude(PROPOSAL_SYSTEM_PROMPT, userPrompt);
 }
@@ -333,11 +341,20 @@ export async function proposeForAll(
     maxFeatures?: number;
     /** Optional filter: only audit specific project slugs. */
     projectSlugs?: string[];
+    /**
+     * Phase 66.1 — the projects the caller may audit (visibility matrix).
+     * Demo projects are always excluded.
+     */
+    projectWhere?: Prisma.ProjectWhereInput;
   } = {},
 ): Promise<ProposeProjectResult[]> {
-  const where = options.projectSlugs
-    ? { slug: { in: options.projectSlugs } }
-    : {};
+  const where: Prisma.ProjectWhereInput = {
+    AND: [
+      { isDemo: false },
+      options.projectWhere ?? {},
+      options.projectSlugs ? { slug: { in: options.projectSlugs } } : {},
+    ],
+  };
   const projects = await prisma.project.findMany({ where, select: { id: true } });
   const out: ProposeProjectResult[] = [];
   for (const p of projects) {

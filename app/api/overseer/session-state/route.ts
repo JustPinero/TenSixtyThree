@@ -22,7 +22,7 @@ import {
   isValidSessionDate,
   readWorkingMemory,
 } from "@/lib/chat-session";
-import { jsonError, requireUser } from "@/lib/access";
+import { jsonError, requireUser, viewerUserId } from "@/lib/access";
 
 export async function GET(request: NextRequest) {
   const access = await requireUser(request);
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const session = await getSession(prisma, raw);
+    const session = await getSession(prisma, raw, viewerUserId(access.viewer));
     if (!session) {
       return NextResponse.json(
         { exists: false, sessionDate: raw },

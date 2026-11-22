@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface YesterdaySummaryInput {
   daysAgo?: number; // 1 = yesterday (default), 2 = day before, etc.
@@ -44,7 +45,7 @@ export const yesterdaySummaryTool: Tool<
     const date = dateNDaysAgo(daysAgo);
 
     const rows = await ctx.prisma.chatMessage.findMany({
-      where: { sessionDate: date, role: "assistant" },
+      where: { sessionDate: date, role: "assistant", userId: scopeOf(ctx).userId },
       // Secondary id-desc sort makes results deterministic when
       // multiple messages share a createdAt timestamp.
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

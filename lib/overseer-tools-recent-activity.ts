@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { activityWhere, scopeOf } from "@/lib/tenant-scope";
 
 interface RecentActivityInput {
   projectSlug?: string;
@@ -52,7 +53,8 @@ export const recentActivityTool: Tool<RecentActivityInput, RecentActivityOutput>
     if (input.eventType) where.eventType = input.eventType;
 
     const events = await ctx.prisma.activityEvent.findMany({
-      where,
+      // Phase 66.1 — only events the chatting user can see.
+      where: { AND: [activityWhere(scopeOf(ctx)), where] },
       orderBy: { createdAt: "desc" },
       take: limit,
       include: { project: { select: { name: true, slug: true } } },

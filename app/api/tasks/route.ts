@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { jsonError, requireNonDemo, requireUser } from "@/lib/access";
+import {
+  jsonError,
+  requireNonDemo,
+  requireUser,
+  viewerUserId,
+} from "@/lib/access";
+import { scopeForViewer, taskWhere, type TenantScope } from "@/lib/tenant-scope";
+
+const NOT_FOUND = () =>
+  NextResponse.json({ error: "Not found" }, { status: 404 });
+
+/** Phase 66.2 — a task the viewer can see, or null (callers 404). */
+async function visibleTask(scope: TenantScope, id: number) {
+  return prisma.humanTask.findFirst({
+    where: { AND: [{ id }, taskWhere(scope)] },
+    select: { id: true },
+  });
+}
 
 const VALID_CATEGORIES = new Set([
   "asset",
@@ -28,13 +45,14 @@ export async function GET(request: NextRequest) {
     const projectSlug = request.nextUrl.searchParams.get("projectSlug");
     const category = request.nextUrl.searchParams.get("category");
 
+    const scope = await scopeForViewer(prisma, access.viewer);
     const where: Record<string, unknown> = {};
     if (status && VALID_STATUSES.has(status)) where.status = status;
     if (projectSlug) where.projectSlug = projectSlug;
     if (category && VALID_CATEGORIES.has(category)) where.category = category;
 
     const tasks = await prisma.humanTask.findMany({
-      where,
+      where: { AND: [taskWhere(scope), where] },
       orderBy: [
         { status: "asc" }, // pending first
         { priority: "asc" }, // high first (alphabetical: high < low < normal)
@@ -72,12 +90,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve project ID from slug if provided
+    // Phase 66.2 — only onto a project the viewer can see; an unknown
+    // or invisible slug is the same 404 (no existence oracle).
     let projectId: number | null = null;
     if (projectSlug) {
-      const project = await prisma.project.findUnique({
-        where: { slug: projectSlug },
+      const scope = await scopeForViewer(prisma, access.viewer);
+      const project = await prisma.project.findFirst({
+        where: { AND: [{ slug: String(projectSlug) }, scope.projectWhere] },
+        select: { id: true },
       });
-      if (project) projectId = project.id;
+      if (!project) return NOT_FOUND();
+      projectId = project.id;
     }
 
     const task = await prisma.humanTask.create({
@@ -90,6 +113,7 @@ export async function POST(request: NextRequest) {
         projectId,
         projectSlug: projectSlug || null,
         createdBy: createdBy || "user",
+        ownerUserId: viewerUserId(access.viewer),
       },
     });
 
@@ -134,6 +158,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const scope = await scopeForViewer(prisma, access.viewer);
+    if (!(await visibleTask(scope, id))) return NOT_FOUND();
+
     const task = await prisma.humanTask.update({
       where: { id },
       data,
@@ -164,6 +191,9 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const scope = await scopeForViewer(prisma, access.viewer);
+    if (!(await visibleTask(scope, id))) return NOT_FOUND();
 
     await prisma.humanTask.delete({ where: { id } });
     return NextResponse.json({ ok: true });

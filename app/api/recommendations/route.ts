@@ -5,6 +5,7 @@ import {
   type ProjectOutcomes,
 } from "@/lib/dispatch-recommendations";
 import { requireUser } from "@/lib/access";
+import { outcomeWhere, scopeForViewer } from "@/lib/tenant-scope";
 
 /**
  * Phase 40 [P3] — outcome-driven dispatch recommendations for the dashboard.
@@ -32,8 +33,10 @@ export async function GET(request: NextRequest) {
   if (!access.ok) return access.response;
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
+  // Phase 66.2 — outcomes on projects the viewer can see.
+  const scope = await scopeForViewer(prisma, access.viewer);
   const rows = await prisma.dispatchOutcome.findMany({
-    where: { completedAt: { gte: since } },
+    where: { AND: [outcomeWhere(scope), { completedAt: { gte: since } }] },
     select: {
       projectSlug: true,
       mode: true,

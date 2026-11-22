@@ -1,5 +1,6 @@
 import type { Tool } from "@/lib/overseer-tools";
 import { readChannelContent } from "@/lib/engineer-channel";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface EngineerMessagesInput {
   maxChars?: number;
@@ -26,7 +27,9 @@ export const engineerMessagesTool: Tool<
       },
     },
   },
-  handler: async (input) => {
+  handler: async (input, ctx) => {
+    // Phase 66.1 — the engineer channel is the operator's.
+    if (!scopeOf(ctx).isOperator) return { found: false, content: "" };
     const max = input.maxChars ?? 2000;
     try {
       const content = await readChannelContent(process.cwd());

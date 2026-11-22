@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface QueryProjectsInput {
   status?: string[];
@@ -72,7 +73,7 @@ export const queryProjectsTool: Tool<QueryProjectsInput, QueryProjectsOutput> = 
     }
 
     const projects = await ctx.prisma.project.findMany({
-      where,
+      where: { AND: [scopeOf(ctx).projectWhere, where] },
       orderBy: { lastActivityAt: "desc" },
       take: limit,
     });

@@ -1,5 +1,6 @@
 import type { Tool } from "@/lib/overseer-tools";
 import { appendToWorkingMemoryList } from "@/lib/chat-session";
+import { scopeOf } from "@/lib/tenant-scope";
 
 const VALID_MODES = ["continue", "audit", "investigate", "custom"] as const;
 type DispatchMode = (typeof VALID_MODES)[number];
@@ -62,8 +63,8 @@ export const proposeDispatchTool: Tool<ProposeDispatchInput, ProposeDispatchOutp
     // record a proposal for a misspelled or hallucinated slug; later
     // when the user clicks Execute Sprint, the dispatch endpoint
     // fails with a confusing 404. Catch it at proposal time.
-    const exists = await ctx.prisma.project.findUnique({
-      where: { slug: input.slug },
+    const exists = await ctx.prisma.project.findFirst({
+      where: { AND: [{ slug: input.slug }, scopeOf(ctx).projectWhere] },
       select: { slug: true },
     });
     if (!exists) {

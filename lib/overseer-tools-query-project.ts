@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 /**
  * Phase 12A.3 — query_project tool.
@@ -98,7 +99,10 @@ export const queryProjectTool: Tool<QueryProjectInput, QueryProjectOutput> = {
   },
   handler: async (input, ctx) => {
     const { slug } = input;
-    const project = await ctx.prisma.project.findUnique({ where: { slug } });
+    // Phase 66.1 — an invisible project is indistinguishable from none.
+    const project = await ctx.prisma.project.findFirst({
+      where: { AND: [{ slug }, scopeOf(ctx).projectWhere] },
+    });
     if (!project) return { found: false, slug };
 
     const output: QueryProjectOutput = {

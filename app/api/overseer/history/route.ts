@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { jsonError, requireNonDemo, requireUser } from "@/lib/access";
+import {
+  jsonError,
+  requireNonDemo,
+  requireUser,
+  viewerUserId,
+} from "@/lib/access";
 
 /**
  * GET /api/overseer/history
@@ -17,7 +22,8 @@ export async function GET(request: NextRequest) {
       new Date().toISOString().split("T")[0];
 
     const messages = await prisma.chatMessage.findMany({
-      where: { sessionDate: date },
+      // Phase 66.1 — the viewer's own history only (null = local operator).
+      where: { sessionDate: date, userId: viewerUserId(access.viewer) },
       orderBy: { createdAt: "asc" },
     });
 
@@ -51,7 +57,12 @@ export async function POST(request: NextRequest) {
       sessionDate || new Date().toISOString().split("T")[0];
 
     const msg = await prisma.chatMessage.create({
-      data: { role, content, sessionDate: date },
+      data: {
+        role,
+        content,
+        sessionDate: date,
+        userId: viewerUserId(access.viewer),
+      },
     });
 
     return NextResponse.json(msg, { status: 201 });
@@ -75,7 +86,7 @@ export async function DELETE(request: NextRequest) {
       new Date().toISOString().split("T")[0];
 
     await prisma.chatMessage.deleteMany({
-      where: { sessionDate: date },
+      where: { sessionDate: date, userId: viewerUserId(access.viewer) },
     });
 
     return NextResponse.json({ ok: true });

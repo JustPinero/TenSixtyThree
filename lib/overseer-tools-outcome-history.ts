@@ -12,6 +12,7 @@ import {
   type ByModeAggregation,
   type OutcomeTimelineEntry,
 } from "@/lib/overseer-history-summary";
+import { outcomeWhere, scopeOf } from "@/lib/tenant-scope";
 
 interface QueryOutcomeHistoryInput {
   slug: string;
@@ -86,8 +87,10 @@ export const outcomeHistoryTool: Tool<
 
     const outcomes = await ctx.prisma.dispatchOutcome.findMany({
       where: {
-        projectSlug: input.slug,
-        completedAt: { gte: since },
+        AND: [
+          outcomeWhere(scopeOf(ctx)),
+          { projectSlug: input.slug, completedAt: { gte: since } },
+        ],
       },
       orderBy: { completedAt: "desc" },
     });

@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { outcomeWhere, scopeOf } from "@/lib/tenant-scope";
 
 interface DispatchOutcomesInput {
   projectSlug?: string;
@@ -56,7 +57,7 @@ export const dispatchOutcomesTool: Tool<DispatchOutcomesInput, DispatchOutcomesO
     if (input.mode) where.mode = input.mode;
 
     const outcomes = await ctx.prisma.dispatchOutcome.findMany({
-      where,
+      where: { AND: [outcomeWhere(scopeOf(ctx)), where] },
       orderBy: { completedAt: "desc" },
       take: limit,
     });

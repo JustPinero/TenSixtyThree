@@ -47,11 +47,14 @@ function dayBounds(date: string): { start: Date; end: Date } {
  */
 export async function getSession(
   prisma: PrismaClient,
-  date: string
+  date: string,
+  /** Phase 66.1 — sessions are per user; null = the local operator. */
+  userId: string | null = null,
 ): Promise<ChatSession | null> {
   const { start, end } = dayBounds(date);
   return prisma.chatSession.findFirst({
     where: {
+      userId,
       startedAt: { gte: start, lt: end },
       closedAt: null,
     },
@@ -76,7 +79,9 @@ export async function getSession(
  */
 export async function getOrCreateSession(
   prisma: PrismaClient,
-  date: string
+  date: string,
+  /** Phase 66.1 — the session key is (userId, date); null = local operator. */
+  userId: string | null = null,
 ): Promise<ChatSession> {
   const { start, end } = dayBounds(date);
 
@@ -85,9 +90,10 @@ export async function getOrCreateSession(
     // used to serialize this implicitly). A transaction-scoped advisory
     // lock keyed on the day makes find-or-create atomic across callers;
     // it auto-releases at commit/rollback.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"chat-session-" + date}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`chat-session-${userId ?? "local"}-${date}`}))`;
     const existing = await tx.chatSession.findFirst({
       where: {
+        userId,
         startedAt: { gte: start, lt: end },
         closedAt: null,
       },
@@ -96,7 +102,7 @@ export async function getOrCreateSession(
     if (existing) return existing;
 
     return tx.chatSession.create({
-      data: { startedAt: start },
+      data: { startedAt: start, userId },
     });
   });
 }

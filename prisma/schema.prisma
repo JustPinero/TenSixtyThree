@@ -11,37 +11,37 @@ datasource db {
 }
 
 model Project {
-  id                 Int               @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   name               String
-  slug               String            @unique
+  slug               String    @unique
   path               String
-  status             String            @default("building") // building | complete | deployed | backburner | paused | archived
-  stack              String            @default("{}") // JSON string
-  currentPhase       String            @default("phase-1-foundation")
+  status             String    @default("building") // building | complete | deployed | backburner | paused | archived
+  stack              String    @default("{}") // JSON string
+  currentPhase       String    @default("phase-1-foundation")
   currentRequest     String?
-  health             String            @default("idle") // healthy | warning | blocked | idle
-  healthDetails      String            @default("{}") // JSON string
+  health             String    @default("idle") // healthy | warning | blocked | idle
+  healthDetails      String    @default("{}") // JSON string
   githubRepo         String?
-  autonomyMode       String            @default("semi") // full | semi | manual
-  agentTeamsEnabled  Boolean           @default(false)
-  prWorkflowEnabled  Boolean           @default(false)
-  progressScore      Int               @default(0)
-  progressDetails    String            @default("{}")
-  deploymentInfo     String            @default("{}") // JSON: { url, provider, healthEndpoint }
-  businessStage      String            @default("building") // building, pre-sale, active-sale, revenue, growth, internal
-  projectContext     String?           // persisted context.md content — project story, stakeholders, goals
-  completionCriteria String?           // persisted done.md content — what "done" means for this project
-  badges             String            @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
-  themeKey           String?           // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
-  isDemo             Boolean           @default(false) // 54.5 — demo-seeded project
-  ownerUserId        String?           // 55.2 — [54.D1] owner; null = operator fleet (admin/local visibility)
+  autonomyMode       String    @default("semi") // full | semi | manual
+  agentTeamsEnabled  Boolean   @default(false)
+  prWorkflowEnabled  Boolean   @default(false)
+  progressScore      Int       @default(0)
+  progressDetails    String    @default("{}")
+  deploymentInfo     String    @default("{}") // JSON: { url, provider, healthEndpoint }
+  businessStage      String    @default("building") // building, pre-sale, active-sale, revenue, growth, internal
+  projectContext     String? // persisted context.md content — project story, stakeholders, goals
+  completionCriteria String? // persisted done.md content — what "done" means for this project
+  badges             String    @default("[]") // JSON array: deployed, client, testing, awaiting-review, versioned
+  themeKey           String? // 53.4 — per-project assistant persona (theme-pack key); null = inherit global
+  isDemo             Boolean   @default(false) // 54.5 — demo-seeded project
+  ownerUserId        String? // 55.2 — [54.D1] owner; null = operator fleet (admin/local visibility)
   deadline           DateTime?
   lastSessionEndedAt DateTime?
   kickoffTemplateId  Int?
-  lastActivityAt     DateTime          @default(now())
-  lastScannedAt      DateTime          @default(now())
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  lastActivityAt     DateTime  @default(now())
+  lastScannedAt      DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   lessons          KnowledgeLesson[]
   auditSnapshots   AuditSnapshot[]
@@ -53,7 +53,7 @@ model Project {
   featureProposals FeatureProposal[]
   orgPosts         OrgPost[]
   orgShares        OrgProjectShare[]
-  kickoffTemplate  KickoffTemplate?  @relation(fields: [kickoffTemplateId], references: [id])
+  kickoffTemplate  KickoffTemplate?      @relation(fields: [kickoffTemplateId], references: [id])
 
   // Phase 31 — audit finding [30.D4]. Dashboard, briefing, and
   // overseer-tools-query-projects all `orderBy: { lastActivityAt: "desc" }`.
@@ -62,18 +62,18 @@ model Project {
 }
 
 model KnowledgeLesson {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   title           String
   content         String // markdown
   category        String // deployment | auth | database | performance | testing | error-handling | integrations | anti-patterns | architecture | tooling
   sourceProjectId Int?
   sourceFile      String?
   sourcePhase     String?
-  tags            String    @default("[]") // JSON array
-  severity        String    @default("nice-to-know") // critical | important | nice-to-know
-  discoveredAt    DateTime  @default(now())
-  verified        Boolean   @default(false)
-  timesReferenced Int       @default(0)
+  tags            String   @default("[]") // JSON array
+  severity        String   @default("nice-to-know") // critical | important | nice-to-know
+  discoveredAt    DateTime @default(now())
+  verified        Boolean  @default(false)
+  timesReferenced Int      @default(0)
 
   sourceProject Project? @relation(fields: [sourceProjectId], references: [id])
 }
@@ -105,15 +105,18 @@ model AuditSnapshot {
 }
 
 model ActivityEvent {
-  id        Int      @id @default(autoincrement())
-  projectId Int?
-  eventType String // commit | phase-complete | audit-complete | lesson-harvested | advisory-sent | project-created | blocker-detected | debt-resolved | session-complete
-  summary   String
-  details   String? // JSON
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  projectId  Int?
+  eventType  String // commit | phase-complete | audit-complete | lesson-harvested | advisory-sent | project-created | blocker-detected | debt-resolved | session-complete
+  summary    String
+  details    String? // JSON
+  createdAt  DateTime @default(now())
+  // Phase 66.2 [1.0.D4] — cloud progress events link to their dispatch.
+  dispatchId String?
 
   project Project? @relation(fields: [projectId], references: [id])
 
+  @@index([dispatchId])
   // Phase 31 — audit finding [30.D4]. ActivityFeed polls every 30s
   // with `orderBy: createdAt desc`; briefing filters `where: createdAt gte`.
   @@index([createdAt])
@@ -121,26 +124,26 @@ model ActivityEvent {
 }
 
 model DispatchOutcome {
-  id             Int      @id @default(autoincrement())
-  projectId      Int
-  projectSlug    String
-  mode           String // continue, audit, investigate, custom
+  id               Int      @id @default(autoincrement())
+  projectId        Int
+  projectSlug      String
+  mode             String // continue, audit, investigate, custom
   healthAtDispatch String // healthy, warning, blocked, idle
-  outcome        String // success, blocker, attention-needed, test-failure, unknown
-  signals        String   @default("[]") // JSON array of escalation signal types detected
-  dispatchedAt   DateTime
-  completedAt    DateTime @default(now())
+  outcome          String // success, blocker, attention-needed, test-failure, unknown
+  signals          String   @default("[]") // JSON array of escalation signal types detected
+  dispatchedAt     DateTime
+  completedAt      DateTime @default(now())
   // Phase 23.2 — link outcome to its originating Dispatch row.
   // Nullable for backfill of pre-23.2 rows; new rows must populate.
-  dispatchId     String?  @unique
+  dispatchId       String?  @unique
   // Phase 41.2 — goal-driven dispatch outcomes. goalCondition is the
   // /goal condition composed at dispatch (null for ad-hoc dispatches);
   // goalAchieved is the evaluator verdict parsed from the session log
   // (null = no verdict surfaced); goalReason is the evaluator's stated
   // reason when present.
-  goalCondition  String?
-  goalAchieved   Boolean?
-  goalReason     String?
+  goalCondition    String?
+  goalAchieved     Boolean?
+  goalReason       String?
 
   project  Project   @relation(fields: [projectId], references: [id])
   dispatch Dispatch? @relation(fields: [dispatchId], references: [id])
@@ -153,17 +156,17 @@ model DispatchOutcome {
 // session (passed via CASCADE_DISPATCH_ID env), and the Stop-hook
 // webhook.
 model Dispatch {
-  id               String           @id @default(cuid())
-  idempotencyKey   String           @unique @default(cuid())
+  id               String    @id @default(cuid())
+  idempotencyKey   String    @unique @default(cuid())
   projectId        Int
   projectSlug      String
-  mode             String                                  // continue | audit | investigate | custom
-  customPrompt    String?
-  status           String           @default("queued")     // queued | started | completed | failed | timeout
+  mode             String // continue | audit | investigate | custom
+  customPrompt     String?
+  status           String    @default("queued") // queued | started | completed | failed | timeout
   prompt           String?
   healthAtDispatch String?
   expectedBy       DateTime?
-  enqueuedAt       DateTime         @default(now())
+  enqueuedAt       DateTime  @default(now())
   startedAt        DateTime?
   completedAt      DateTime?
   errorMessage     String?
@@ -174,7 +177,7 @@ model Dispatch {
   // 52.1 — where this dispatch executes: local (tmux, operator machine)
   // or cloud (Agent SDK runner service). Cloud rows carry runnerId while
   // claimed and costUsd from the SDK result message.
-  runtime          String           @default("local")
+  runtime          String    @default("local")
   runnerId         String?
   costUsd          Float?
   // 52.4 — branch the runner pushed the session's commits to (null = nothing pushed)
@@ -182,10 +185,10 @@ model Dispatch {
   // 52.5 — PR opened for resultBranch (null = none opened)
   resultPrUrl      String?
 
-  outcome          DispatchOutcome?
-  project          Project          @relation(fields: [projectId], references: [id])
-  organization     Organization?    @relation(fields: [organizationId], references: [id])
-  owner            User?            @relation("DispatchOwner", fields: [ownerUserId], references: [id])
+  outcome      DispatchOutcome?
+  project      Project          @relation(fields: [projectId], references: [id])
+  organization Organization?    @relation(fields: [organizationId], references: [id])
+  owner        User?            @relation("DispatchOwner", fields: [ownerUserId], references: [id])
 
   @@index([projectId, status])
   @@index([expectedBy])
@@ -198,32 +201,40 @@ model Dispatch {
 // the Overseer reads and writes via tools (replaces the prior
 // "stuff-everything-in-the-system-prompt" pattern).
 model ChatSession {
-  id            String        @id @default(cuid())
-  startedAt     DateTime      @default(now())
-  closedAt      DateTime?
-  activeFlow        String?       // "inventory_walk" | "dispatch_planning" | "incident_triage" | null
-  workingMemory     String        @default("{}") // JSON string
+  id                String    @id @default(cuid())
+  startedAt         DateTime  @default(now())
+  closedAt          DateTime?
+  activeFlow        String? // "inventory_walk" | "dispatch_planning" | "incident_triage" | null
+  workingMemory     String    @default("{}") // JSON string
   // Phase 12E — cached summary of the older portion of the conversation.
   // JSON: {summarizedThroughMessageCount, summary}.
   compressedHistory String?
+  // Phase 66.1 — the Overseer is per user. null = local operator.
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  messages          ChatMessage[]
+  messages ChatMessage[]
 
   @@index([startedAt])
+  @@index([userId, startedAt])
   @@index([closedAt])
 }
 
 model ChatMessage {
-  id          Int          @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   role        String // user | assistant
   content     String
   sessionDate String // YYYY-MM-DD, groups conversations by day
-  sessionId   String?      // Phase 12A.1 — links to ChatSession; optional during transition
-  toolCalls   String?      // Phase 12A.1 — JSON string of structured tool invocations
-  createdAt   DateTime     @default(now())
+  sessionId   String? // Phase 12A.1 — links to ChatSession; optional during transition
+  toolCalls   String? // Phase 12A.1 — JSON string of structured tool invocations
+  createdAt   DateTime @default(now())
+  // Phase 66.1 — per-user history. null = local operator.
+  userId      String?
 
-  session     ChatSession? @relation(fields: [sessionId], references: [id])
+  session ChatSession? @relation(fields: [sessionId], references: [id])
+  user    User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, sessionDate, createdAt])
   @@index([sessionId])
   @@index([sessionDate])
   // Phase 31 — audit finding [30.D4]. /api/overseer/history filters
@@ -232,21 +243,21 @@ model ChatMessage {
 }
 
 model HumanTask {
-  id          Int       @id @default(autoincrement())
-  title       String
-  category    String    @default("other") // asset, credential, testing, deploy, review, external, other
-  priority    String    @default("normal") // high, normal, low
-  status      String    @default("pending") // pending, done
-  projectId   Int?
-  projectSlug String?
-  createdBy   String    @default("claude") // claude, user, delamain
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
+  id             Int       @id @default(autoincrement())
+  title          String
+  category       String    @default("other") // asset, credential, testing, deploy, review, external, other
+  priority       String    @default("normal") // high, normal, low
+  status         String    @default("pending") // pending, done
+  projectId      Int?
+  projectSlug    String?
+  createdBy      String    @default("claude") // claude, user, delamain
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
   // Phase 45 — team visibility. Nullable + backward-compatible.
   organizationId String?
   ownerUserId    String?
 
-  project Project? @relation(fields: [projectId], references: [id])
+  project      Project?      @relation(fields: [projectId], references: [id])
   organization Organization? @relation(fields: [organizationId], references: [id])
   owner        User?         @relation("HumanTaskOwner", fields: [ownerUserId], references: [id])
 
@@ -257,35 +268,40 @@ model HumanTask {
 }
 
 model Reminder {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   message        String
   conditionType  String // project-health, phase-complete, project-deployed, custom
   conditionValue String // e.g., "ratracer:healthy" or "pointpartner:phase-3" or freeform
   projectSlug    String? // optional — which project this relates to
-  status         String   @default("pending") // pending, triggered, dismissed
-  createdBy      String   @default("delamain") // delamain or user
-  createdAt      DateTime @default(now())
+  status         String    @default("pending") // pending, triggered, dismissed
+  createdBy      String    @default("delamain") // delamain or user
+  createdAt      DateTime  @default(now())
   triggeredAt    DateTime?
+  // Phase 66.2 — owner scoping. null = operator (local / admins).
+  ownerUserId    String?
+  owner          User?     @relation("ReminderOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
 }
 
 // Phase 11.1 — Anthropic Feature Update Check
 // Vendor-agnostic catalog of upstream AI capabilities Cascade tracks.
 // Defaults to "anthropic" but the schema allows future vendors.
 model UpstreamFeature {
-  id                 Int                    @id @default(autoincrement())
-  vendor             String                 @default("anthropic")
-  name               String
-  category           String // hook | skill | slash-command | mcp-server | sub-agent | agent-team | settings-flag | sdk-feature | api-feature | memory | other
-  description        String
-  integrationRecipe  String
-  source             String                 @default("manual") // "manual" | URL | "harvester"
-  addedBy            String                 @default("manual") // "manual" | "harvester" | "fetch"
-  confidence         Int                    @default(100) // 0-100
-  detector           String? // function name in lib/anthropic-feature-detectors.ts (null if no detector yet)
-  discoveredAt       DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  usages             ProjectFeatureUsage[]
-  proposals          FeatureProposal[]
+  id                Int                   @id @default(autoincrement())
+  vendor            String                @default("anthropic")
+  name              String
+  category          String // hook | skill | slash-command | mcp-server | sub-agent | agent-team | settings-flag | sdk-feature | api-feature | memory | other
+  description       String
+  integrationRecipe String
+  source            String                @default("manual") // "manual" | URL | "harvester"
+  addedBy           String                @default("manual") // "manual" | "harvester" | "fetch"
+  confidence        Int                   @default(100) // 0-100
+  detector          String? // function name in lib/anthropic-feature-detectors.ts (null if no detector yet)
+  discoveredAt      DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  usages            ProjectFeatureUsage[]
+  proposals         FeatureProposal[]
 
   @@unique([vendor, name])
 }
@@ -293,11 +309,11 @@ model UpstreamFeature {
 // Per-project ledger: which features are detected as in use.
 // Derived from filesystem audit; never hand-maintained.
 model ProjectFeatureUsage {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  featureId   Int
-  signal      String // free-form: where the detector matched (e.g. ".claude/settings.json hooks.Stop")
-  detectedAt  DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  featureId  Int
+  signal     String // free-form: where the detector matched (e.g. ".claude/settings.json hooks.Stop")
+  detectedAt DateTime @default(now())
 
   project Project         @relation(fields: [projectId], references: [id])
   feature UpstreamFeature @relation(fields: [featureId], references: [id])
@@ -316,11 +332,11 @@ model FeatureProposal {
   id          Int       @id @default(autoincrement())
   projectId   Int
   featureId   Int
-  diff        String    // Claude-generated Markdown diff
+  diff        String // Claude-generated Markdown diff
   status      String    @default("proposed") // proposed | accepted | rejected | applied
   generatedAt DateTime  @default(now())
   resolvedAt  DateTime?
-  resolvedBy  String?   // "user" | "claude" | "system"
+  resolvedBy  String? // "user" | "claude" | "system"
   notes       String?
 
   project Project         @relation(fields: [projectId], references: [id])
@@ -338,17 +354,17 @@ model FeatureProposal {
 // `resultUsed` column is reserved for a follow-up heuristic; default
 // true so absence-of-data doesn't penalize tools.
 model ToolCallEvent {
-  id            Int      @id @default(autoincrement())
-  sessionId     String
-  iteration     Int
-  toolName      String
-  input         String   // JSON, truncated to 4 KB
-  outputSize    Int
-  success       Boolean
-  errorMessage  String?
-  durationMs    Int
-  resultUsed    Boolean? @default(true)
-  createdAt     DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  sessionId    String
+  iteration    Int
+  toolName     String
+  input        String // JSON, truncated to 4 KB
+  outputSize   Int
+  success      Boolean
+  errorMessage String?
+  durationMs   Int
+  resultUsed   Boolean? @default(true)
+  createdAt    DateTime @default(now())
 
   @@index([sessionId, createdAt])
   @@index([toolName])
@@ -360,17 +376,17 @@ model ToolCallEvent {
 // /observability/cache hit-rate visibility and protects 23.4's
 // caching rollout from silent regressions.
 model AnthropicUsageEvent {
-  id                        Int      @id @default(autoincrement())
-  callSite                  String   // "overseer.chat" | "summarizer" | "feature-proposer" | "wizard" | "project.chat"
-  model                     String
-  inputTokens               Int
-  cacheReadInputTokens      Int      @default(0)
-  cacheCreationInputTokens  Int      @default(0)
-  cacheCreation5mTokens     Int      @default(0)
-  cacheCreation1hTokens     Int      @default(0)
-  outputTokens              Int
-  durationMs                Int
-  createdAt                 DateTime @default(now())
+  id                       Int      @id @default(autoincrement())
+  callSite                 String // "overseer.chat" | "summarizer" | "feature-proposer" | "wizard" | "project.chat"
+  model                    String
+  inputTokens              Int
+  cacheReadInputTokens     Int      @default(0)
+  cacheCreationInputTokens Int      @default(0)
+  cacheCreation5mTokens    Int      @default(0)
+  cacheCreation1hTokens    Int      @default(0)
+  outputTokens             Int
+  durationMs               Int
+  createdAt                DateTime @default(now())
 
   @@index([callSite, createdAt])
   @@index([createdAt])
@@ -380,12 +396,12 @@ model AnthropicUsageEvent {
 // Single-row config table for Cascade-wide state.
 // First use: track lastSeenClaudeCodeVersion for the version watcher.
 model CascadeConfig {
-  id                         Int       @id @default(1) // single-row enforced by always upserting id=1
-  lastSeenClaudeCodeVersion  String?
+  id                        Int      @id @default(1) // single-row enforced by always upserting id=1
+  lastSeenClaudeCodeVersion String?
   // Phase 47.1 — AI service + chat model override (null = env/default resolution)
-  aiService                  String?
-  chatModel                  String?
-  updatedAt                  DateTime  @updatedAt
+  aiService                 String?
+  chatModel                 String?
+  updatedAt                 DateTime @updatedAt
 }
 
 // ── Phase 43 — Teams foundation ─────────────────────────────────────
@@ -412,7 +428,9 @@ model User {
   // 54.2 — BYOK: user's own Anthropic key, sealed by lib/crypto-box
   anthropicKeyEnc String?
   // 54.5 — ephemeral demo identity (swept by cleanupDemo)
-  isDemo Boolean @default(false)
+  isDemo          Boolean @default(false)
+  // 66.3 — per-user Overseer model preference (null = admin default).
+  chatModel       String?
 
   // Better Auth relations
   sessions    Session[]
@@ -421,16 +439,17 @@ model User {
   invitations Invitation[]
 
   // Work attribution (51.3 — teams live on the org plugin now)
-  ownedDispatches Dispatch[] @relation("DispatchOwner")
-  orgPosts        OrgPost[] @relation("OrgPostAuthor")
-  ownedTasks      HumanTask[] @relation("HumanTaskOwner")
+  ownedDispatches Dispatch[]    @relation("DispatchOwner")
+  orgPosts        OrgPost[]     @relation("OrgPostAuthor")
+  ownedTasks      HumanTask[]   @relation("HumanTaskOwner")
+  // 66.1/66.2 — per-user Overseer + reminders
+  chatSessions    ChatSession[]
+  chatMessages    ChatMessage[]
+  reminders       Reminder[]    @relation("ReminderOwner")
 
   @@unique([email])
   @@map("user")
 }
-
-
-
 
 // Phase 48.4 — "Brains": repos designated as knowledge/persona stores
 // (e.g. ~/kilroy-brain). Registered from Settings; consumers resolve the
@@ -442,7 +461,6 @@ model Brain {
   createdAt    DateTime  @default(now())
   lastSyncedAt DateTime?
 }
-
 
 // ── Better Auth core (Phase 51.2; generated by `auth generate`, ids given
 // cuid() defaults so direct prisma creates in tests work — BA supplies its
@@ -499,22 +517,22 @@ model Verification {
 }
 
 model Organization {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String
-  logo        String?
-  createdAt   DateTime     @default(now())
-  metadata    String?
-  members     Member[]
-  invitations Invitation[]
-  dispatches  Dispatch[]
-  humanTasks  HumanTask[]
-  posts       OrgPost[]
+  id            String            @id @default(cuid())
+  name          String
+  slug          String
+  logo          String?
+  createdAt     DateTime          @default(now())
+  metadata      String?
+  members       Member[]
+  invitations   Invitation[]
+  dispatches    Dispatch[]
+  humanTasks    HumanTask[]
+  posts         OrgPost[]
   projectShares OrgProjectShare[]
   // 54.4b — org's Linear API key, sealed by lib/crypto-box
-  linearKeyEnc String?
+  linearKeyEnc  String?
   // 54.5 — ephemeral demo org
-  isDemo Boolean @default(false)
+  isDemo        Boolean           @default(false)
 
   @@unique([slug])
   @@map("organization")
@@ -529,6 +547,8 @@ model Member {
   role           String       @default("member")
   createdAt      DateTime     @default(now())
 
+  // Phase 66.4 — one membership per (user, org).
+  @@unique([userId, organizationId])
   @@index([organizationId])
   @@index([userId])
   @@map("member")

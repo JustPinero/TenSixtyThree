@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/app/generated/prisma/client";
+import type { TenantScope } from "@/lib/tenant-scope";
 
 /**
  * Phase 12A.2 — Tool framework for the Overseer.
@@ -15,6 +16,13 @@ export interface ToolContext {
   prisma: PrismaClient;
   /** ChatSession id; required for tools that read/write working memory. */
   sessionId?: string;
+  /**
+   * Phase 66.1 — who is chatting. Every tool that reads projects,
+   * activity, tasks, outcomes or lessons filters through it via
+   * `scopeOf(ctx)`; an absent scope is the local operator locally and
+   * DENY on the hosted app (fail closed).
+   */
+  scope?: TenantScope;
 }
 
 export interface Tool<TInput = unknown, TOutput = unknown> {

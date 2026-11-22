@@ -1,6 +1,7 @@
 import type { Tool } from "@/lib/overseer-tools";
 import fs from "fs/promises";
 import path from "path";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface PlaybookInput {
   bullets?: boolean;
@@ -24,7 +25,9 @@ export const playbookTool: Tool<PlaybookInput, PlaybookOutput> = {
       },
     },
   },
-  handler: async (input) => {
+  handler: async (input, ctx) => {
+    // Phase 66.1 — the operator's playbook is not other users' business.
+    if (!scopeOf(ctx).isOperator) return { found: false, content: "" };
     const playbookPath = path.resolve(
       process.cwd(),
       "knowledge",

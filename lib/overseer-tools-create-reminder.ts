@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 const VALID_TYPES = [
   "project-health",
@@ -64,6 +65,8 @@ export const createReminderTool: Tool<CreateReminderInput, CreateReminderOutput>
         conditionValue: input.conditionValue,
         projectSlug: input.projectSlug ?? null,
         createdBy: "delamain",
+        // Phase 66.1 — the reminder belongs to the chatting user.
+        ownerUserId: scopeOf(ctx).userId,
       },
     });
     return {

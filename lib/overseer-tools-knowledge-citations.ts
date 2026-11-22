@@ -19,6 +19,7 @@ import {
   matchIssueToLessons,
   type MatchableLesson,
 } from "@/lib/knowledge-matcher";
+import { lessonWhere, scopeOf } from "@/lib/tenant-scope";
 
 interface QueryKnowledgeInput {
   query: string;
@@ -83,7 +84,10 @@ export const knowledgeCitationsTool: Tool<
   ): Promise<QueryKnowledgeOutput> => {
     const topN = Math.min(input.topN ?? DEFAULT_TOP_N, MAX_TOP_N);
 
-    const allLessons = await ctx.prisma.knowledgeLesson.findMany();
+    // Phase 66.1 — lessons from projects the chatting user can see.
+    const allLessons = await ctx.prisma.knowledgeLesson.findMany({
+      where: lessonWhere(scopeOf(ctx)),
+    });
     const matchable: MatchableLesson[] = allLessons.map((l) => ({
       id: l.id,
       title: l.title,

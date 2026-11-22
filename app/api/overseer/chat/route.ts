@@ -38,6 +38,7 @@ import {
   defaultSummarizer,
 } from "@/lib/chat-history-compressor";
 import { isHosted, jsonError, requireUser } from "@/lib/access";
+import { scopeForViewer } from "@/lib/tenant-scope";
 
 // Module-level singleton — the registry is pure and request-independent
 // after Phase 12, so rebuilding it on every request was wasted work.
@@ -285,7 +286,16 @@ export async function POST(request: NextRequest) {
       typeof lastUserMessage?.content === "string"
         ? lastUserMessage.content
         : "";
+    // Phase 66.1 — who is chatting decides what every tool can see.
+    const scope = await scopeForViewer(prisma, access.viewer);
+    const operatorOnly = () =>
+      new Response(
+        sseFromText("That command is only available to an administrator."),
+        { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } },
+      );
+
     if (isFeatureCheckCommand(lastUserText)) {
+      if (!scope.isOperator) return operatorOnly();
       const report = await runFeatureCheck(prisma, {
         cascadeRoot: process.cwd(),
       });
@@ -306,9 +316,12 @@ export async function POST(request: NextRequest) {
     // call (cost control); slugs filter the audit to specific
     // projects.
     if (isFeatureProposeCommand(lastUserText)) {
+      if (!scope.isOperator) return operatorOnly();
       const { projectSlugs } = parseFeatureProposeArgs(lastUserText);
       const results = await proposeForAll(prisma, {
         projectSlugs: projectSlugs.length > 0 ? projectSlugs : undefined,
+        projectWhere: scope.projectWhere,
+        deps: { apiKey },
       });
       const rendered = renderProposalReport(results);
       return new Response(sseFromText(rendered), {
@@ -332,8 +345,8 @@ export async function POST(request: NextRequest) {
     const sessionDate = isValidSessionDate(body.sessionDate)
       ? body.sessionDate
       : new Date().toISOString().split("T")[0];
-    const session = await getOrCreateSession(prisma, sessionDate);
-    const ctx: ToolContext = { prisma, sessionId: session.id };
+    const session = await getOrCreateSession(prisma, sessionDate, scope.userId);
+    const ctx: ToolContext = { prisma, sessionId: session.id, scope };
 
     // Phase 13.2 — abort discipline. 60s ceiling for the whole
     // request. Signal threads through compressor → summarizer and
@@ -520,7 +533,10 @@ export async function POST(request: NextRequest) {
         // aggregated text after the stream closes. Failures never
         // affect the client response.
         const finalText = aggregatedText || result.finalText;
-        const engineerMessages = extractEngineerMessages(finalText);
+        // Phase 66.1 — the [ENGINEER] tag is retired; the writeback only
+        // runs for the local operator (it appends to a file on THIS disk).
+        const engineerMessages =
+          !isHosted() && scope.userId === null ? extractEngineerMessages(finalText) : [];
         if (engineerMessages.length > 0) {
           const cwd = process.cwd();
           for (const message of engineerMessages) {

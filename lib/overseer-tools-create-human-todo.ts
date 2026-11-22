@@ -1,4 +1,5 @@
 import type { Tool } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 const VALID_CATEGORIES = [
   "asset",
@@ -64,12 +65,19 @@ export const createHumanTodoTool: Tool<CreateHumanTodoInput, CreateHumanTodoOutp
       throw new Error(`Unknown priority "${priority}".`);
     }
 
+    // Phase 66.1 — attach only to a project the chatting user can see,
+    // and record who the todo belongs to.
+    const scope = scopeOf(ctx);
     let projectId: number | null = null;
     if (input.projectSlug) {
-      const project = await ctx.prisma.project.findUnique({
-        where: { slug: input.projectSlug },
+      const project = await ctx.prisma.project.findFirst({
+        where: { AND: [{ slug: input.projectSlug }, scope.projectWhere] },
+        select: { id: true },
       });
-      projectId = project?.id ?? null;
+      if (!project) {
+        throw new Error(`Unknown project slug "${input.projectSlug}".`);
+      }
+      projectId = project.id;
     }
 
     const created = await ctx.prisma.humanTask.create({
@@ -80,6 +88,7 @@ export const createHumanTodoTool: Tool<CreateHumanTodoInput, CreateHumanTodoOutp
         projectSlug: input.projectSlug ?? null,
         projectId,
         createdBy: "delamain",
+        ownerUserId: scope.userId,
       },
     });
 

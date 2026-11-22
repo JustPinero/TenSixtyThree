@@ -9,6 +9,7 @@
  * Prisma aggregations — no recursive Anthropic call.
  */
 import type { Tool, ToolContext } from "@/lib/overseer-tools";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface GetToolCallStatsInput {
   /** Default: current chat session if available; otherwise all. */
@@ -77,6 +78,10 @@ export const toolCallStatsTool: Tool<GetToolCallStatsInput, GetToolCallStatsOutp
       MAX_WINDOW_DAYS
     );
     const groupBy = input.groupBy ?? "tool";
+    // Phase 66.1 — fleet telemetry is operator data.
+    if (!scopeOf(ctx).isOperator) {
+      return { windowDays, groupBy, totalCalls: 0, groups: [] };
+    }
     const sessionId = input.sessionId ?? ctx.sessionId;
 
     const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);

@@ -1,5 +1,6 @@
 import type { Tool } from "@/lib/overseer-tools";
 import { getSessionLogs } from "@/lib/session-reader";
+import { scopeOf } from "@/lib/tenant-scope";
 
 interface SessionLogsInput {
   slug: string;
@@ -35,8 +36,8 @@ export const sessionLogsTool: Tool<SessionLogsInput, SessionLogsOutput> = {
   },
   handler: async (input, ctx) => {
     const limit = input.limit ?? 1;
-    const project = await ctx.prisma.project.findUnique({
-      where: { slug: input.slug },
+    const project = await ctx.prisma.project.findFirst({
+      where: { AND: [{ slug: input.slug }, scopeOf(ctx).projectWhere] },
     });
     if (!project) return { found: false, slug: input.slug, logs: [] };
 

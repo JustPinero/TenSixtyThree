@@ -281,7 +281,7 @@ Reboot.
 - **Demo mode** — "Try the demo" on `/signin` mints an ephemeral sandbox (2-hour session, swept after 24h, rate-limited) with a canned Overseer and refused spend paths
 - **Theme packs & personas** — 12 packs, each with a persona that actually shapes the Overseer's system prompt
 
-The **collision plane** — one feed that sees both human assignments and live agent work so overlapping edits get flagged — remains the product thesis; see [`docs/cascade-2.0-team-direction.md`](docs/cascade-2.0-team-direction.md).
+The **collision plane** — one feed that sees both human assignments and live agent work so overlapping edits get flagged — remains the product thesis; see [`docs/archive/cascade-2.0-team-direction.md`](docs/archive/cascade-2.0-team-direction.md).
 
 **Next:** known debt carried into 1.0 is tracked in [`audits/debt.md`](audits/debt.md). Start there.
 

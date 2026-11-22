@@ -3,6 +3,12 @@ set -euo pipefail
 
 errors=0
 
+# Phase 58.4 — on Railway this must be able to FAIL: assert every
+# hosted-required variable (lib/env-manifest.ts) is set.
+if [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
+  exec pnpm exec tsx scripts/check-hosted-env.ts
+fi
+
 # Check required env vars
 if [ ! -f .env.local ] && [ ! -f .env ]; then
   echo "WARNING: No .env.local or .env file found"

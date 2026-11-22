@@ -1,3 +1,5 @@
+> **Archived 2026-11-22 (phase 58.4).** The Phase-48 single-team layer this doc planned was retired in 1.0 in favor of Better Auth's org plugin (multi-org workspaces, shared projects, typed feed). The collision-plane thesis — one feed of human AND agent work so overlapping edits get flagged — still stands.
+
 # Cascade 2.0 — The Team Direction
 
 _Working brief, not a spec. Kilroy for Justin, July 2026. Companion prototype: the team collision board (published artifact)._

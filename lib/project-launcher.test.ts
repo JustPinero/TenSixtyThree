@@ -90,3 +90,24 @@ describe("launchProject", () => {
     expect(project!.githubRepo).toBeNull();
   });
 });
+
+describe("68.2 — the wizard stamps the creator as owner", () => {
+  it("ownerUserId from the launch config lands on the project", async () => {
+    await prisma.user.create({ data: { id: "creator", name: "c", email: "c@x.dev" } });
+    const result = await launchProject(prisma, TEST_DIR, {
+      name: "Owned Launch",
+      slug: "owned-launch",
+      projectType: "web-app",
+      kickoffContent: "# Owned",
+      createGithubRepo: false,
+      isPrivate: true,
+      autonomyMode: "semi",
+      agentTeamsEnabled: false,
+      prWorkflowEnabled: false,
+      ownerUserId: "creator",
+    });
+    expect(result.success).toBe(true);
+    const project = await prisma.project.findUnique({ where: { slug: "owned-launch" } });
+    expect(project?.ownerUserId).toBe("creator");
+  });
+});

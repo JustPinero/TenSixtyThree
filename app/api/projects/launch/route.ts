@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { launchProject } from "@/lib/project-launcher";
 import path from "path";
 import os from "os";
-import { requireLocalMode, jsonError } from "@/lib/access";
+import { requireLocalMode, jsonError, viewerUserId } from "@/lib/access";
 import { isSafeDirName, isValidSlug } from "@/lib/validators";
 
 function resolveProjectsDir(): string {
@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
       autonomyMode: autonomyMode || "semi",
       agentTeamsEnabled: agentTeamsEnabled || false,
       prWorkflowEnabled: prWorkflowEnabled || false,
+      // 68.2 — a signed-in creator owns the project; the bare local
+      // operator creates fleet projects (null owner).
+      ownerUserId: viewerUserId(access.viewer),
     });
 
     if (result.success) {

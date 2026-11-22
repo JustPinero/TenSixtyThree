@@ -42,6 +42,8 @@ export interface LaunchConfig {
   autonomyMode: string;
   agentTeamsEnabled: boolean;
   prWorkflowEnabled: boolean;
+  /** 68.2 — owner of the new project (null = operator fleet). */
+  ownerUserId?: string | null;
 }
 
 export interface LaunchResult {
@@ -150,6 +152,7 @@ export async function launchProject(
         prWorkflowEnabled: config.prWorkflowEnabled,
         // 67.3 — owner/repo, not the clone URL (the runner builds its own).
         githubRepo: normalizeGithubRepo(githubUrl),
+        ownerUserId: config.ownerUserId ?? null,
         stack: JSON.stringify({ projectType: config.projectType }),
       },
     });

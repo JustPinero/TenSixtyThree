@@ -1,11 +1,18 @@
 "use client";
 
 import { ProjectTile, type ProjectTileData } from "./project-tile";
+import { FirstRunPanel } from "./first-run-panel";
 
 interface ProjectGridProps {
   projects: ProjectTileData[];
   loading: boolean;
   groupBy?: "none" | "status";
+  /** 68.2 — projects before filters; 0 means a brand-new account. */
+  totalCount?: number;
+  /** 68.2 — the list failed to load (not the same as "empty"). */
+  loadError?: boolean;
+  onRetry?: () => void;
+  onConnected?: () => void;
 }
 
 function SkeletonTile() {
@@ -38,6 +45,10 @@ export function ProjectGrid({
   projects,
   loading,
   groupBy = "none",
+  totalCount,
+  loadError = false,
+  onRetry,
+  onConnected,
 }: ProjectGridProps) {
   if (loading) {
     return (
@@ -47,6 +58,27 @@ export function ProjectGrid({
         ))}
       </div>
     );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="p-8 border border-danger bg-space-800 text-center space-y-3">
+        <p className="text-sm text-text font-mono">Couldn&apos;t load your projects.</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="min-h-6 border border-cyan px-3 py-1.5 text-xs font-mono uppercase text-cyan hover:bg-cyan/10 focus-ring"
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (projects.length === 0 && totalCount === 0) {
+    return <FirstRunPanel onConnected={onConnected} />;
   }
 
   if (projects.length === 0) {

@@ -162,6 +162,7 @@ function DashboardContent() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectTileData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dispatchResults, setDispatchResults] = useState<DispatchResultData[]>([]);
 
@@ -178,6 +179,8 @@ function DashboardContent() {
       const res = await fetch("/api/projects");
       const data = await res.json();
       const parsed = projectsArraySchema.safeParse(data);
+      // 68.2 — a failed load is not an empty fleet.
+      setLoadError(!res.ok || !parsed.success);
       if (parsed.success) {
         setProjects(
           parsed.data.map((p): ProjectTileData => ({
@@ -197,6 +200,8 @@ function DashboardContent() {
           }))
         );
       }
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -305,6 +310,10 @@ function DashboardContent() {
           projects={filtered}
           loading={loading}
           groupBy={filters.groupBy}
+          totalCount={projects.length}
+          loadError={loadError}
+          onRetry={() => setRefreshKey((k) => k + 1)}
+          onConnected={() => setRefreshKey((k) => k + 1)}
         />
         <ActivityFeed />
       </div>

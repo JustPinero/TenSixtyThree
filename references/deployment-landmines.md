@@ -24,7 +24,7 @@ Stack-specific warnings for Next.js + Prisma/Postgres + Railway + Anthropic API.
 
 ## Security headers and local mode (Phase 70)
 - `next.config.ts headers()` sends a CSP baseline (`lib/security-headers.ts`, snapshot-tested), `frame-ancestors 'none'`, HSTS, nosniff. `script-src` keeps `'unsafe-inline'` because the App Router emits inline bootstrap scripts; a new third-party script, font, frame or fetch origin must be added to the CSP deliberately or the browser will block it.
-- Local mode (no `AUTH_REQUIRED`): middleware refuses POST/PUT/PATCH/DELETE with a non-loopback Host or a foreign Origin (`lib/local-origin.ts`). Origin-less requests (curl, the Stop hook) still pass. If you reach the local dashboard through a LAN hostname, writes will 403 by design.
+- Local mode (no `AUTH_REQUIRED`): middleware refuses ANY request with a non-loopback Host (DNS rebinding — reads too) and POST/PUT/PATCH/DELETE with a foreign Origin (`lib/local-origin.ts`). Origin-less requests (curl, the Stop hook) still pass. If you reach the local dashboard through a LAN hostname, writes will 403 by design.
 
 ## Shell Execution (gh, op CLIs)
 - **child_process**: Use `execAsync` (promisified exec) for CLI calls. Always handle stderr.

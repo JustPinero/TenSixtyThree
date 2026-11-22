@@ -17,8 +17,10 @@ afterEach(() => {
   process.env = { ...saved };
 });
 
+// Loopback host: in local mode (AUTH_REQUIRED=false) phase 70 refuses any
+// non-loopback Host; the edge gate itself does not look at the host.
 function req(path: string, headers: Record<string, string> = {}) {
-  return new NextRequest(`https://www.tensixtythree.com${path}`, { headers });
+  return new NextRequest(`http://127.0.0.1:3000${path}`, { headers });
 }
 
 describe("middleware — edge gate", () => {
@@ -91,3 +93,11 @@ describe("middleware — local-mode Origin guard (phase 70)", () => {
     expect(res.status).not.toBe(403);
   });
 });
+
+describe("middleware — local-mode Host guard covers reads (security review)", () => {
+  it("a GET through a rebound hostname is refused in local mode", async () => {
+    const res = await middleware(new NextRequest("http://evil.example/api/projects"));
+    expect(res.status).toBe(403);
+  });
+});
+

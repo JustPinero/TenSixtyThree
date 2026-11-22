@@ -50,7 +50,17 @@ describe("localOriginDecision", () => {
     ).toBe("reject");
   });
 
-  it("reads are not affected; the hosted app is not affected", () => {
+  it("security review: reads through a rebound hostname are refused too", () => {
+    // DNS rebinding lets a hostile page READ local data via GET, not only write.
+    expect(
+      localOriginDecision({ ...base, method: "GET", host: "evil.example" }),
+    ).toBe("reject");
+    expect(
+      localOriginDecision({ ...base, method: "GET", host: "localhost:3000" }),
+    ).toBe("allow");
+  });
+
+  it("loopback reads ignore Origin; the hosted app is not affected", () => {
     expect(
       localOriginDecision({
         ...base,

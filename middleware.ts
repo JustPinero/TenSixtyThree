@@ -39,7 +39,7 @@ export function middleware(request: NextRequest) {
     localOriginDecision({
       authRequired: process.env.AUTH_REQUIRED === "true",
       method: request.method,
-      host: request.headers.get("host"),
+      host: request.headers.get("host") ?? request.nextUrl.host,
       origin: request.headers.get("origin"),
     }) === "reject"
   ) {

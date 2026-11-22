@@ -27,9 +27,11 @@ export function localOriginDecision(req: {
   origin: string | null;
 }): "allow" | "reject" {
   if (req.authRequired) return "allow";
-  if (!STATE_CHANGING.has(req.method.toUpperCase())) return "allow";
+  // Security review: the Host check covers EVERY method — a rebound
+  // hostname must not be able to read local data via GET either.
   const host = req.host ?? "";
   if (!LOOPBACK_HOSTS.has(hostname(host).toLowerCase())) return "reject";
+  if (!STATE_CHANGING.has(req.method.toUpperCase())) return "allow";
   if (req.origin === null) return "allow";
   try {
     const origin = new URL(req.origin);

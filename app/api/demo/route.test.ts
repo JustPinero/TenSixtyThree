@@ -38,14 +38,21 @@ describe("POST /api/demo", () => {
     expect(await rig.prisma.organization.count({ where: { isDemo: true } })).toBe(1);
   });
 
-  it("rate-limits to 3/hour per client IP, keyed on the trusted last hop", async () => {
+  it("58.1 — rate-limits 3/hour per client, keyed on x-client-ip (what middleware pins)", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const route = await load(rig);
-    // Attacker-prepended junk must not mint fresh buckets — same real IP.
-    for (const junk of ["1.1.1.1", "2.2.2.2", "3.3.3.3"]) {
-      expect((await route.POST(post(`${junk}, 203.0.113.5`))).status).toBe(200);
+    // Behind Cloudflare + Railway the last x-forwarded-for hop is the edge,
+    // not the client; middleware resolves the client into x-client-ip and
+    // overwrites anything sent. Varying XFF must not mint fresh buckets.
+    const viaEdge = (xff: string) =>
+      new NextRequest("http://x/api/demo", {
+        method: "POST",
+        headers: { "x-forwarded-for": xff, "x-client-ip": "198.51.100.7" },
+      });
+    for (const xff of ["1.1.1.1, 172.71.0.1", "2.2.2.2, 172.71.0.2", "3.3.3.3, 172.71.0.3"]) {
+      expect((await route.POST(viaEdge(xff))).status).toBe(200);
     }
-    expect((await route.POST(post("9.9.9.9, 203.0.113.5"))).status).toBe(429);
+    expect((await route.POST(viaEdge("9.9.9.9, 172.71.0.9"))).status).toBe(429);
   });
 });
 

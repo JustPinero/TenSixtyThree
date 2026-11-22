@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireOperatorPage } from "@/lib/operator-page";
 import { getToolCallEvents } from "@/lib/observability/tool-call-events";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,8 @@ export default async function ToolsObservabilityPage({
 }: {
   searchParams: Promise<PageSearchParams>;
 }) {
+  // Batch review (HIGH): fleet-wide telemetry — operators only (404 otherwise).
+  await requireOperatorPage();
   const sp = await searchParams;
   const since = parseDate(sp.since);
   const until = parseDate(sp.until);

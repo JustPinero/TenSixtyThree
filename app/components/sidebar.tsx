@@ -10,6 +10,12 @@ import { useTheme } from "./theme-provider";
 import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
 import { getOverseerSettings } from "@/lib/overseer-settings";
+import {
+  isLocalOnlyPath,
+  isOperatorOnlyPath,
+  type DeploymentMode,
+} from "@/lib/deployment-mode";
+import { useDeploymentMode, useIsOperator } from "./deployment-mode";
 
 function DashboardIcon() {
   return (
@@ -259,8 +265,19 @@ function overseerRaw(): string {
   }
 }
 
+/** Phase 68.1 — the nav for a deployment mode (snapshot-tested). */
+export function visibleNavItems(mode: DeploymentMode, isOperator = true) {
+  return navItems.filter(
+    (item) =>
+      !(mode === "hosted" && isLocalOnlyPath(item.href)) &&
+      !(!isOperator && isOperatorOnlyPath(item.href)),
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
+  const mode = useDeploymentMode();
+  const isOperator = useIsOperator();
   // 71.4 — remember which route the drawer was opened on; navigating
   // (tapping a nav link) changes the route, which closes it. Derived
   // state, so no setState-in-effect.
@@ -367,7 +384,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 py-3 space-y-0.5" aria-label="Main navigation">
-          {navItems.map((item) => (
+          {visibleNavItems(mode, isOperator).map((item) => (
             <span
               key={item.href}
               id={item.href === "/delamain" ? "tour-overseer-link" : undefined}

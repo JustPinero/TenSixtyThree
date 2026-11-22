@@ -19,6 +19,8 @@ import { Portrait } from "@/app/components/portrait";
 import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
 import { Toggle } from "@/app/components/ui/toggle";
+import { LocalOnly } from "../components/deployment-mode";
+import { version as APP_VERSION } from "../../package.json";
 
 interface AuthStatus {
   service: string;
@@ -1160,7 +1162,10 @@ export default function SettingsPage() {
 
       <AnthropicKeyPanel />
 
-      <IntegrationsPanel />
+      {/* 68.1 — CLI logins on the server's own machine. */}
+      <LocalOnly>
+        <IntegrationsPanel />
+      </LocalOnly>
 
       <div className="divider-h mb-8" />
 
@@ -1169,9 +1174,13 @@ export default function SettingsPage() {
 
       <div className="divider-h mb-8" />
 
-      <AutomationPanel />
+      <LocalOnly>
+        <AutomationPanel />
+      </LocalOnly>
       <ModelPanel />
-      <BrainsPanel />
+      <LocalOnly>
+        <BrainsPanel />
+      </LocalOnly>
 
       <div className="divider-h mb-8" />
 
@@ -1182,11 +1191,11 @@ export default function SettingsPage() {
         <div className="space-y-2 text-xs font-mono text-text">
           <p>
             <span className="text-text-dim">Version:</span>{" "}
-            <span className="text-text-bright">Delamain v1</span>
+            <span className="text-text-bright">TenSixtyThree v{APP_VERSION}</span>
           </p>
           <p>
             <span className="text-text-dim">Engine:</span> Next.js + Prisma +
-            SQLite
+            Postgres
           </p>
           <p>
             <span className="text-text-dim">AI:</span> Anthropic Claude API

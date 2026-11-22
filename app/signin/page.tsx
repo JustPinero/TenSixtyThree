@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { TryDemoButton } from "../components/try-demo-button";
 
 /**
  * 54.1 — sign-in surface. Invite-only: unknown emails are refused at the
@@ -77,19 +78,7 @@ export default function SignInPage() {
           Access is invite-only. Use the email your invitation was sent to.
         </p>
 
-        <button
-          onClick={async () => {
-            setBusy(true);
-            const res = await fetch("/api/demo", { method: "POST" });
-            setBusy(false);
-            if (res.ok) window.location.href = "/?demo=1";
-            else setError("Demo is busy right now — try again in a bit.");
-          }}
-          disabled={busy}
-          className="w-full border border-amber px-4 py-2.5 text-sm font-mono uppercase text-amber hover:bg-space-800 disabled:opacity-50"
-        >
-          Try the demo
-        </button>
+        <TryDemoButton />
 
         <button
           onClick={() =>

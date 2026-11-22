@@ -8,6 +8,7 @@ import { CommandPanel } from "../../components/command-panel";
 import { Portrait } from "../../components/portrait";
 import { CloudDispatchPanel } from "../../components/cloud-dispatch-panel";
 import { THEME_PACKS, getThemePack } from "@/lib/theme-registry";
+import { LocalOnly, useDeploymentMode } from "../../components/deployment-mode";
 
 interface Project {
   id: number;
@@ -456,6 +457,7 @@ export default function ProjectDetailPage() {
   const slug = params.slug as string;
   const [project, setProject] = useState<Project | null>(null);
   const [envStatus, setEnvStatus] = useState<EnvStatus | null>(null);
+  const mode = useDeploymentMode();
   const [loading, setLoading] = useState(true);
 
   const fetchProject = useCallback(async () => {
@@ -465,7 +467,8 @@ export default function ProjectDetailPage() {
         const data = await res.json();
         setProject(data);
 
-        // Fetch env status
+        // Fetch env status (local installs only — 68.1)
+        if (mode !== "local") return;
         const envRes = await fetch(
           `/api/integrations/onepassword?path=${encodeURIComponent(data.path)}&name=${encodeURIComponent(data.name)}`,
         );
@@ -476,7 +479,7 @@ export default function ProjectDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, mode]);
 
   useEffect(() => {
     fetchProject();
@@ -508,16 +511,20 @@ export default function ProjectDetailPage() {
           <h1 className="text-2xl font-bold font-mono text-text-bright">
             {project.name}
           </h1>
-          <p className="text-xs font-mono text-muted">{project.path}</p>
+          <p className="text-xs font-mono text-muted">
+            {mode === "local" ? project.path : (project.githubRepo ?? "No repository connected")}
+          </p>
         </div>
       </div>
 
-      {/* Dispatch Actions */}
-      <DispatchPanel
-        slug={slug}
-        health={project.health}
-        onAction={fetchProject}
-      />
+      {/* Dispatch Actions — 68.1: local tmux dispatch, local install only */}
+      <LocalOnly>
+        <DispatchPanel
+          slug={slug}
+          health={project.health}
+          onAction={fetchProject}
+        />
+      </LocalOnly>
 
       {/* 52.3 — hosted runner dispatch + live run view */}
       <CloudDispatchPanel slug={slug} hasRepo={Boolean(project.githubRepo)} />
@@ -618,6 +625,7 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
+        <LocalOnly>
         {/* Env Status */}
         <div className="p-4 border border-space-600 bg-space-800 space-y-3">
           <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider">
@@ -668,6 +676,7 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </div>
+        </LocalOnly>
 
         {/* Audit History */}
         <div className="p-4 border border-space-600 bg-space-800 space-y-3">
@@ -696,11 +705,13 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
+        <LocalOnly>
         {/* Remaining Work */}
         <RemainingWorkPanel slug={slug} />
 
         {/* Session History */}
         <SessionHistoryPanel slug={slug} />
+        </LocalOnly>
 
         {/* Deploy Status */}
         <DeployStatusPanel project={project} />

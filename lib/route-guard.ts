@@ -10,6 +10,7 @@
 
 const PUBLIC_PREFIXES = [
   "/signin",
+  "/welcome", // 68.1 — public landing page
   "/api/auth/", // Better Auth mount — its own flows handle security
   "/api/health", // deploy healthcheck must stay unauthenticated (51.4)
   "/api/webhook/session-complete", // shared-secret auth of its own (42.x)
@@ -39,12 +40,17 @@ export interface GuardInput {
 }
 
 export type GuardDecision =
-  { kind: "allow" } | { kind: "redirect"; to: "/signin" } | { kind: "401" };
+  | { kind: "allow" }
+  | { kind: "redirect"; to: "/signin" | "/welcome" }
+  | { kind: "401" };
 
 export function guardDecision(input: GuardInput): GuardDecision {
   if (!input.authRequired) return { kind: "allow" };
   if (isPublicPath(input.path)) return { kind: "allow" };
   if (input.hasSessionCookie) return { kind: "allow" };
   if (input.path.startsWith("/api/")) return { kind: "401" };
+  // 68.1 — a signed-out visitor to the front door meets the product, not
+  // a login box; deep links still go straight to sign-in.
+  if (input.path === "/") return { kind: "redirect", to: "/welcome" };
   return { kind: "redirect", to: "/signin" };
 }

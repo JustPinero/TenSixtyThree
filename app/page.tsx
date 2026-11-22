@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { requestNotificationPermission } from "@/lib/notify";
 import { ScanButton } from "./components/scan-button";
+import { LocalOnly } from "./components/deployment-mode";
 import { MorningBriefing } from "./components/morning-briefing";
 import { PlatformBadge } from "./components/platform-badge";
 import { FleetStatusStrip } from "./components/fleet-status-strip";
@@ -267,18 +268,23 @@ function DashboardContent() {
           <CostWidget />
           <QuarantineBanner />
           <FleetStatusStrip />
-          <PlatformBadge />
-          <ScanButton
-            onScanComplete={() => setRefreshKey((k) => k + 1)}
-          />
-          <HarvestAllButton />
-          <ResumeAllButton onResults={setDispatchResults} />
+          {/* 68.1 — these act on the server's own disk/CLIs. */}
+          <LocalOnly>
+            <PlatformBadge />
+            <ScanButton
+              onScanComplete={() => setRefreshKey((k) => k + 1)}
+            />
+            <HarvestAllButton />
+            <ResumeAllButton onResults={setDispatchResults} />
+          </LocalOnly>
         </div>
       </div>
 
       <MorningBriefing />
 
-      <FleetDriftPanel />
+      <LocalOnly>
+        <FleetDriftPanel />
+      </LocalOnly>
 
       <DispatchRecommendations />
 

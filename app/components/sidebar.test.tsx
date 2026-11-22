@@ -232,3 +232,52 @@ describe("mobile drawer behaviour (Phase 71.4)", () => {
     expect(drawer(container).hasAttribute("inert")).toBe(false);
   });
 });
+
+describe("68.1 — nav per deployment mode", () => {
+  it("snapshot: local shows everything, hosted drops disk/CLI pages", async () => {
+    const { visibleNavItems } = await import("./sidebar");
+    expect(visibleNavItems("local").map((i) => i.href)).toMatchInlineSnapshot(`
+      [
+        "/",
+        "/delamain",
+        "/tasks",
+        "/roadmap",
+        "/boards",
+        "/team",
+        "/playbook",
+        "/knowledge",
+        "/create",
+        "/reports",
+        "/templates",
+        "/observability/cache",
+        "/observability/tools",
+        "/settings",
+      ]
+    `);
+    expect(visibleNavItems("hosted").map((i) => i.href)).toMatchInlineSnapshot(`
+      [
+        "/",
+        "/delamain",
+        "/tasks",
+        "/roadmap",
+        "/boards",
+        "/team",
+        "/knowledge",
+        "/reports",
+        "/observability/cache",
+        "/observability/tools",
+        "/settings",
+      ]
+    `);
+  });
+
+  it("a plain hosted user does not see admin-only pages", async () => {
+    const { visibleNavItems } = await import("./sidebar");
+    const hrefs = visibleNavItems("hosted", false).map((i) => i.href);
+    expect(hrefs).not.toContain("/knowledge");
+    expect(hrefs.some((h) => h.startsWith("/observability"))).toBe(false);
+    expect(hrefs).toContain("/boards");
+    expect(hrefs).toContain("/settings");
+  });
+});
+

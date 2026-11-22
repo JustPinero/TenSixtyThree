@@ -87,6 +87,20 @@ describe("guardDecision", () => {
     expect(d.kind).toBe("redirect");
   });
 
+  it("68.1 — the signed-out front door goes to the landing page; /welcome is public", () => {
+    expect(guardDecision({ path: "/", hasSessionCookie: false, authRequired: true })).toEqual({
+      kind: "redirect",
+      to: "/welcome",
+    });
+    expect(guardDecision({ path: "/settings", hasSessionCookie: false, authRequired: true })).toEqual({
+      kind: "redirect",
+      to: "/signin",
+    });
+    expect(guardDecision({ path: "/welcome", hasSessionCookie: false, authRequired: true })).toEqual({
+      kind: "allow",
+    });
+  });
+
   it("401s guarded APIs without a cookie", () => {
     expect(
       guardDecision({

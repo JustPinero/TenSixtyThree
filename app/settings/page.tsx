@@ -20,6 +20,7 @@ import { THEME_PACKS } from "@/lib/theme-registry";
 import { applyThemePack } from "@/lib/theme-pack-apply";
 import { Toggle } from "@/app/components/ui/toggle";
 import { LocalOnly } from "../components/deployment-mode";
+import { PasswordPanel } from "../components/password-panel";
 import { version as APP_VERSION } from "../../package.json";
 
 interface AuthStatus {
@@ -142,7 +143,7 @@ function AnthropicKeyPanel() {
   if (hasKey === null) return null;
 
   return (
-    <div className="mb-8">
+    <div id="api-key" className="mb-8 scroll-mt-20">
       <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1">
         Your Anthropic API Key
       </h2>
@@ -1159,6 +1160,8 @@ export default function SettingsPage() {
       <div className="divider-h mb-8" />
 
       <AdminInvitesPanel />
+
+      <PasswordPanel />
 
       <AnthropicKeyPanel />
 

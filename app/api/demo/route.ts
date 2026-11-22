@@ -5,7 +5,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { seedDemo, cleanupDemo } from "@/lib/demo";
+import { seedDemo, cleanupDemo, isDemoSession } from "@/lib/demo";
+import { getServerSession } from "@/lib/auth-helpers";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 
 const SESSION_COOKIE = "better-auth.session_token";
@@ -44,5 +45,28 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge: 2 * 3600,
   });
+  return res;
+}
+
+/**
+ * 68.3 — "Exit demo" ends the demo session server-side (not just a link
+ * away from it) and clears the cookie. A real account's session is never
+ * touched here; ordinary sign-out goes through Better Auth.
+ */
+export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(prisma, request.headers);
+  if (session && isDemoSession(session)) {
+    await prisma.session.deleteMany({ where: { token: session.session.token } });
+  }
+  const res = NextResponse.json({ ok: true });
+  for (const name of [SESSION_COOKIE, `__Secure-${SESSION_COOKIE}`]) {
+    res.cookies.set(name, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: name.startsWith("__Secure-") || process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+  }
   return res;
 }

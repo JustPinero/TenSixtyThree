@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { exitDemo } from "./account-menu";
 
 /** 54.5 — persistent marker for demo sessions. */
 export function DemoBanner() {
@@ -27,12 +28,14 @@ export function DemoBanner() {
         DEMO MODE — a sandbox fleet on scripted assistants. Nothing here is
         real, everything resets.
       </p>
-      <a
-        href="/signin"
+      {/* 68.3 — ends the demo session server-side, not just a link away. */}
+      <button
+        type="button"
+        onClick={() => void exitDemo()}
         className="ml-auto inline-flex items-center min-h-6 px-1 text-xs font-mono text-text-dim hover:text-text underline focus-ring"
       >
         Exit demo
-      </a>
+      </button>
     </div>
   );
 }

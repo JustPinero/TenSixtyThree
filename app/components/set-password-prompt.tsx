@@ -5,9 +5,18 @@ import { useEffect, useState } from "react";
 /**
  * 54.1 — after an invited user's first email-code sign-in they have no
  * credential account; this banner prompts them to create a password.
- * Renders nothing when signed out (401), already passworded, or dismissed
- * for the session.
+ * Renders nothing when signed out (401), already passworded, for a demo
+ * session (68.3 — they can't set one), or once dismissed (persisted).
  */
+const DISMISS_KEY = "cascade-set-password-dismissed";
+
+function wasDismissed(): boolean {
+  try {
+    return localStorage.getItem(DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 export function SetPasswordPrompt() {
   const [show, setShow] = useState(false);
   const [password, setPassword] = useState("");
@@ -17,10 +26,13 @@ export function SetPasswordPrompt() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/account/password")
+    if (wasDismissed()) return;
+    fetch("/api/account")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled && data && data.hasPassword === false) setShow(true);
+        if (!cancelled && data && data.hasPassword === false && data.user?.isDemo !== true) {
+          setShow(true);
+        }
       })
       .catch(() => {});
     return () => {
@@ -74,7 +86,14 @@ export function SetPasswordPrompt() {
         </span>
       )}
       <button
-        onClick={() => setShow(false)}
+        onClick={() => {
+          setShow(false);
+          try {
+            localStorage.setItem(DISMISS_KEY, "1");
+          } catch {
+            // private mode: the prompt just comes back next visit
+          }
+        }}
         aria-label="Dismiss password prompt"
         className="ml-auto text-xs font-mono text-text-dim hover:text-text"
       >

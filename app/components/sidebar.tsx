@@ -16,6 +16,7 @@ import {
   type DeploymentMode,
 } from "@/lib/deployment-mode";
 import { useDeploymentMode, useIsOperator } from "./deployment-mode";
+import { AccountMenu } from "./account-menu";
 
 function DashboardIcon() {
   return (
@@ -394,6 +395,9 @@ export function Sidebar() {
             </span>
           ))}
         </nav>
+
+        {/* 68.3 — who am I / sign out / exit demo */}
+        <AccountMenu />
 
         {/* 53.5 — theme-pack quick-switcher */}
         <div className="px-4 py-2">

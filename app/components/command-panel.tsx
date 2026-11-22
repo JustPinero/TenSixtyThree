@@ -16,6 +16,7 @@ interface CommandPanelProps {
 export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const sendingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -32,7 +33,9 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
   }, [expanded]);
 
   async function sendMessage() {
-    if (!input.trim() || streaming) return;
+    if (!input.trim() || streaming || sendingRef.current) return;
+    // 72 — a ref, not state: two Enters in one tick send once.
+    sendingRef.current = true;
 
     const userMessage: ChatMessage = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMessage];
@@ -88,6 +91,7 @@ export function CommandPanel({ projectSlug, projectName }: CommandPanelProps) {
         },
       ]);
     } finally {
+      sendingRef.current = false;
       setStreaming(false);
     }
   }

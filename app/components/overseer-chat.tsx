@@ -118,6 +118,7 @@ export function OverseerChat({
 }: OverseerChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const sendingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
   const [pendingActions, setPendingActions] = useState<ParsedAction[] | null>(
     null,
@@ -416,7 +417,9 @@ export function OverseerChat({
   }, [messages, pendingActions]);
 
   async function sendMessage() {
-    if (!input.trim() || streaming) return;
+    if (!input.trim() || streaming || sendingRef.current) return;
+    // 72 — a ref, not state: two Enters in one tick send once.
+    sendingRef.current = true;
 
     // Phase 21 — submitting a turn always stops the mic + silence
     // detector, even if Conversation Mode is on. The next mic-rearm
@@ -607,6 +610,7 @@ export function OverseerChat({
       setSendError(`Lost the connection to ${overseerName}.`);
     } finally {
       clearTimeout(turnTimeout);
+      sendingRef.current = false;
       setStreaming(false);
       playEndSound();
       // Phase 17 — refresh the session-memory panel after each turn

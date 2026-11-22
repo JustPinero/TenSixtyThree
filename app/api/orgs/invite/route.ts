@@ -77,3 +77,33 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ invitation });
 }
+
+/**
+ * 68.4 — revoke a pending invitation in the active org (owner/admin).
+ * Ids from another org are a 404.
+ */
+export async function DELETE(request: NextRequest) {
+  const access = await requireSignedIn(request, { allowDemo: false });
+  if (!access.ok) return access.response;
+  const session = access.viewer.session;
+  const orgId = session.session.activeOrganizationId;
+  if (!orgId) {
+    return NextResponse.json({ error: "No active organization" }, { status: 400 });
+  }
+  const member = await requireMembership(prisma, session.user.id, orgId);
+  if (!member) return NextResponse.json({ error: "Not a member" }, { status: 403 });
+  if (member.role !== "owner" && member.role !== "admin") {
+    return NextResponse.json(
+      { error: "Only an owner or admin can revoke invitations" },
+      { status: 403 },
+    );
+  }
+  const body = await request.json().catch(() => ({}));
+  const id = typeof body.invitationId === "string" ? body.invitationId : "";
+  const revoked = await prisma.invitation.updateMany({
+    where: { id, organizationId: orgId, status: "pending" },
+    data: { status: "canceled" },
+  });
+  if (revoked.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
+}

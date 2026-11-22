@@ -12,6 +12,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { ScopeSelect, useActiveOrg, type Scope } from "../components/scope-select";
 
 /**
  * 54.4 — kanban boards. Personal + active-org boards; drag tickets
@@ -147,6 +148,9 @@ export default function BoardsPage() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [newBoard, setNewBoard] = useState("");
+  // 68.4 — new boards can belong to the active org.
+  const activeOrg = useActiveOrg();
+  const [newBoardScope, setNewBoardScope] = useState<Scope>("personal");
   const [dragTicket, setDragTicket] = useState<Ticket | null>(null);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const sensors = useSensors(
@@ -275,7 +279,10 @@ export default function BoardsPage() {
             const res = await fetch("/api/boards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: newBoard, scope: "personal" }),
+              body: JSON.stringify({
+                name: newBoard,
+                scope: activeOrg ? newBoardScope : "personal",
+              }),
             });
             if (res.ok) {
               setNewBoard("");
@@ -287,6 +294,14 @@ export default function BoardsPage() {
           <label htmlFor="new-board" className="sr-only">
             New board name
           </label>
+          {activeOrg && (
+            <ScopeSelect
+              id="new-board-scope"
+              value={newBoardScope}
+              onChange={setNewBoardScope}
+              orgName={activeOrg.name}
+            />
+          )}
           <input
             id="new-board"
             value={newBoard}

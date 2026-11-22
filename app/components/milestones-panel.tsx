@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ScopeSelect, useActiveOrg, type Scope } from "./scope-select";
 
 /**
  * 54.4 — roadmap milestones (personal + active org). Hidden when signed
@@ -32,6 +33,8 @@ export function MilestonesPanel() {
   const [milestones, setMilestones] = useState<Milestone[] | null>(null);
   const [hidden, setHidden] = useState(false);
   const [draft, setDraft] = useState("");
+  const activeOrg = useActiveOrg();
+  const [scope, setScope] = useState<Scope>("personal");
 
   const refresh = useCallback(async () => {
     try {
@@ -65,7 +68,10 @@ export function MilestonesPanel() {
           await fetch("/api/milestones", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: draft.trim(), scope: "personal" }),
+            body: JSON.stringify({
+              title: draft.trim(),
+              scope: activeOrg ? scope : "personal",
+            }),
           });
           setDraft("");
           refresh();
@@ -75,6 +81,14 @@ export function MilestonesPanel() {
         <label htmlFor="new-milestone" className="sr-only">
           New milestone
         </label>
+        {activeOrg && (
+          <ScopeSelect
+            id="new-milestone-scope"
+            value={scope}
+            onChange={setScope}
+            orgName={activeOrg.name}
+          />
+        )}
         <input
           id="new-milestone"
           value={draft}

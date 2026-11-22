@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MembersPanel } from "./members-panel";
 
 /**
  * 54.3 — the multi-org workspace. Renders the org switcher, shared
@@ -53,6 +54,9 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
   const [newOrgName, setNewOrgName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteNote, setInviteNote] = useState<string | null>(null);
+  // 68.4 — a failed org switch must not pretend it worked.
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [membersKey, setMembersKey] = useState(0);
   const [draft, setDraft] = useState({ type: "goal", title: "", body: "" });
 
   const refreshOrgs = useCallback(async () => {
@@ -111,12 +115,19 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
               id="org-switcher"
               value={activeId ?? ""}
               onChange={async (e) => {
-                await fetch("/api/orgs/active", {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ organizationId: e.target.value }),
-                });
-                setActiveId(e.target.value);
+                const next = e.target.value;
+                setSwitchError(null);
+                try {
+                  const res = await fetch("/api/orgs/active", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ organizationId: next }),
+                  });
+                  if (!res.ok) throw new Error();
+                  setActiveId(next);
+                } catch {
+                  setSwitchError("Couldn't switch organization. Try again.");
+                }
               }}
               className="bg-space-900 border border-space-600 px-2 py-1.5 text-sm font-mono text-text"
             >
@@ -140,11 +151,14 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
             if (res.ok) {
               const { org } = await res.json();
               setNewOrgName("");
-              await fetch("/api/orgs/active", {
+              const switched = await fetch("/api/orgs/active", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ organizationId: org.id }),
-              });
+              }).catch(() => null);
+              if (!switched?.ok) {
+                setSwitchError("Created the organization, but couldn't switch to it.");
+              }
               refreshOrgs();
             }
           }}
@@ -184,7 +198,10 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
                 ? `Invited ${inviteEmail} — they sign in with that email and membership applies automatically.`
                 : "Couldn't send that invite.",
             );
-            if (res.ok) setInviteEmail("");
+            if (res.ok) {
+              setInviteEmail("");
+              setMembersKey((k) => k + 1);
+            }
           }}
           className="flex flex-wrap items-center gap-2 mb-6"
         >
@@ -211,6 +228,14 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
           )}
         </form>
       )}
+
+      {switchError && (
+        <p role="alert" className="text-xs font-mono text-danger mb-4">
+          {switchError}
+        </p>
+      )}
+
+      {active && <MembersPanel orgId={active.id} refreshKey={membersKey} />}
 
       {orgs.length === 0 && (
         <p className="text-sm font-mono text-text-dim mb-6">

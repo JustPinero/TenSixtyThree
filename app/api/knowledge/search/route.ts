@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     // SQLite doesn't have full-text search built in with Prisma,
     // so we fetch and filter in-memory for now.
     const allLessons = await prisma.knowledgeLesson.findMany({
+      take: 500, // phase 70 — bounded list
       include: {
         sourceProject: { select: { name: true, slug: true } },
       },

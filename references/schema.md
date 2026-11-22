@@ -327,9 +327,11 @@ Fire-and-forget telemetry for every Anthropic API call site. Drives `/observabil
 | cacheCreation1hTokens | Int | 0 | — |
 | outputTokens | Int | — | — |
 | durationMs | Int | — | Wall-clock duration |
+| userId | String? | null | 70 — who made the call (null = local operator) |
+| keySource | String | "app" | 70 — byok \| app: whose key paid |
 | createdAt | DateTime | now() | — |
 
-**Indexes:** (callSite, createdAt), createdAt, model
+**Indexes:** (callSite, createdAt), createdAt, model, (userId, createdAt). **Retention:** 90 days (lib/retention.ts)
 
 ## CascadeConfig (phase 11.1)
 Single-row configuration table for Cascade-wide state. Always upserted
@@ -481,10 +483,13 @@ Same exactly-one-owner rule as Milestone. `createBoard` seeds columns Todo / In 
 | priority | String | "normal" | low, normal, high, urgent |
 | assigneeUserId | String? | null | must be in the board's scope (owner / org member) |
 | milestoneId | String? | null | FK Milestone; must be in the board's scope |
-| linearIssueId | String? | null | unique — Linear import idempotency key |
+| linearIssueId | String? | null | Linear import idempotency key — unique per board `(boardId, linearIssueId)` since phase 70 |
 | createdById | String | — | user id |
 | createdAt / updatedAt | DateTime | — | — |
 
 **Relations:** board, column, milestone? · **Indexes:** (columnId, position)
 
 Organization (54.4b): + `linearKeyEnc String?` (Linear API key, sealed by lib/crypto-box); (54.5): + `isDemo Boolean`.
+
+Project children (70): AuditSnapshot, ActivityEvent, DispatchOutcome, Dispatch, HumanTask, ProjectFeatureUsage and FeatureProposal cascade on project delete; OrgPost.projectId and KnowledgeLesson.sourceProjectId are set null. DispatchOutcome cascades with its Dispatch.
+

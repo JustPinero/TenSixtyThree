@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Return all non-dismissed reminders
     const reminders = await prisma.reminder.findMany({
+      take: 200, // phase 70 — bounded list
       // Phase 66.2 — the viewer's own reminders (operators: + fleet ones).
       where: {
         AND: [

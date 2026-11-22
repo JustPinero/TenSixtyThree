@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     orgId = null;
   }
   const boards = await prisma.board.findMany({
+    take: 200, // phase 70 — bounded list
     where: {
       OR: [
         { ownerUserId: session.user.id },

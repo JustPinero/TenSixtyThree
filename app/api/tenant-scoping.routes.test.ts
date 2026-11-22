@@ -405,3 +405,20 @@ describe("66.2 — reports go through the visibility matrix", () => {
   });
 });
 
+describe("70 — tasks rank by priority explicitly", () => {
+  it("pending first, then high → normal → low (not alphabetical)", async () => {
+    const p = rig!.prisma;
+    for (const [title, priority, status] of [
+      ["low-one", "low", "pending"],
+      ["normal-one", "normal", "pending"],
+      ["high-one", "high", "pending"],
+      ["done-high", "high", "done"],
+    ]) {
+      await p.humanTask.create({ data: { title, priority, status, ownerUserId: "carol" } });
+    }
+    const res = await tasks.GET(requestAs("carol", "http://x/api/tasks"));
+    const titles = ((await res.json()) as { title: string }[]).map((t) => t.title);
+    expect(titles).toEqual(["high-one", "normal-one", "low-one", "done-high"]);
+  });
+});
+

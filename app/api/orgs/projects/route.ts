@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
   const shares = await prisma.orgProjectShare.findMany({
+    take: 200, // phase 70 — bounded list
     where: { organizationId: ctx.orgId },
     include: {
       project: {

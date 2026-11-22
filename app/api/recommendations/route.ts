@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
   // Phase 66.2 — outcomes on projects the viewer can see.
   const scope = await scopeForViewer(prisma, access.viewer);
   const rows = await prisma.dispatchOutcome.findMany({
+    take: 1000, // phase 70 — bounded list
     where: { AND: [outcomeWhere(scope), { completedAt: { gte: since } }] },
     select: {
       projectSlug: true,

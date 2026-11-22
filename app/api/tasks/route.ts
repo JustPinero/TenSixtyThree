@@ -30,6 +30,8 @@ const VALID_CATEGORIES = new Set([
 ]);
 const VALID_PRIORITIES = new Set(["high", "normal", "low"]);
 const VALID_STATUSES = new Set(["pending", "done"]);
+const STATUS_RANK: Record<string, number> = { pending: 0, done: 1 };
+const PRIORITY_RANK: Record<string, number> = { high: 0, normal: 1, low: 2 };
 
 /**
  * GET /api/tasks
@@ -53,17 +55,22 @@ export async function GET(request: NextRequest) {
 
     const tasks = await prisma.humanTask.findMany({
       where: { AND: [taskWhere(scope), where] },
-      orderBy: [
-        { status: "asc" }, // pending first
-        { priority: "asc" }, // high first (alphabetical: high < low < normal)
-        { createdAt: "desc" },
-      ],
+      // Phase 70 — the DB orders by recency only; status and priority are
+      // ranked explicitly below (alphabetical order put "done" before
+      // "pending" and "low" before "normal").
+      orderBy: { createdAt: "desc" },
+      take: 500,
       include: {
         project: { select: { name: true, slug: true } },
       },
     });
 
-    return NextResponse.json(tasks);
+    const ranked = [...tasks].sort(
+      (x, y) =>
+        (STATUS_RANK[x.status] ?? 9) - (STATUS_RANK[y.status] ?? 9) ||
+        (PRIORITY_RANK[x.priority] ?? 9) - (PRIORITY_RANK[y.priority] ?? 9),
+    ); // stable: equal ranks keep newest-first
+    return NextResponse.json(ranked);
   } catch (error) {
     return jsonError(error, "tasks");
   }

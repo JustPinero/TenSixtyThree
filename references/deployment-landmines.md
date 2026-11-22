@@ -22,6 +22,10 @@ Stack-specific warnings for Next.js + Prisma/Postgres + Railway + Anthropic API.
 - **Local dev URL is `127.0.0.1:51063`, not `localhost`** — `localhost` can resolve to `::1` and trip an "invalid response to SSL negotiation" flake against the container.
 - **Hosted Postgres is private-network-only** (correct); there is no TCP proxy. Headless ops go through `/api/admin/ops` (OPS_SECRET), not `railway ssh` (piped stdin is unreliable).
 
+## Security headers and local mode (Phase 70)
+- `next.config.ts headers()` sends a CSP baseline (`lib/security-headers.ts`, snapshot-tested), `frame-ancestors 'none'`, HSTS, nosniff. `script-src` keeps `'unsafe-inline'` because the App Router emits inline bootstrap scripts; a new third-party script, font, frame or fetch origin must be added to the CSP deliberately or the browser will block it.
+- Local mode (no `AUTH_REQUIRED`): middleware refuses POST/PUT/PATCH/DELETE with a non-loopback Host or a foreign Origin (`lib/local-origin.ts`). Origin-less requests (curl, the Stop hook) still pass. If you reach the local dashboard through a LAN hostname, writes will 403 by design.
+
 ## Shell Execution (gh, op CLIs)
 - **child_process**: Use `execAsync` (promisified exec) for CLI calls. Always handle stderr.
 - **Input sanitization**: NEVER pass user input directly to shell commands. Use argument arrays or escape properly.

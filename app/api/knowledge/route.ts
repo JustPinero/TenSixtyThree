@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   if (!access.ok) return access.response;
   try {
     const lessons = await prisma.knowledgeLesson.findMany({
+      take: 500, // phase 70 — bounded list
       orderBy: { discoveredAt: "desc" },
       include: {
         sourceProject: { select: { name: true, slug: true } },

@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     // 66.2 — the same scope every dashboard route uses.
     const scope = await scopeForViewer(prisma, access.viewer);
     const projects = await prisma.project.findMany({
+      take: 200, // phase 70 — bounded list
       where: scope.projectWhere,
       orderBy: { lastActivityAt: "desc" },
     });
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
 
     // Gather pending human tasks
     const pendingTasks = await prisma.humanTask.findMany({
+      take: 50, // phase 70 — bounded list
       where: { AND: [taskWhere(scope), { status: "pending" }] },
       include: { project: { select: { name: true } } },
     });

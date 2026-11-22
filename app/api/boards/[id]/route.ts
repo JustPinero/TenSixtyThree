@@ -22,6 +22,7 @@ export async function GET(
       orderBy: { position: "asc" },
     }),
     prisma.ticket.findMany({
+      take: 500, // phase 70 — bounded list
       where: { boardId: id },
       orderBy: { position: "asc" },
     }),

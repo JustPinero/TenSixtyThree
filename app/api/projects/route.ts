@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const where = await visibleProjectFilter(prisma, session?.user.id ?? null);
 
     const [projects, unreadCounts, humanTaskCounts] = await Promise.all([
-      prisma.project.findMany({ where, orderBy: { lastActivityAt: "desc" } }),
+      prisma.project.findMany({ take: 500, where, orderBy: { lastActivityAt: "desc" } }),
       getAllUnreadCounts(prisma),
       prisma.humanTask.groupBy({
         by: ["projectId"],

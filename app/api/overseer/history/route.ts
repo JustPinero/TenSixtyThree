@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       new Date().toISOString().split("T")[0];
 
     const messages = await prisma.chatMessage.findMany({
+      take: 500, // phase 70 — bounded list
       // Phase 66.1 — the viewer's own history only (null = local operator).
       where: { sessionDate: date, userId: viewerUserId(access.viewer) },
       orderBy: { createdAt: "asc" },

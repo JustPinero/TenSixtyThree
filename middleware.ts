@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { guardDecision } from "@/lib/route-guard";
+import { localOriginDecision } from "@/lib/local-origin";
 import {
   CLIENT_IP_HEADER,
   EDGE_SECRET_HEADER,
@@ -30,6 +31,20 @@ export function middleware(request: NextRequest) {
   if (gate === "reject") {
     return NextResponse.json(
       { error: "Direct origin access is disabled; use https://www.tensixtythree.com" },
+      { status: 403 },
+    );
+  }
+  // Phase 70 — local mode has no auth: refuse cross-site / rebound writes.
+  if (
+    localOriginDecision({
+      authRequired: process.env.AUTH_REQUIRED === "true",
+      method: request.method,
+      host: request.headers.get("host"),
+      origin: request.headers.get("origin"),
+    }) === "reject"
+  ) {
+    return NextResponse.json(
+      { error: "Cross-origin write refused (local mode)" },
       { status: 403 },
     );
   }

@@ -8,8 +8,24 @@ import {
 } from "@/lib/onepassword";
 import { isInsideProjectsDir } from "@/lib/validators";
 import { jsonError, requireLocalMode } from "@/lib/access";
+import { prisma } from "@/lib/db";
+import path from "path";
 
 const VAULT_NAME = "Cascade";
+
+/**
+ * Phase 70 — only a registered, non-demo project's directory may be read
+ * or written (populate writes .env.local there). A path the request
+ * merely names is not enough.
+ */
+async function isRegisteredProject(projectPath: unknown): Promise<boolean> {
+  if (typeof projectPath !== "string" || !projectPath) return false;
+  const hit = await prisma.project.findFirst({
+    where: { path: path.resolve(projectPath), isDemo: false },
+    select: { id: true },
+  });
+  return hit !== null;
+}
 
 export async function GET(request: NextRequest) {
   const access = await requireLocalMode(request);
@@ -25,7 +41,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!isInsideProjectsDir(projectPath)) {
+    if (!isInsideProjectsDir(projectPath) || !(await isRegisteredProject(projectPath))) {
       return NextResponse.json(
         { error: "Invalid project path" },
         { status: 403 }
@@ -72,6 +88,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "populate") {
+      if (!(await isRegisteredProject(projectPath))) {
+        return NextResponse.json({ error: "Invalid project path" }, { status: 403 });
+      }
       const expectedVars = await readExpectedVars(projectPath);
       const result = await populateEnvLocal(
         projectPath,

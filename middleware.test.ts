@@ -68,3 +68,26 @@ describe("middleware — x-client-ip injection", () => {
     expect(res.headers.get("x-middleware-request-x-client-ip")).toBe("203.0.113.9");
   });
 });
+
+describe("middleware — local-mode Origin guard (phase 70)", () => {
+  const post = (headers: Record<string, string>) =>
+    middleware(
+      new NextRequest("http://127.0.0.1:3000/api/tasks", { method: "POST", headers }),
+    );
+
+  it("a foreign-Origin POST is refused in local mode", async () => {
+    const res = post({ host: "127.0.0.1:3000", origin: "https://evil.example" });
+    expect(res.status).toBe(403);
+  });
+
+  it("a same-origin POST and an Origin-less POST (Stop hook) pass", async () => {
+    expect(post({ host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }).status).not.toBe(403);
+    expect(post({ host: "127.0.0.1:3000" }).status).not.toBe(403);
+  });
+
+  it("the hosted app is unaffected", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    const res = post({ host: "www.tensixtythree.com", origin: "https://evil.example" });
+    expect(res.status).not.toBe(403);
+  });
+});

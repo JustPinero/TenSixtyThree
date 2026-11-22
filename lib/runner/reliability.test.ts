@@ -307,4 +307,28 @@ describe("67.3 — failures explain themselves", () => {
     expect(outcome.costUsd).toBe(0.25);
     expect(outcome.turns).toBe(7);
   });
+
+  it("signal text is scrubbed before it is stored (security review)", async () => {
+    const { r, project, dispatch } = await setup();
+    const leaked = "sk-ant-api03-ABCDEFGHIJKLMNOP1234";
+    await runClaimedDispatch(
+      r.prisma,
+      dispatch,
+      deps({
+        runAgent: async function* () {
+          yield { type: "assistant", text: `[HUMAN TODO] Rotate ${leaked} now` };
+          yield { type: "assistant", text: `[LESSON] Never echo ${leaked}` };
+          yield RESULT("success");
+        },
+      }),
+    );
+    const stored = JSON.stringify([
+      await r.prisma.humanTask.findMany({ where: { projectId: project.id } }),
+      await r.prisma.knowledgeLesson.findMany({ where: { sourceProjectId: project.id } }),
+      await r.prisma.activityEvent.findMany({ where: { projectId: project.id } }),
+    ]);
+    expect(stored).not.toContain(leaked);
+    expect(stored).toContain("[redacted]");
+  });
 });
+

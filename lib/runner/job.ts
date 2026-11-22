@@ -201,9 +201,11 @@ export async function runClaimedDispatch(
     } catch (err) {
       console.error(`[runner] outcome write failed for ${dispatch.id}:`, err);
     }
-    const signals = messages.flatMap((m) =>
-      m.type === "assistant" ? detectEscalations(m.text) : [],
-    );
+    // Security review: agent text can echo secrets — scrub every signal
+    // before it lands in a task title, lesson or event summary.
+    const signals = messages
+      .flatMap((m) => (m.type === "assistant" ? detectEscalations(m.text) : []))
+      .map((signal) => ({ ...signal, message: scrubSecrets(signal.message) }));
     await writeEscalationSignals(
       prisma,
       {

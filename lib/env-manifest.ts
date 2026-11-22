@@ -24,6 +24,8 @@ export type EnvScope =
   | "local-only"
   | "runner-required"
   | "runner-optional"
+  /** 58.2 — operator tooling only (never read by the app or runner). */
+  | "ops-only"
   | "platform";
 
 export interface EnvVarSpec {
@@ -193,7 +195,7 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
   { name: "CI", scope: "platform", description: "Set by GitHub Actions; tunes Playwright." },
   {
     name: "CLOUDFLARE_API_TOKEN",
-    scope: "platform",
+    scope: "ops-only",
     description: "Operator-only: `pnpm infra:cloudflare` (1Password Cascade → TenSixtyThree Cloudflare token).",
   },
   // ── local-only (operator machine / fleet filesystem) ───────────────────

@@ -98,4 +98,19 @@ describe("AC1 — validateHostedEnv", () => {
       expect(spec.description.trim().length, spec.name).toBeGreaterThan(0);
     }
   });
+
+  it("58.2 — every variable in .env.example has a manifest entry and scope", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const example = readFileSync(path.resolve(__dirname, "..", ".env.example"), "utf8");
+    const names = [...example.matchAll(/^([A-Z][A-Z0-9_]*)=/gm)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(0);
+    const known = new Set(ENV_MANIFEST.map((v) => v.name));
+    expect(names.filter((n) => !known.has(n))).toEqual([]);
+  });
+
+  it("58.2 — operator-only tooling vars are scoped ops-only", () => {
+    expect(ENV_MANIFEST.find((v) => v.name === "CLOUDFLARE_API_TOKEN")?.scope).toBe("ops-only");
+  });
 });
+

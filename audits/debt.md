@@ -243,7 +243,7 @@ local dispatches) and the container is the boundary. Real fix: spawn the CLI
 as an unprivileged user (SDK spawnClaudeCodeProcess override + useradd in
 image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
 
-- **[66.D1]** (2026-11-22, phase 66, low) Hosted chat rows written before
+- **[66.D1]** RESOLVED 2026-11-23 (hosted had no real user; the 4 NULL rows were demo chats, nothing to restore). (2026-11-22, phase 66, low) Hosted chat rows written before
   migration `20261122000000_tenant_scoping` have `userId` null, so no hosted
   user sees them after deploy (local operator rows are unaffected). The data
   is kept. If the old hosted Overseer history matters, backfill it to the
@@ -280,3 +280,5 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   before `requeueInterrupted`, the row stays `started` until the 60-min
   stale sweep, and the retry spends an attempt. Fix: thread the shutdown
   signal into the clone/push `execFile` calls.
+
+- [1.0.D14] `scripts/check-hosted-env.ts` checks web-only vars on the runner service too (reports BETTER_AUTH_SECRET etc. missing under RUNNER_MODE=1). Not on the runner boot path, so harmless today; scope required vars by RUNNER_MODE before anyone wires it into runner boot. Found during the batch 64–72 deploy, 2026-11-23.

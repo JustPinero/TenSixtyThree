@@ -162,6 +162,12 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
       "LOCAL DEV ONLY once a GitHub App is configured (phase 74): ignored when GITHUB_APP_* is set. Passed to git only as an http.extraHeader in env (lib/runner/git-ops.ts) — never in a URL or argv.",
   },
   {
+    name: "RUNNER_ALLOW_SAME_UID",
+    scope: "runner-optional",
+    description:
+      'Phase 74 — debugging only: "1" lets the runner run the agent under its own uid on Railway when the unprivileged agent user is unavailable. Never with GITHUB_APP_PRIVATE_KEY set (refused regardless).',
+  },
+  {
     name: "GITHUB_APP_ID",
     scope: "runner-optional",
     description:
@@ -210,6 +216,11 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
   { name: "PATH", scope: "platform", description: "Passed through to subprocesses." },
   { name: "TMPDIR", scope: "platform", description: "Scratch directory base." },
   { name: "PORT", scope: "platform", description: "Set by Railway; health server port." },
+  {
+    name: "RAILWAY_ENVIRONMENT",
+    scope: "platform",
+    description: "Set by Railway. Hosted env checks fail hard under it; the runner refuses same-uid agents under it (phase 74).",
+  },
   { name: "CI", scope: "platform", description: "Set by GitHub Actions; tunes Playwright." },
   {
     name: "CLOUDFLARE_API_TOKEN",

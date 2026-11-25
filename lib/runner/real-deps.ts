@@ -10,7 +10,7 @@
  * (lib/runner/git-ops.ts), never a URL, argv, or the agent's env.
  */
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
-import { githubAppConfig, runnerRepoToken } from "../github-app";
+import { runnerRepoToken } from "../github-app";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { lstatSync, realpathSync } from "node:fs";
@@ -260,11 +260,16 @@ export function buildRealDeps(
             { timeout: 60_000 },
           );
         }
-      } else if (githubAppConfig()) {
-        // Phase 74 — same-uid, the agent could read the app key from the
-        // runner's /proc environ. Fail closed instead of degrading.
+      } else if (
+        process.env.GITHUB_APP_PRIVATE_KEY ||
+        (process.env.RAILWAY_ENVIRONMENT && process.env.RUNNER_ALLOW_SAME_UID !== "1")
+      ) {
+        // Phase 74 — same-uid, the agent could read the runner's secrets
+        // (the app key above all) from /proc environ. Fail closed: whenever
+        // the key is present, and always on Railway unless explicitly
+        // allowed for debugging.
         throw new Error(
-          "Refusing to run: a GitHub App key is loaded but the separate agent user is unavailable.",
+          "Refusing to run: the separate agent user is unavailable and this runner holds secrets it must not share.",
         );
       } else {
         console.warn(

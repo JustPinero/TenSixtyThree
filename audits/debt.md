@@ -264,7 +264,7 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
 - **[1.0.D8]** (decision needed) KickoffTemplate is never seeded on the hosted
   app. Options: seed the default template at boot, or treat templates as
   local-only (the hosted nav already hides Templates since 68.1).
-- **[1.0.D9]** (two-key) Railway has two Postgres services; one is unused.
+- **[1.0.D9]** RESOLVED 2026-11-25 — empty `Postgres-21FP` service deleted after a verified pg_dumpall (~/Backups/tensixtythree/postgres-21fp-pre-delete-2026-11-25.sql.gz); its orphaned volume `postgres-volume-ianw` awaits a separate yes.
   Deleting it needs a verified `pg_dump` and Justin's fresh yes.
 - **[1.0.D10]** The runner's `GITHUB_TOKEN` is Justin's personal OAuth token;
   replace with a fine-grained PAT scoped to the dispatched repos (see also

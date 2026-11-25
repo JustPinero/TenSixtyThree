@@ -269,7 +269,7 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
 - **[1.0.D10]** The runner's `GITHUB_TOKEN` is Justin's personal OAuth token;
   replace with a fine-grained PAT scoped to the dispatched repos (see also
   [68.D1] per-user tokens).
-- **[1.0.D11]** A dead Railway API token remains in 1Password; delete the item
+- **[1.0.D11]** RESOLVED 2026-11-25 — `1063-api` proven dead against the Railway API and archived in 1Password; RAILWAY_TOKEN unset everywhere. (Was: a dead Railway API token remains in 1Password; delete the item
   (two-key) and confirm `RAILWAY_TOKEN` is unset everywhere.
 - ~~**[1.0.D12]**~~ CLOSED by 56.1 — proxy-aware client IP (`x-client-ip`).
 - ~~**[1.0.D13]**~~ CLOSED by 56.1 — direct-to-origin bypass (edge secret).

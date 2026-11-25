@@ -2,7 +2,7 @@
 
 ## Open
 
-- **[51.D1]** (2026-08-06) Hosted schema sync uses `prisma db push` via
+- **[51.D1]** RESOLVED 2026-11-23 (hosted baselined on 0_init; preDeploy is `prisma migrate deploy`). (2026-08-06) Hosted schema sync uses `prisma db push` via
   Railway `preDeployCommand` — no migrations directory, no rollback story.
   Acceptable while the hosted DB holds no irreplaceable data; convert to
   `prisma migrate` (baseline + migration files) before real production data
@@ -281,4 +281,4 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
   stale sweep, and the retry spends an attempt. Fix: thread the shutdown
   signal into the clone/push `execFile` calls.
 
-- [1.0.D14] `scripts/check-hosted-env.ts` checks web-only vars on the runner service too (reports BETTER_AUTH_SECRET etc. missing under RUNNER_MODE=1). Not on the runner boot path, so harmless today; scope required vars by RUNNER_MODE before anyone wires it into runner boot. Found during the batch 64–72 deploy, 2026-11-23.
+- [1.0.D16] `scripts/check-hosted-env.ts` checks web-only vars on the runner service too (reports BETTER_AUTH_SECRET etc. missing under RUNNER_MODE=1). Not on the runner boot path, so harmless today; scope required vars by RUNNER_MODE before anyone wires it into runner boot. Found during the batch 64–72 deploy, 2026-11-23.

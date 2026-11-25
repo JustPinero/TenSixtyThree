@@ -162,3 +162,24 @@ describe("whose key pays (65.4)", () => {
     await deps.cleanup(workdir);
   });
 });
+
+describe("phase 74 — the app key never shares a uid with the agent", () => {
+  it("refuses to run the agent same-uid while a GitHub App key is in the runner's env", async () => {
+    const { deps, dispatch } = await setup("user", true);
+    const workdir = await deps.cloneRepo("o/r");
+    process.env.GITHUB_APP_ID = "1";
+    process.env.GITHUB_APP_SLUG = "tensixtythree-runner";
+    process.env.GITHUB_APP_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----";
+    try {
+      await expect(drain(deps.runAgent({ workdir, dispatch }))).rejects.toThrow(
+        /separate agent user/i,
+      );
+      expect(captured).toHaveLength(0);
+    } finally {
+      delete process.env.GITHUB_APP_ID;
+      delete process.env.GITHUB_APP_SLUG;
+      delete process.env.GITHUB_APP_PRIVATE_KEY;
+      await deps.cleanup(workdir);
+    }
+  });
+});

@@ -10,7 +10,7 @@
  * (lib/runner/git-ops.ts), never a URL, argv, or the agent's env.
  */
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
-import { runnerRepoToken } from "../github-app";
+import { githubAppConfig, runnerRepoToken } from "../github-app";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { lstatSync, realpathSync } from "node:fs";
@@ -260,6 +260,12 @@ export function buildRealDeps(
             { timeout: 60_000 },
           );
         }
+      } else if (githubAppConfig()) {
+        // Phase 74 — same-uid, the agent could read the app key from the
+        // runner's /proc environ. Fail closed instead of degrading.
+        throw new Error(
+          "Refusing to run: a GitHub App key is loaded but the separate agent user is unavailable.",
+        );
       } else {
         console.warn(
           "[runner] agent user unavailable — running the session same-uid ([52.D1])",

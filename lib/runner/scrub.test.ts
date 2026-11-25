@@ -49,6 +49,23 @@ describe("scrubSecrets", () => {
     expect(out).not.toContain("u:p@db.internal");
   });
 
+  it("phase 74 — redacts the GitHub App private key, raw or \\n-escaped, and any PEM block", () => {
+    const pem =
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAsecretsecretsecret\nmorekeymaterial\n-----END RSA PRIVATE KEY-----";
+    process.env.GITHUB_APP_PRIVATE_KEY = pem.replace(/\n/g, "\\n");
+    try {
+      expect(scrubSecrets(`raw ${pem} end`)).not.toMatch(/secretsecret|morekeymaterial/);
+      expect(scrubSecrets(`esc ${process.env.GITHUB_APP_PRIVATE_KEY} end`)).not.toMatch(
+        /secretsecret|morekeymaterial/,
+      );
+    } finally {
+      delete process.env.GITHUB_APP_PRIVATE_KEY;
+    }
+    const other =
+      "-----BEGIN PRIVATE KEY-----\nAAAAunrelatedkey\n-----END PRIVATE KEY-----";
+    expect(scrubSecrets(`x ${other} y`)).toBe("x [redacted] y");
+  });
+
   it("leaves ordinary text alone", () => {
     expect(scrubSecrets("tests failed: 3 of 40")).toBe("tests failed: 3 of 40");
   });

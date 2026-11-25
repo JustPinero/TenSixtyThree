@@ -77,6 +77,8 @@ async function runGit(
     env?: Record<string, string>;
     runAs?: RunAs | null;
     timeout?: number;
+    /** [67.D1] runner shutdown: kills git instead of waiting out `timeout`. */
+    signal?: AbortSignal;
   },
 ): Promise<string> {
   try {
@@ -85,6 +87,7 @@ async function runGit(
       env: (opts.env ?? hardenedEnv()) as NodeJS.ProcessEnv,
       timeout: opts.timeout ?? 60_000,
       maxBuffer: 16 * 1024 * 1024,
+      ...(opts.signal ? { signal: opts.signal } : {}),
       ...(opts.runAs ? { uid: opts.runAs.uid, gid: opts.runAs.gid } : {}),
     });
     return stdout;
@@ -100,6 +103,7 @@ export async function pristineClone(args: {
   url: string;
   token: string | null;
   dir: string;
+  signal?: AbortSignal;
 }): Promise<{ pristine: string; base: string }> {
   await mkdir(args.dir, { recursive: true, mode: 0o700 });
   await runGit(
@@ -107,10 +111,13 @@ export async function pristineClone(args: {
     {
       env: hardenedEnv(gitAuthEnv(args.token)),
       timeout: 120_000,
+      signal: args.signal,
     },
   );
   const base = (
-    await runGit(["-C", args.dir, ...HARDENED_ARGS, "rev-parse", "HEAD"], {})
+    await runGit(["-C", args.dir, ...HARDENED_ARGS, "rev-parse", "HEAD"], {
+      signal: args.signal,
+    })
   ).trim();
   return { pristine: args.dir, base };
 }
@@ -215,6 +222,7 @@ export async function publishBundle(args: {
   remoteUrl: string;
   token: string | null;
   allowWorkflowChanges: boolean;
+  signal?: AbortSignal;
 }): Promise<{ pushed: boolean; branch: string | null; reason?: string }> {
   const st = await lstat(args.bundle);
   if (!st.isFile()) throw new Error("bundle is not a regular file");
@@ -222,6 +230,7 @@ export async function publishBundle(args: {
   const ref = `refs/runner/${args.branch}`;
   await runGit([...G, "fetch", "--no-tags", args.bundle, `HEAD:${ref}`], {
     timeout: 120_000,
+    signal: args.signal,
   });
   // NUL-separated, unquoted, rename-free, limited by pathspec: no path
   // quoting or rename trick can hide a CI file from this check.
@@ -266,6 +275,7 @@ export async function publishBundle(args: {
     {
       env: hardenedEnv(gitAuthEnv(args.token)),
       timeout: 120_000,
+      signal: args.signal,
     },
   );
   return { pushed: true, branch: args.branch };

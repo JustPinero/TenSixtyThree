@@ -287,3 +287,53 @@ describe("CI-file check cannot be dodged (review 2)", () => {
     });
   }
 });
+
+describe("[67.D1] git operations stop on shutdown", () => {
+  it("an aborted signal kills the clone instead of letting it run out its timeout", async () => {
+    const jobDir = fs.mkdtempSync(path.join(root, "job-"));
+    const stop = new AbortController();
+    stop.abort();
+    await expect(
+      pristineClone({
+        url: `file://${origin}`,
+        token: null,
+        dir: path.join(jobDir, "pristine"),
+        signal: stop.signal,
+      }),
+    ).rejects.toThrow();
+    expect(fs.existsSync(path.join(jobDir, "pristine", ".git"))).toBe(false);
+  });
+
+  it("an aborted signal stops the publish before it pushes", async () => {
+    const jobDir = fs.mkdtempSync(path.join(root, "job-"));
+    const { pristine, base } = await pristineClone({
+      url: `file://${origin}`,
+      token: null,
+      dir: path.join(jobDir, "pristine"),
+    });
+    const workdir = path.join(jobDir, "work");
+    await agentWorktree({ pristine, workdir, publicUrl: "https://github.com/o/r.git" });
+    fs.writeFileSync(path.join(workdir, "feature.ts"), "export {};\n");
+    git(workdir, "add", "-A");
+    git(workdir, "-c", "user.name=a", "-c", "user.email=a@a", "commit", "-m", "f");
+    const outDir = path.join(jobDir, "out");
+    fs.mkdirSync(outDir);
+    const exported = await exportAgentWork({ workdir, base, outDir, runAs: null, dispatchId: "d9" });
+    expect(exported.bundle).not.toBeNull();
+    const stop = new AbortController();
+    stop.abort();
+    await expect(
+      publishBundle({
+        pristine,
+        bundle: exported.bundle as string,
+        base,
+        branch: "cloud/d9",
+        remoteUrl: `file://${origin}`,
+        token: null,
+        allowWorkflowChanges: false,
+        signal: stop.signal,
+      }),
+    ).rejects.toThrow();
+    expect(git(origin, "branch", "--list", "cloud/d9").trim()).toBe("");
+  });
+});

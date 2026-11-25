@@ -40,7 +40,10 @@ const DEFAULT_WALL_MS = 45 * 60_000;
 
 export interface RunnerDeps {
   /** Clone the repo, return the working directory. */
-  cloneRepo: (githubRepo: string) => Promise<string>;
+  cloneRepo: (
+    githubRepo: string,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<string>;
   /** Stream agent messages for the dispatch running in workdir. Must stop
    *  (end or throw) once `signal` aborts. */
   runAgent: (args: {
@@ -58,6 +61,8 @@ export interface RunnerDeps {
     workdir: string;
     dispatch: Dispatch;
     partial?: boolean;
+    /** [67.D1] runner shutdown only: aborts the git push. */
+    signal?: AbortSignal;
   }) => Promise<{ pushed: boolean; branch: string | null; reason?: string }>;
   /** Review — claim-time re-check that the dispatching (non-admin) owner
    *  can still push to the repo; false fails the run before cloning. */
@@ -193,6 +198,7 @@ export async function runClaimedDispatch(
         workdir,
         dispatch,
         partial: true,
+        signal: opts.signal,
       });
       return pushed.pushed ? pushed.branch : null;
     } catch (pushError) {
@@ -279,7 +285,8 @@ export async function runClaimedDispatch(
 
   try {
     try {
-      workdir = await deps.cloneRepo(project.githubRepo);
+      // [67.D1] any stop (shutdown, cancel, timeout) kills a slow clone.
+      workdir = await deps.cloneRepo(project.githubRepo, { signal: stop.signal });
     } catch (cloneError) {
       throw new CloneError(
         cloneError instanceof Error ? cloneError.message : String(cloneError),
@@ -336,7 +343,11 @@ export async function runClaimedDispatch(
     let resultBranch: string | null = null;
     if (deps.pushBranch) {
       try {
-        const pushed = await deps.pushBranch({ workdir, dispatch });
+        const pushed = await deps.pushBranch({
+          workdir,
+          dispatch,
+          signal: opts.signal,
+        });
         if (pushed.pushed) resultBranch = pushed.branch;
         else if (pushed.reason) {
           console.warn(
@@ -362,6 +373,13 @@ export async function runClaimedDispatch(
           ),
         );
       }
+    }
+
+    // [67.D1] a shutdown that killed the push requeues the run rather
+    // than recording finished work with no branch to show for it.
+    if (reason === "interrupted" && !resultBranch) {
+      await endStopped("interrupted");
+      return;
     }
 
     const folded = foldRunnerMessages(messages);

@@ -61,7 +61,7 @@ describe("runClaimedDispatch", () => {
       cleanup: vi.fn().mockResolvedValue(undefined),
     });
 
-    expect(cloneRepo).toHaveBeenCalledWith("just/p");
+    expect(cloneRepo).toHaveBeenCalledWith("just/p", { signal: expect.any(AbortSignal) });
     const row = await rig.prisma.dispatch.findUnique({
       where: { id: dispatch.id },
     });

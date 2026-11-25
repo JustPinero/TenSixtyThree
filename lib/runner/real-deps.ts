@@ -184,7 +184,10 @@ export function buildRealDeps(
   const jobs = new Map<string, JobState>();
 
   return {
-    async cloneRepo(githubRepo: string): Promise<string> {
+    async cloneRepo(
+      githubRepo: string,
+      opts?: { signal?: AbortSignal },
+    ): Promise<string> {
       const jobDir = await mkdtemp(join(tmpdir(), "runner-"));
       // Traversable (so the agent can reach work/ and home/) but not
       // listable; pristine/ itself is 0700.
@@ -194,6 +197,7 @@ export function buildRealDeps(
           url: repoUrl(githubRepo),
           token: process.env.GITHUB_TOKEN ?? null,
           dir: join(jobDir, "pristine"),
+          signal: opts?.signal,
         });
         await chmod(pristine, 0o700);
         const workdir = join(jobDir, "work");
@@ -351,6 +355,7 @@ export function buildRealDeps(
       workdir: string;
       dispatch: Dispatch;
       partial?: boolean;
+      signal?: AbortSignal;
     }): Promise<{ pushed: boolean; branch: string | null; reason?: string }> {
       const job = jobs.get(args.workdir);
       if (!job) return { pushed: false, branch: null, reason: "unknown workdir" };
@@ -380,6 +385,7 @@ export function buildRealDeps(
         remoteUrl: repoUrl(job.githubRepo),
         token: process.env.GITHUB_TOKEN ?? null,
         allowWorkflowChanges: false,
+        signal: args.signal,
       });
     },
 

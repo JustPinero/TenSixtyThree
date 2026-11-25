@@ -10,6 +10,7 @@
  * (lib/runner/git-ops.ts), never a URL, argv, or the agent's env.
  */
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
+import { runnerRepoToken } from "../github-app";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { lstatSync, realpathSync } from "node:fs";
@@ -193,9 +194,12 @@ export function buildRealDeps(
       // listable; pristine/ itself is 0700.
       await chmod(jobDir, 0o711);
       try {
+        // Phase 74 — a one-hour token for this repo only (GitHub App), or
+        // GITHUB_TOKEN when no app is configured (local dev).
+        const { token } = await runnerRepoToken(githubRepo);
         const { pristine, base } = await pristineClone({
           url: repoUrl(githubRepo),
-          token: process.env.GITHUB_TOKEN ?? null,
+          token,
           dir: join(jobDir, "pristine"),
           signal: opts?.signal,
         });
@@ -383,7 +387,7 @@ export function buildRealDeps(
         base: job.base,
         branch: resultBranchName(args.dispatch, args.partial === true),
         remoteUrl: repoUrl(job.githubRepo),
-        token: process.env.GITHUB_TOKEN ?? null,
+        token: (await runnerRepoToken(job.githubRepo)).token,
         allowWorkflowChanges: false,
         signal: args.signal,
       });
@@ -401,13 +405,13 @@ export function buildRealDeps(
       title: string;
       body: string;
     }): Promise<string> {
-      const token = process.env.GITHUB_TOKEN;
-      if (!token) throw new Error("GITHUB_TOKEN unset — cannot open a PR");
       const project = await prisma.project.findUnique({
         where: { id: args.dispatch.projectId },
         select: { githubRepo: true },
       });
       if (!project?.githubRepo) throw new Error("Project has no GitHub repo");
+      const { token } = await runnerRepoToken(project.githubRepo);
+      if (!token) throw new Error("No GitHub credentials — cannot open a PR");
 
       const headers = {
         Authorization: `Bearer ${token}`,

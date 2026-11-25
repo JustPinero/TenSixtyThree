@@ -130,4 +130,50 @@ describe("connect a repo (68.2)", () => {
       /already connected/i,
     );
   });
+
+  it("phase 74 — when the app isn't installed, links to the install page", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        json: async () => ({
+          error: "Install the TenSixtyThree GitHub App on acme/site first, then connect it again.",
+          reason: "app-not-installed",
+          installUrl: "https://github.com/apps/tensixtythree-runner/installations/new",
+        }),
+      })),
+    );
+    hosted(<ProjectGrid projects={[]} loading={false} totalCount={0} />);
+    fireEvent.change(screen.getByLabelText(/owner\/repo/i), {
+      target: { value: "acme/site" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^connect$/i }));
+    const link = await screen.findByRole("link", { name: /install the github app/i });
+    expect(link.getAttribute("href")).toBe(
+      "https://github.com/apps/tensixtythree-runner/installations/new",
+    );
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
+  });
+
+  it("ignores an install link that isn't on github.com", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        json: async () => ({
+          error: "x",
+          reason: "app-not-installed",
+          installUrl: "https://evil.example/install",
+        }),
+      })),
+    );
+    hosted(<ProjectGrid projects={[]} loading={false} totalCount={0} />);
+    fireEvent.change(screen.getByLabelText(/owner\/repo/i), {
+      target: { value: "acme/site" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^connect$/i }));
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("link", { name: /install the github app/i })).toBeNull();
+  });
 });

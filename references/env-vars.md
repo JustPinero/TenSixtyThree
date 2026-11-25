@@ -49,7 +49,10 @@ These are read only by `scripts/runner.ts` / `lib/runner/real-deps.ts` on the `t
 | `RUNNER_POLL_MS` | `5000` | Poll interval for queued cloud dispatches. |
 | `RUNNER_MAX_TURNS` | `40` | Agent SDK max turns per run. |
 | `RUNNER_MAX_BUDGET_USD` | `5` | Agent SDK spend cap per run; budget stops are salvaged into `Dispatch.costUsd`. |
-| `GITHUB_TOKEN` | unset | Runner only: private clones, `cloud/<id>` branch pushes, PR creation via GitHub REST. Passed per-command, never persisted in `.git/config`. Use a fine-grained PAT scoped to the dispatchable repos. |
+| `GITHUB_TOKEN` | unset | Local dev only once the GitHub App is configured (ignored when `GITHUB_APP_*` is set). Passed to git only as an env-supplied header. |
+| `GITHUB_APP_ID` | unset | Phase 74 — GitHub App id (web + runner). With the two below, the runner mints one-hour tokens limited to the dispatched repo (contents + PRs), and connecting a repo requires the app installed on it. |
+| `GITHUB_APP_PRIVATE_KEY` | unset | Phase 74 — the app's PEM key (web + runner); `\n`-escaped is accepted. 1Password: Cascade → TenSixtyThree GitHub App. |
+| `GITHUB_APP_SLUG` | unset | Phase 74 — app URL slug; builds `https://github.com/apps/<slug>/installations/new`. |
 
 ## Notes
 

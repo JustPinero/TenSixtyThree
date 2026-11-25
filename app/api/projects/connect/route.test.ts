@@ -21,6 +21,17 @@ vi.mock("@/lib/github-access", async (orig) => ({
   verifyRepoPushAccess: () => verify(),
 }));
 
+// Phase 74 — the GitHub App installation check (off unless configured).
+const app = {
+  config: null as null | { appId: string; privateKey: string; slug: string },
+  installed: true,
+};
+vi.mock("@/lib/github-app", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-app")>()),
+  githubAppConfig: () => app.config,
+  installationForRepo: async () => (app.installed ? 77 : null),
+}));
+
 import { POST } from "./route";
 import { GET as listProjects } from "../route";
 import { createDispatchRig } from "@/tests/harness/dispatch-rig";
@@ -117,3 +128,35 @@ describe("POST /api/projects/connect", () => {
   });
 });
 
+
+describe("phase 74 — the GitHub App must be installed on the repo", () => {
+  afterEach(() => {
+    app.config = null;
+    app.installed = true;
+  });
+
+  it("refuses with an install link when the app isn't installed there", async () => {
+    app.config = { appId: "1", privateKey: "k", slug: "tensixtythree-runner" };
+    app.installed = false;
+    const res = await connect("carol", { githubRepo: "carol/weather" });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { reason: string; installUrl: string };
+    expect(body.reason).toBe("app-not-installed");
+    expect(body.installUrl).toBe(
+      "https://github.com/apps/tensixtythree-runner/installations/new",
+    );
+    expect(await rig!.prisma.project.count({ where: { githubRepo: "carol/weather" } })).toBe(0);
+  });
+
+  it("connects when the app is installed; admins are checked too", async () => {
+    app.config = { appId: "1", privateKey: "k", slug: "tensixtythree-runner" };
+    expect((await connect("carol", { githubRepo: "carol/weather" })).status).toBe(201);
+    app.installed = false;
+    expect((await connect("admin", { githubRepo: "admin/tool" })).status).toBe(409);
+  });
+
+  it("without an app configured, nothing changes (local / pre-cutover)", async () => {
+    app.installed = false;
+    expect((await connect("carol", { githubRepo: "carol/weather" })).status).toBe(201);
+  });
+});

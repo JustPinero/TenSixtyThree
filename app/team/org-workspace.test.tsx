@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { OrgWorkspace } from "./org-workspace";
+import { DeploymentModeProvider } from "../components/deployment-mode";
 
 afterEach(() => {
   cleanup();
@@ -53,5 +54,33 @@ describe("OrgWorkspace switcher", () => {
       /couldn.t switch/i,
     );
     expect(select.value).toBe("o1");
+  });
+});
+
+describe("OrgWorkspace in the demo (75)", () => {
+  it("offers neither invite nor create, and says why", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () =>
+          url === "/api/orgs"
+            ? {
+                orgs: [{ id: "o1", name: "Demo Fleet", slug: "demo-fleet-ab12", role: "owner" }],
+                activeOrganizationId: "o1",
+              }
+            : { projects: [], posts: [], members: [], invitations: [] },
+      })),
+    );
+    render(
+      <DeploymentModeProvider mode="hosted" isOperator={false} isDemo>
+        <OrgWorkspace>
+          <div />
+        </OrgWorkspace>
+      </DeploymentModeProvider>,
+    );
+    expect(await screen.findByText(/inviting teammates are turned off/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/invite member/i)).toBeNull();
+    expect(screen.queryByLabelText(/new organization name/i)).toBeNull();
   });
 });

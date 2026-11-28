@@ -41,11 +41,15 @@ export interface GuardInput {
 
 export type GuardDecision =
   | { kind: "allow" }
-  | { kind: "redirect"; to: "/signin" | "/welcome" }
+  | { kind: "redirect"; to: "/signin" | "/welcome" | "/" }
   | { kind: "401" };
 
 export function guardDecision(input: GuardInput): GuardDecision {
   if (!input.authRequired) return { kind: "allow" };
+  // 75 — signed-in visitors never see the landing page inside app chrome.
+  if (input.path === "/welcome" && input.hasSessionCookie) {
+    return { kind: "redirect", to: "/" };
+  }
   if (isPublicPath(input.path)) return { kind: "allow" };
   if (input.hasSessionCookie) return { kind: "allow" };
   if (input.path.startsWith("/api/")) return { kind: "401" };

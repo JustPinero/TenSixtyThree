@@ -13,8 +13,18 @@ export function QuarantineBanner() {
 
   useEffect(() => {
     fetch("/api/observability/quarantine")
-      .then((r) => r.json())
-      .then(setStatus)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { count?: unknown; path?: unknown } | null) => {
+        // 75 — a refusal body ({error}) once rendered as
+        // "undefined malformed webhook pings quarantined".
+        if (
+          body &&
+          typeof body.count === "number" &&
+          typeof body.path === "string"
+        ) {
+          setStatus({ count: body.count, path: body.path });
+        }
+      })
       .catch(() => {});
   }, []);
 

@@ -70,6 +70,34 @@ const remove = (u: TenantUser, body: unknown) =>
     requestAs(u, "http://x/api/orgs/members", { method: "DELETE", body }),
   );
 
+describe("75 — demo visitors see their team read-only", () => {
+  beforeEach(async () => {
+    await rig!.prisma.session.updateMany({
+      where: { userId: "demo1" },
+      data: { activeOrganizationId: t.orgs.demo1Org.id },
+    });
+  });
+
+  it("GET lists the demo org's members with canManage false", async () => {
+    const res = await members.GET(requestAs("demo1", "http://x/api/orgs/members"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      members: { userId: string }[];
+      canManage: boolean;
+    };
+    expect(body.members.map((m) => m.userId)).toEqual(["demo1"]);
+    expect(body.canManage).toBe(false);
+  });
+
+  it("PATCH and DELETE stay refused", async () => {
+    const id = (
+      await rig!.prisma.member.findFirstOrThrow({ where: { userId: "demo1" } })
+    ).id;
+    expect((await patch("demo1", { memberId: id, role: "admin" })).status).toBe(403);
+    expect((await remove("demo1", { memberId: id })).status).toBe(403);
+  });
+});
+
 describe("GET /api/orgs/members", () => {
   it("any member sees members and pending invites", async () => {
     const res = await members.GET(

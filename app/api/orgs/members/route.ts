@@ -1,7 +1,7 @@
 /**
  * Phase 68.4 — the active org's members and pending invitations.
  *
- * GET: any member. PATCH (role) and DELETE (remove): org owner/admin.
+ * GET: any member (75: demo visitors too, read-only). PATCH (role) and DELETE (remove): org owner/admin.
  * Rules: admins can't touch owners; the last owner can't be demoted or
  * removed; ids from other orgs are 404 (no cross-org oracle).
  */
@@ -13,8 +13,8 @@ import { requireSignedIn } from "@/lib/access";
 
 const ROLES = ["owner", "admin", "member"];
 
-async function context(request: NextRequest) {
-  const ctx = await activeOrgContext(prisma, request, { allowDemo: false });
+async function context(request: NextRequest, allowDemo = false) {
+  const ctx = await activeOrgContext(prisma, request, { allowDemo });
   if (!ctx.ok) {
     return {
       ok: false as const,
@@ -46,9 +46,12 @@ async function withOwnerLock<T>(
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const access = await requireSignedIn(request, { allowDemo: false });
+  // 75 — the demo's Team page showed "Couldn't load members." Reading the
+  // sandbox's own one-member org is harmless; every write stays refused.
+  const access = await requireSignedIn(request);
   if (!access.ok) return access.response;
-  const c = await context(request);
+  const isDemo = access.viewer.isDemo;
+  const c = await context(request, true);
   if (!c.ok) return c.response;
   const [rows, invitations] = await Promise.all([
     prisma.member.findMany({
@@ -81,7 +84,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       role: m.role,
     })),
     invitations,
-    canManage: canManage(c.myRole),
+    canManage: !isDemo && canManage(c.myRole),
     myRole: c.myRole,
   });
 }

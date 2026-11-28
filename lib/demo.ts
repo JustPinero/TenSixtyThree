@@ -57,7 +57,9 @@ async function seedDemoIn(prisma: Prisma.TransactionClient): Promise<DemoIdentit
   });
   await prisma.organization.update({
     where: { id: org.id },
-    data: { isDemo: true },
+    // 75 — the slug keeps the tag (unique without a scan); the name shown
+    // to the visitor doesn't.
+    data: { isDemo: true, name: "Demo Fleet" },
   });
 
   // Representative fleet — flagged so real dashboards can filter them.

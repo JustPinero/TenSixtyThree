@@ -9,7 +9,7 @@
  * SSE-streaming behavior is intentionally out of scope for this smoke.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, act, fireEvent, waitFor } from "@testing-library/react";
+import { render, act, fireEvent, waitFor, screen } from "@testing-library/react";
 
 vi.mock("@/lib/sounds", () => ({
   playStartSound: vi.fn(),
@@ -307,6 +307,26 @@ describe("OverseerChat — 69.2 rendering and input", () => {
       messages: { content: string }[];
     };
     expect(body.messages.at(-1)?.content).toBe("line one\nline two");
+  });
+
+  it("75 — clicking an example prompt sends it", async () => {
+    const fetchMock = installFetchMock(
+      baseHandler(async () => ({ ok: false, status: 500, json: async () => ({ error: "x" }) })),
+    );
+    await mount();
+    const example = await screen.findByRole("button", {
+      name: /what needs my attention today/i,
+    });
+    await act(async () => {
+      fireEvent.click(example);
+    });
+    const chatPosts = () =>
+      fetchMock.mock.calls.filter(([u, i]) => String(u).includes("/api/overseer/chat") && i?.method === "POST");
+    await waitFor(() => expect(chatPosts()).toHaveLength(1));
+    const body = JSON.parse(String(chatPosts()[0][1]?.body)) as {
+      messages: { content: string }[];
+    };
+    expect(body.messages.at(-1)?.content).toBe("What needs my attention today?");
   });
 
   it("a failed send gives the draft back and offers Retry", async () => {

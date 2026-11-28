@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { requestNotificationPermission } from "@/lib/notify";
 import { ScanButton } from "./components/scan-button";
-import { LocalOnly } from "./components/deployment-mode";
+import { LocalOnly, NotDemo } from "./components/deployment-mode";
 import { MorningBriefing } from "./components/morning-briefing";
 import { PlatformBadge } from "./components/platform-badge";
 import { FleetStatusStrip } from "./components/fleet-status-strip";
@@ -278,11 +278,16 @@ function DashboardContent({ initialProjects }: { initialProjects: ProjectTileDat
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 min-w-0">
-          <CostWidget />
-          <QuarantineBanner />
-          <FleetStatusStrip />
+          {/* 75 — spend means nothing in the sandbox; the queue strip and
+              the quarantine banner describe this machine's tmux queue and
+              webhook spool, so they're local-install only. */}
+          <NotDemo>
+            <CostWidget />
+          </NotDemo>
           {/* 68.1 — these act on the server's own disk/CLIs. */}
           <LocalOnly>
+            <QuarantineBanner />
+            <FleetStatusStrip />
             <PlatformBadge />
             <ScanButton
               onScanComplete={() => setRefreshKey((k) => k + 1)}

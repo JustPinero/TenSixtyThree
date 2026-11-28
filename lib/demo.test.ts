@@ -35,6 +35,9 @@ describe("seedDemo", () => {
       where: { id: demo.organizationId },
     });
     expect(org?.isDemo).toBe(true);
+    // 75 — the visible name carries no random tag; the slug stays unique.
+    expect(org?.name).toBe("Demo Fleet");
+    expect(org?.slug).toMatch(/^demo-fleet-[0-9a-f]{4}/);
 
     const session = await rig.prisma.session.findUnique({
       where: { token: demo.sessionToken },

@@ -31,6 +31,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { Dashboard } from "./dashboard-client";
+import { DeploymentModeProvider } from "./components/deployment-mode";
 
 afterEach(() => {
   cleanup();
@@ -85,5 +86,32 @@ describe("dashboard (60.2)", () => {
     expect(
       fetchMock.mock.calls.some(([u]) => String(u) === "/api/projects"),
     ).toBe(true);
+  });
+
+  it("75 — a demo visitor sees no operator widgets (quarantine, queue strip, cost)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const body =
+        url === "/api/observability/quarantine"
+          ? { count: 3, path: "/x" }
+          : url === "/api/dispatch/status"
+            ? { queue: { running: 0, pending: 0, capacity: 4 }, dispatches: { queued: 0, started: 0, overdue: 0 } }
+            : url === "/api/usage/summary"
+              ? { calls: 0, estimatedCostUsd: 0, hitRate: 0, hasUnknownModels: false }
+              : null;
+      // Everything else fails, as in the tests above (widgets handle !ok).
+      return { ok: body !== null, json: async () => body ?? {} };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <DeploymentModeProvider mode="hosted" isOperator={false} isDemo>
+        <Dashboard initialProjects={[TILE]} />
+      </DeploymentModeProvider>,
+    );
+    expect(await screen.findByText("Alpha App")).toBeTruthy();
+    const urls = fetchMock.mock.calls.map(([u]) => String(u));
+    expect(urls).not.toContain("/api/observability/quarantine");
+    expect(urls).not.toContain("/api/dispatch/status");
+    expect(urls).not.toContain("/api/usage/summary");
+    expect(screen.queryByText(/quarantined/)).toBeNull();
   });
 });

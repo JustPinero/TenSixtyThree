@@ -14,6 +14,8 @@ export function FirstRunPanel({ onConnected }: { onConnected?: () => void }) {
   const [repo, setRepo] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Phase 74 — set when the repo needs the GitHub App installed first.
+  const [installUrl, setInstallUrl] = useState<string | null>(null);
 
   if (mode === "local") {
     return (
@@ -46,6 +48,7 @@ export function FirstRunPanel({ onConnected }: { onConnected?: () => void }) {
             if (!repo.trim() || busy) return;
             setBusy(true);
             setError(null);
+            setInstallUrl(null);
             try {
               const res = await fetch("/api/projects/connect", {
                 method: "POST",
@@ -59,6 +62,13 @@ export function FirstRunPanel({ onConnected }: { onConnected?: () => void }) {
                     ? data.error
                     : "Couldn't connect that repo.",
                 );
+                if (
+                  data.reason === "app-not-installed" &&
+                  typeof data.installUrl === "string" &&
+                  data.installUrl.startsWith("https://github.com/apps/")
+                ) {
+                  setInstallUrl(data.installUrl);
+                }
                 return;
               }
               setRepo("");
@@ -97,6 +107,16 @@ export function FirstRunPanel({ onConnected }: { onConnected?: () => void }) {
             <p role="alert" className="text-xs font-mono text-danger">
               {error}
             </p>
+          )}
+          {installUrl && (
+            <a
+              href={installUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs font-mono text-cyan underline focus-ring"
+            >
+              Install the GitHub App (opens GitHub)
+            </a>
           )}
         </form>
         <div className="space-y-2">

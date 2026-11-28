@@ -28,6 +28,11 @@ export async function claimNextCloudDispatch(
       WHERE "runtime" = 'cloud' AND "status" = 'queued'
         -- review: a cancelled row is never picked up again
         AND NOT "cancelRequested"
+        -- 76: demo projects carry display-only repo names; never run one
+        AND NOT EXISTS (
+          SELECT 1 FROM "Project" p
+          WHERE p."id" = "Dispatch"."projectId" AND p."isDemo"
+        )
       ORDER BY "enqueuedAt" ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1

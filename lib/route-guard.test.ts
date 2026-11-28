@@ -120,4 +120,11 @@ describe("guardDecision", () => {
       }).kind,
     ).toBe("allow");
   });
+
+  it("75 — a signed-in visitor to /welcome goes to the app, not the landing page in app chrome", () => {
+    expect(guardDecision({ path: "/welcome", hasSessionCookie: true, authRequired: true })).toEqual({
+      kind: "redirect",
+      to: "/",
+    });
+  });
 });

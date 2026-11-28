@@ -274,11 +274,6 @@ image) or per-job Railway Sandboxes. File-tool path-scoping shipped 52.2.
 - ~~**[1.0.D12]**~~ CLOSED by 56.1 — proxy-aware client IP (`x-client-ip`).
 - ~~**[1.0.D13]**~~ CLOSED by 56.1 — direct-to-origin bypass (edge secret).
 
-- **[67.D1]** (2026-11-22, batch review, low) A SIGTERM that lands while the
-  runner is cloning or pushing (git commands can take up to 120s and are
-  not abortable yet) can outlast the 25s shutdown grace: the process exits
-  before `requeueInterrupted`, the row stays `started` until the 60-min
-  stale sweep, and the retry spends an attempt. Fix: thread the shutdown
-  signal into the clone/push `execFile` calls.
+- ~~**[67.D1]**~~ CLOSED by phase 73 (2026-11-25) — clone and push take the stop signal (execFile `signal`); a shutdown during the final push requeues instead of finishing branchless.
 
-- [1.0.D16] `scripts/check-hosted-env.ts` checks web-only vars on the runner service too (reports BETTER_AUTH_SECRET etc. missing under RUNNER_MODE=1). Not on the runner boot path, so harmless today; scope required vars by RUNNER_MODE before anyone wires it into runner boot. Found during the batch 64–72 deploy, 2026-11-23.
+- ~~**[1.0.D16]**~~ CLOSED by phase 73 (2026-11-25) — `check-hosted-env.ts` uses `validateRunnerEnv` under RUNNER_MODE=1.

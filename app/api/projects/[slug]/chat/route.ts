@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
+import { sseFromText } from "@/lib/sse-text";
+import { demoProjectReply } from "@/lib/demo-overseer";
 import { resolveChatModel } from "@/lib/model-config";
 import { buildProjectSystemPrompt } from "@/lib/project-chat";
 import { lessonWhere, scopeForViewer } from "@/lib/tenant-scope";
@@ -30,10 +32,34 @@ export async function POST(
     // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
     const byokSession = access.viewer.kind === "user" ? access.viewer.session : null;
     // 54.5 — no Anthropic spend from demo sessions.
-    if (isDemoSession(byokSession)) {
-      return NextResponse.json(
-        { error: "Demo mode: this chat is disabled in the sandbox. Try the Overseer on the dashboard for a scripted reply." },
-        { status: 403 },
+    // 76 — a scripted reply about the project being viewed, not a refusal.
+    if (byokSession && isDemoSession(byokSession)) {
+      const { slug: demoSlug } = await params;
+      const demoProject = await prisma.project.findUnique({
+        where: { slug: demoSlug },
+        select: { id: true, name: true },
+      });
+      if (
+        !demoProject ||
+        !(await canSeeProject(prisma, byokSession.user.id, demoProject.id))
+      ) {
+        return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      }
+      const demoBody: unknown = await request.json().catch(() => null);
+      const validated = validateMessages(
+        demoBody && typeof demoBody === "object" && "messages" in demoBody
+          ? demoBody.messages
+          : [],
+      );
+      const lastAsk = validated.valid
+        ? validated.messages.filter((m) => m.role === "user").at(-1)
+        : undefined;
+      const question = typeof lastAsk?.content === "string" ? lastAsk.content : "";
+      return new Response(
+        sseFromText(demoProjectReply(demoProject.name, question), {
+          model: "demo-canned",
+        }),
+        { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } },
       );
     }
     const { key: apiKey, source: keySource } = await resolveAnthropicKey(

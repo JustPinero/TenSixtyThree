@@ -53,6 +53,17 @@ describe("claimNextCloudDispatch", () => {
     expect(await claimNextCloudDispatch(rig.prisma, "runner-1")).toBeNull();
   });
 
+  it("76 — never claims a dispatch on a demo project", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const demo = await rig.prisma.project.create({
+      data: { name: "D", slug: "d", path: "/demo/d", githubRepo: "demo.example/d", isDemo: true },
+    });
+    await rig.prisma.dispatch.create({
+      data: { projectId: demo.id, projectSlug: "d", mode: "continue", runtime: "cloud", status: "queued" },
+    });
+    expect(await claimNextCloudDispatch(rig.prisma, "runner-1")).toBeNull();
+  });
+
   it("two concurrent claims never grab the same row", async () => {
     rig = await createDispatchRig({ fakeTimers: false });
     const project = await makeProject(rig);

@@ -168,6 +168,71 @@ describe("demo briefing", () => {
   });
 });
 
+describe("76 — the demo assistant answers the question asked", () => {
+  async function sseText(res: Response): Promise<string> {
+    const raw = await res.text();
+    return raw
+      .split("\n")
+      .filter((l) => l.startsWith("data: "))
+      .map((l) => JSON.parse(l.slice(6)) as { delta?: { text?: string } })
+      .map((e) => e.delta?.text ?? "")
+      .join("");
+  }
+
+  it("Overseer chat: a Meridian question gets the Meridian reply, no model call", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    process.env.ANTHROPIC_API_KEY = "sk-test";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const r = rig;
+    vi.doMock("@/lib/db", () => ({ prisma: r.prisma }));
+    await demoUser(r);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { POST } = await import("@/app/api/overseer/chat/route");
+    const res = await POST(
+      req("/api/overseer/chat", "POST", {
+        messages: [{ role: "user", content: "How is Meridian doing?" }],
+      }),
+    );
+    expect(res.status).toBe(200);
+    const { DEMO_REPLIES } = await import("@/lib/demo-overseer");
+    expect(await sseText(res)).toBe(DEMO_REPLIES.meridian);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("project chat: scripted about a visible demo project; 404 for anyone else's", async () => {
+    process.env.AUTH_REQUIRED = "true";
+    process.env.ANTHROPIC_API_KEY = "sk-test";
+    rig = await createDispatchRig({ fakeTimers: false });
+    const r = rig;
+    vi.doMock("@/lib/db", () => ({ prisma: r.prisma }));
+    await demoUser(r);
+    const atlas = await r.prisma.project.create({
+      data: { name: "Atlas API", slug: "demo-atlas-x", path: "/demo/a", isDemo: true },
+    });
+    await r.prisma.orgProjectShare.create({
+      data: { organizationId: "o-demo", projectId: atlas.id, sharedById: "u-demo" },
+    });
+    await r.prisma.project.create({
+      data: { name: "Operator secret", slug: "op", path: "/p/op" },
+    });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { POST } = await import("@/app/api/projects/[slug]/chat/route");
+    const body = { messages: [{ role: "user", content: "what's next?" }] };
+    const ok = await POST(req("/api/projects/demo-atlas-x/chat", "POST", body), {
+      params: Promise.resolve({ slug: "demo-atlas-x" }),
+    });
+    expect(ok.status).toBe(200);
+    expect(await sseText(ok)).toMatch(/Atlas API/);
+    const hidden = await POST(req("/api/projects/op/chat", "POST", body), {
+      params: Promise.resolve({ slug: "op" }),
+    });
+    expect(hidden.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe("org invites are rate-limited per user", () => {
   it("the 11th invite in an hour is refused", async () => {
     process.env.AUTH_REQUIRED = "true";

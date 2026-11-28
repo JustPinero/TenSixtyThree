@@ -381,3 +381,43 @@ describe("batch review — runner gaps", () => {
   });
 });
 
+
+describe("[67.D1] shutdown during git work still requeues inside the grace window", () => {
+  /** A git step that only ends when its signal aborts (a slow network). */
+  const hangsUntilAborted = (signal?: AbortSignal) =>
+    new Promise<never>((_resolve, reject) => {
+      if (signal?.aborted) reject(new Error("aborted"));
+      signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    });
+
+  it("SIGTERM during the clone aborts it and requeues the row", async () => {
+    const { r, dispatch } = await setup();
+    const sigterm = new AbortController();
+    const cloneRepo = vi.fn(
+      (_repo: string, o?: { signal?: AbortSignal }) => hangsUntilAborted(o?.signal),
+    );
+    const d = deps({ cloneRepo });
+    const run = runClaimedDispatch(r.prisma, dispatch, d, { signal: sigterm.signal });
+    setTimeout(() => sigterm.abort(), 50);
+    await run;
+    const after = await row(r, dispatch.id);
+    expect(after.status).toBe("queued");
+    expect(after.errorMessage).toMatch(/interrupted/i);
+    expect(cloneRepo.mock.calls[0][1]?.signal).toBeDefined();
+  });
+
+  it("SIGTERM during the final push aborts it and requeues instead of finishing without a branch", async () => {
+    const { r, dispatch } = await setup();
+    const sigterm = new AbortController();
+    const d = deps();
+    d.pushBranch.mockImplementation((a: { signal?: AbortSignal }) => {
+      setTimeout(() => sigterm.abort(), 20);
+      return hangsUntilAborted(a.signal);
+    });
+    await runClaimedDispatch(r.prisma, dispatch, d, { signal: sigterm.signal });
+    const after = await row(r, dispatch.id);
+    expect(after.status).toBe("queued");
+    expect(after.errorMessage).toMatch(/interrupted/i);
+    expect(d.openPullRequest).not.toHaveBeenCalled();
+  });
+});

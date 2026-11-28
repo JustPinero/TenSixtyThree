@@ -39,4 +39,14 @@ describe("/welcome", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/demo", { method: "POST" }),
     );
   });
+
+  it("77 — shows a labeled picture of the product and how it works", () => {
+    render(<WelcomePage />);
+    const preview = screen.getByRole("figure", {
+      name: /preview of the tensixtythree dashboard/i,
+    });
+    expect(preview.textContent).toMatch(/Atlas API/);
+    expect(preview.textContent).toMatch(/pull request/i);
+    expect(screen.getByRole("heading", { name: /how it works/i })).toBeTruthy();
+  });
 });

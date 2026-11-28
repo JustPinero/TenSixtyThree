@@ -1,3 +1,4 @@
+import { DEMO_BRIEFING } from "@/lib/demo-overseer";
 import { NextRequest, NextResponse } from "next/server";
 import { postAnthropicWithRetry } from "@/lib/anthropic-fetch";
 import { prisma } from "@/lib/db";
@@ -17,17 +18,6 @@ import { activityWhere, scopeForViewer, taskWhere } from "@/lib/tenant-scope";
  */
 const RECONCILE_FETCH_TIMEOUT_MS = 5_000;
 
-const DEMO_BRIEFING = `**Good morning.** This is a sample briefing — in your own workspace the
-Overseer writes one each morning from your projects' real activity.
-
-**Needs attention:**
-- One project is blocked waiting on a human task (credentials).
-
-**Completed since last briefing:**
-- Two dispatches finished and opened pull requests.
-
-**Suggested next step:** review the open pull requests, then dispatch the
-next request on the project closest to shipping.`;
 
 /**
  * POST /api/briefing

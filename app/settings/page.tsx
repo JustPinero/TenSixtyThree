@@ -23,6 +23,8 @@ import { PasswordPanel } from "../components/password-panel";
 import { version as APP_VERSION } from "../../package.json";
 import { usePersona } from "../components/use-persona";
 import { useStoredFlag } from "../components/use-stored-flag";
+import { OverseerPanel } from "./overseer-panel";
+import { SettingsNav } from "./settings-nav";
 
 interface AuthStatus {
   service: string;
@@ -706,147 +708,6 @@ function BrainsPanel() {
   );
 }
 
-function OverseerPanel() {
-  const [name, setName] = useState(() => getOverseerSettings().name);
-  const [portraitIdle, setPortraitIdle] = useState(
-    () => getOverseerSettings().portraitIdle,
-  );
-  const [portraitTalking, setPortraitTalking] = useState(
-    () => getOverseerSettings().portraitTalking ?? "",
-  );
-  const [usesTalkingFace, setUsesTalkingFace] = useState(
-    () => getOverseerSettings().usesTalkingFace,
-  );
-  const [saved, setSaved] = useState(false);
-
-  function handleSave() {
-    const trimmedTalking = portraitTalking.trim();
-    setOverseerSettings({
-      name: name.trim() || "Overseer",
-      portraitIdle: portraitIdle.trim() || "/delamain.jpg",
-      // Empty string clears it (single-face mode); non-empty stores it.
-      portraitTalking: trimmedTalking ? trimmedTalking : null,
-      usesTalkingFace,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
-  return (
-    <div className="mb-8">
-      <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
-        Overseer Identity
-      </h2>
-      <div className="space-y-3">
-        <div className="p-3 border border-space-600 bg-space-800">
-          <label
-            htmlFor="overseer-name"
-            className="text-sm font-mono text-text-bright block mb-2"
-          >
-            Name
-          </label>
-          <input
-            id="overseer-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSave()}
-            placeholder="Overseer"
-            className="w-full px-3 py-1.5 text-sm font-mono input"
-          />
-          <p className="text-micro font-mono text-muted mt-1">
-            Your AI dispatcher&apos;s name. Appears in chat, sidebar, and
-            briefings.
-          </p>
-        </div>
-
-        <div className="p-3 border border-space-600 bg-space-800">
-          <label
-            htmlFor="overseer-portrait-idle"
-            className="text-sm font-mono text-text-bright block mb-2"
-          >
-            Idle Portrait
-          </label>
-          <div className="flex gap-3 items-start">
-            <div className="w-16 h-16 rounded border border-space-600 overflow-hidden bg-space-900 shrink-0">
-              <Portrait
-                src={portraitIdle}
-                alt="idle preview"
-                size="md"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <input
-              id="overseer-portrait-idle"
-              type="text"
-              value={portraitIdle}
-              onChange={(e) => setPortraitIdle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              placeholder="/delamain.jpg"
-              className="flex-1 min-w-0 px-3 py-1.5 text-sm font-mono input"
-            />
-          </div>
-          <p className="text-micro font-mono text-muted mt-1">
-            Path or URL of the portrait shown when the Overseer is silent.
-          </p>
-        </div>
-
-        <div className="p-3 border border-space-600 bg-space-800">
-          <label className="flex items-center gap-3 min-h-6 cursor-pointer mb-2">
-            <input
-              type="checkbox"
-              checked={usesTalkingFace}
-              onChange={(e) => setUsesTalkingFace(e.target.checked)}
-              className="accent-cyan size-4"
-            />
-            <span className="text-sm font-mono text-text-bright">
-              Use a talking portrait
-            </span>
-          </label>
-          {usesTalkingFace ? (
-            <>
-              <div className="flex gap-3 items-start">
-                <div className="w-16 h-16 rounded border border-space-600 overflow-hidden bg-space-900 shrink-0">
-                  <Portrait
-                    src={portraitTalking}
-                    alt="talking preview"
-                    size="md"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <input
-                  type="text"
-                  value={portraitTalking}
-                  onChange={(e) => setPortraitTalking(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  placeholder="/delamain-talking.jpg"
-                  className="flex-1 min-w-0 px-3 py-1.5 text-sm font-mono input"
-                />
-              </div>
-              <p className="text-micro font-mono text-muted mt-1">
-                Shown while the Overseer is generating a response.
-              </p>
-            </>
-          ) : (
-            <p className="text-micro font-mono text-muted">
-              The idle portrait will be shown for both states.
-            </p>
-          )}
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            className="px-4 py-1.5 text-xs font-mono border border-cyan text-cyan hover:bg-cyan/10 transition-colors"
-          >
-            {saved ? "Saved" : "Save Identity"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function VoicePanel() {
   const persona = usePersona();
   const [enabled, setEnabled] = useState(
@@ -1083,9 +944,11 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold font-mono tracking-wide text-text-bright uppercase mb-2 glow-text-cyan">
         Settings
       </h1>
-      <p className="text-sm text-text font-mono mb-8">
+      <p className="text-sm text-text font-mono mb-4">
         Customize TenSixtyThree
       </p>
+
+      <SettingsNav />
 
       <OverseerPanel />
 
@@ -1093,7 +956,7 @@ export default function SettingsPage() {
 
       <div className="divider-h mb-8" />
 
-      <div className="mb-8">
+      <div id="settings-themes" className="mb-8 scroll-mt-20">
         <h2
           id="tour-themes"
           className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-1"
@@ -1161,35 +1024,41 @@ export default function SettingsPage() {
 
       <div className="divider-h mb-8" />
 
-      <AdminInvitesPanel />
+      <section id="settings-account" aria-label="Account" className="scroll-mt-20">
+        <AdminInvitesPanel />
 
-      <PasswordPanel />
+        <PasswordPanel />
 
-      <AnthropicKeyPanel />
+        <AnthropicKeyPanel />
 
-      {/* 68.1 — CLI logins on the server's own machine. */}
-      <LocalOnly>
-        <IntegrationsPanel />
-      </LocalOnly>
-
-      <div className="divider-h mb-8" />
-
-      <NotificationsPanel />
-      <SoundsPanel />
+        {/* 68.1 — CLI logins on the server's own machine. */}
+        <LocalOnly>
+          <IntegrationsPanel />
+        </LocalOnly>
+      </section>
 
       <div className="divider-h mb-8" />
 
-      <LocalOnly>
-        <AutomationPanel />
-      </LocalOnly>
-      <ModelPanel />
-      <LocalOnly>
-        <BrainsPanel />
-      </LocalOnly>
+      <section id="settings-notifications" aria-label="Notifications and sounds" className="scroll-mt-20">
+        <NotificationsPanel />
+        <SoundsPanel />
+      </section>
 
       <div className="divider-h mb-8" />
 
-      <div>
+      <section id="settings-advanced" aria-label="Advanced" className="scroll-mt-20">
+        <LocalOnly>
+          <AutomationPanel />
+        </LocalOnly>
+        <ModelPanel />
+        <LocalOnly>
+          <BrainsPanel />
+        </LocalOnly>
+      </section>
+
+      <div className="divider-h mb-8" />
+
+      <div id="settings-about" className="scroll-mt-20">
         <h2 className="text-sm font-mono font-bold text-cyan uppercase tracking-wider mb-4">
           About
         </h2>

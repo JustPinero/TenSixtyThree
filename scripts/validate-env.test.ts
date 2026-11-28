@@ -25,6 +25,21 @@ describe("scripts/validate-env.sh", () => {
     expect(res.stderr).toMatch(/Missing hosted-required env/);
   }, 60_000);
 
+  // [1.0.D16] the runner service never reads the web app's auth/OAuth vars.
+  it("on the runner service, checks only the runner's own vars", () => {
+    const ok = run({
+      RAILWAY_ENVIRONMENT: "production",
+      RUNNER_MODE: "1",
+      DATABASE_URL: "postgresql://x@127.0.0.1:1/x",
+      ENCRYPTION_KEY: "k".repeat(44),
+    });
+    expect(ok.status).toBe(0);
+    expect(ok.stderr + ok.stdout).not.toMatch(/BETTER_AUTH_SECRET|AUTH_REQUIRED/);
+    const missing = run({ RAILWAY_ENVIRONMENT: "production", RUNNER_MODE: "1" });
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toMatch(/Missing runner-required env: DATABASE_URL, ENCRYPTION_KEY/);
+  }, 60_000);
+
   it("stays a warning-only check locally (no RAILWAY_ENVIRONMENT)", () => {
     expect(run({}).status).toBe(0);
   }, 60_000);

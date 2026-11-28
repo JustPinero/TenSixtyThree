@@ -162,3 +162,52 @@ describe("whose key pays (65.4)", () => {
     await deps.cleanup(workdir);
   });
 });
+
+describe("phase 74 — the app key never shares a uid with the agent", () => {
+  it("refuses to run the agent same-uid while a GitHub App key is in the runner's env", async () => {
+    const { deps, dispatch } = await setup("user", true);
+    const workdir = await deps.cloneRepo("o/r");
+    process.env.GITHUB_APP_ID = "1";
+    process.env.GITHUB_APP_SLUG = "tensixtythree-runner";
+    process.env.GITHUB_APP_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----";
+    try {
+      await expect(drain(deps.runAgent({ workdir, dispatch }))).rejects.toThrow(
+        /separate agent user/i,
+      );
+      expect(captured).toHaveLength(0);
+    } finally {
+      delete process.env.GITHUB_APP_ID;
+      delete process.env.GITHUB_APP_SLUG;
+      delete process.env.GITHUB_APP_PRIVATE_KEY;
+      await deps.cleanup(workdir);
+    }
+  });
+
+  it("refuses when only the key is set (an incomplete app config still holds the secret)", async () => {
+    const { deps, dispatch } = await setup("user", true);
+    const workdir = await deps.cloneRepo("o/r");
+    process.env.GITHUB_APP_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----";
+    try {
+      await expect(drain(deps.runAgent({ workdir, dispatch }))).rejects.toThrow(/separate agent user/i);
+    } finally {
+      delete process.env.GITHUB_APP_PRIVATE_KEY;
+      await deps.cleanup(workdir);
+    }
+  });
+
+  it("on Railway, same-uid is refused unless RUNNER_ALLOW_SAME_UID=1", async () => {
+    const { deps, dispatch } = await setup("user", true);
+    const workdir = await deps.cloneRepo("o/r");
+    process.env.RAILWAY_ENVIRONMENT = "production";
+    try {
+      await expect(drain(deps.runAgent({ workdir, dispatch }))).rejects.toThrow(/separate agent user/i);
+      process.env.RUNNER_ALLOW_SAME_UID = "1";
+      await drain(deps.runAgent({ workdir, dispatch }));
+      expect(captured).toHaveLength(1);
+    } finally {
+      delete process.env.RAILWAY_ENVIRONMENT;
+      delete process.env.RUNNER_ALLOW_SAME_UID;
+      await deps.cleanup(workdir);
+    }
+  });
+});

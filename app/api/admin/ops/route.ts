@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
     const slug = typeof body.slug === "string" ? body.slug : "";
     const mode = MODES.includes(body.mode) ? body.mode : "audit";
     const project = await prisma.project.findUnique({ where: { slug } });
-    if (!project?.githubRepo) {
+    // 76 — demo repo names are display-only.
+    if (!project?.githubRepo || project.isDemo) {
       return NextResponse.json(
         { error: "No such project (or repo-less)" },
         { status: 400 },

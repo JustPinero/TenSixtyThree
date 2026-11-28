@@ -10,6 +10,7 @@
  * (lib/runner/git-ops.ts), never a URL, argv, or the agent's env.
  */
 import { mkdtemp, mkdir, rm, readFile, writeFile, chmod } from "node:fs/promises";
+import { runnerRepoToken } from "../github-app";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { lstatSync, realpathSync } from "node:fs";
@@ -184,16 +185,23 @@ export function buildRealDeps(
   const jobs = new Map<string, JobState>();
 
   return {
-    async cloneRepo(githubRepo: string): Promise<string> {
+    async cloneRepo(
+      githubRepo: string,
+      opts?: { signal?: AbortSignal },
+    ): Promise<string> {
       const jobDir = await mkdtemp(join(tmpdir(), "runner-"));
       // Traversable (so the agent can reach work/ and home/) but not
       // listable; pristine/ itself is 0700.
       await chmod(jobDir, 0o711);
       try {
+        // Phase 74 — a one-hour token for this repo only (GitHub App), or
+        // GITHUB_TOKEN when no app is configured (local dev).
+        const { token } = await runnerRepoToken(githubRepo);
         const { pristine, base } = await pristineClone({
           url: repoUrl(githubRepo),
-          token: process.env.GITHUB_TOKEN ?? null,
+          token,
           dir: join(jobDir, "pristine"),
+          signal: opts?.signal,
         });
         await chmod(pristine, 0o700);
         const workdir = join(jobDir, "work");
@@ -252,6 +260,17 @@ export function buildRealDeps(
             { timeout: 60_000 },
           );
         }
+      } else if (
+        process.env.GITHUB_APP_PRIVATE_KEY ||
+        (process.env.RAILWAY_ENVIRONMENT && process.env.RUNNER_ALLOW_SAME_UID !== "1")
+      ) {
+        // Phase 74 — same-uid, the agent could read the runner's secrets
+        // (the app key above all) from /proc environ. Fail closed: whenever
+        // the key is present, and always on Railway unless explicitly
+        // allowed for debugging.
+        throw new Error(
+          "Refusing to run: the separate agent user is unavailable and this runner holds secrets it must not share.",
+        );
       } else {
         console.warn(
           "[runner] agent user unavailable — running the session same-uid ([52.D1])",
@@ -351,6 +370,7 @@ export function buildRealDeps(
       workdir: string;
       dispatch: Dispatch;
       partial?: boolean;
+      signal?: AbortSignal;
     }): Promise<{ pushed: boolean; branch: string | null; reason?: string }> {
       const job = jobs.get(args.workdir);
       if (!job) return { pushed: false, branch: null, reason: "unknown workdir" };
@@ -378,8 +398,9 @@ export function buildRealDeps(
         base: job.base,
         branch: resultBranchName(args.dispatch, args.partial === true),
         remoteUrl: repoUrl(job.githubRepo),
-        token: process.env.GITHUB_TOKEN ?? null,
+        token: (await runnerRepoToken(job.githubRepo)).token,
         allowWorkflowChanges: false,
+        signal: args.signal,
       });
     },
 
@@ -395,13 +416,13 @@ export function buildRealDeps(
       title: string;
       body: string;
     }): Promise<string> {
-      const token = process.env.GITHUB_TOKEN;
-      if (!token) throw new Error("GITHUB_TOKEN unset — cannot open a PR");
       const project = await prisma.project.findUnique({
         where: { id: args.dispatch.projectId },
         select: { githubRepo: true },
       });
       if (!project?.githubRepo) throw new Error("Project has no GitHub repo");
+      const { token } = await runnerRepoToken(project.githubRepo);
+      if (!token) throw new Error("No GitHub credentials — cannot open a PR");
 
       const headers = {
         Authorization: `Bearer ${token}`,

@@ -12,20 +12,24 @@ import type { DeploymentMode } from "@/lib/deployment-mode";
 interface ShellContext {
   mode: DeploymentMode;
   isOperator: boolean;
+  /** 75 — a demo-sandbox visitor (server-resolved from User.isDemo). */
+  isDemo?: boolean;
 }
 
 const ModeContext = createContext<ShellContext>({
   mode: "local",
   isOperator: true,
+  isDemo: false,
 });
 
 export function DeploymentModeProvider({
   mode,
   isOperator,
+  isDemo = false,
   children,
 }: ShellContext & { children: ReactNode }) {
   return (
-    <ModeContext.Provider value={{ mode, isOperator }}>
+    <ModeContext.Provider value={{ mode, isOperator, isDemo }}>
       {children}
     </ModeContext.Provider>
   );
@@ -37,6 +41,15 @@ export function useDeploymentMode(): DeploymentMode {
 
 export function useIsOperator(): boolean {
   return useContext(ModeContext).isOperator;
+}
+
+export function useIsDemo(): boolean {
+  return useContext(ModeContext).isDemo === true;
+}
+
+/** 75 — renders its children for everyone except demo-sandbox visitors. */
+export function NotDemo({ children }: { children: ReactNode }) {
+  return useIsDemo() ? null : <>{children}</>;
 }
 
 /** Renders its children only on a local install. */

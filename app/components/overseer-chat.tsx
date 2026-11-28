@@ -416,8 +416,10 @@ export function OverseerChat({
     }
   }, [messages, pendingActions]);
 
-  async function sendMessage() {
-    if (!input.trim() || streaming || sendingRef.current) return;
+  async function sendMessage(override?: string) {
+    // 75 — an example prompt sends itself; otherwise send the input box.
+    const text = (typeof override === "string" ? override : input).trim();
+    if (!text || streaming || sendingRef.current) return;
     // 72 — a ref, not state: two Enters in one tick send once.
     sendingRef.current = true;
 
@@ -432,7 +434,7 @@ export function OverseerChat({
     setListening(false);
     accumulatedTranscriptRef.current = "";
 
-    const userMessage: ChatMessage = { role: "user", content: input.trim() };
+    const userMessage: ChatMessage = { role: "user", content: text };
     setSendError(null);
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
@@ -763,9 +765,7 @@ export function OverseerChat({
               {overseerName}
             </h2>
             <p className="text-micro font-mono text-muted uppercase tracking-wider">
-              {streaming
-                ? "Responding..."
-                : "Fleet Dispatcher — Sprint Planning"}
+              {streaming ? "Responding..." : "Overseer · fleet dispatcher"}
             </p>
           </div>
         </div>
@@ -774,17 +774,20 @@ export function OverseerChat({
       {/* Header */}
       <div className="px-4 py-2 border-b border-space-600 bg-space-800">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <Portrait
-              src={portraitIdle}
-              alt={overseerName}
-              size="sm"
-              className="w-5 h-5 rounded-full ring-1 ring-cyan/40"
-            />
-            <span className="text-xs font-mono text-cyan uppercase tracking-wider font-bold">
-              {overseerName} — Sprint Planning
-            </span>
-          </div>
+          {/* 75 — the full page already has the portrait header above. */}
+          {fullPage ? null : (
+            <div className="flex items-center gap-2 min-w-0">
+              <Portrait
+                src={portraitIdle}
+                alt={overseerName}
+                size="sm"
+                className="w-5 h-5 rounded-full ring-1 ring-cyan/40"
+              />
+              <span className="text-xs font-mono text-cyan uppercase tracking-wider font-bold">
+                {overseerName} — Sprint Planning
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {/* Phase 21 — Conversation Mode toggle. Always off on
                 mount; never persisted. Cancels on unmount, Esc, or
@@ -921,10 +924,7 @@ export function OverseerChat({
               ].map((s) => (
                 <button
                   key={s}
-                  onClick={() => {
-                    setInput(s);
-                    inputRef.current?.focus();
-                  }}
+                  onClick={() => void sendMessage(s)}
                   className="block w-full min-h-6 py-1 text-micro font-mono text-info hover:text-cyan transition-colors text-left focus-ring"
                 >
                   &quot;{s}&quot;
@@ -1108,7 +1108,7 @@ export function OverseerChat({
           className={`flex-1 min-w-0 ${fullPage ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm"} font-mono bg-transparent text-text-bright placeholder:text-muted focus:outline-none focus-ring disabled:opacity-50 resize-none`}
         />
         <button
-          onClick={sendMessage}
+          onClick={() => void sendMessage()}
           disabled={streaming || !input.trim()}
           className="px-4 text-sm font-mono text-cyan hover:bg-cyan/10 disabled:opacity-30 transition-colors border-l border-space-600"
         >

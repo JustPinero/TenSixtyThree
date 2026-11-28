@@ -63,7 +63,11 @@ export default async function RootLayout({
       </head>
       <body className="h-full flex scanlines">
         <ThemeProvider>
-          <DeploymentModeProvider mode={mode} isOperator={isOperator}>
+          <DeploymentModeProvider
+            mode={mode}
+            isOperator={isOperator}
+            isDemo={viewer?.kind === "user" && viewer.isDemo}
+          >
           {chrome ? <Sidebar /> : null}
           {/* 71.3 — min-w-0: a flex child defaults to min-width:auto, which
               let wide page content widen the whole document (sideways

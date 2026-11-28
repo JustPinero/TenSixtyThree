@@ -52,6 +52,8 @@ export function ReminderWidget() {
   return (
     <div className="mx-3 mb-3">
       <button
+        type="button"
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between px-2 py-1.5 text-micro font-mono uppercase tracking-wider hover:bg-space-700/50 transition-colors"
       >
@@ -92,10 +94,12 @@ export function ReminderWidget() {
               <div className="flex items-start justify-between gap-1">
                 <p className="text-amber leading-relaxed">{r.message}</p>
                 <button
+                  type="button"
+                  aria-label={`Dismiss reminder: ${r.message}`}
                   onClick={() => dismiss(r.id)}
-                  className="text-muted hover:text-text flex-shrink-0"
+                  className="text-muted hover:text-text flex-shrink-0 focus-ring"
                 >
-                  x
+                  <span aria-hidden="true">x</span>
                 </button>
               </div>
               {r.projectSlug && (
@@ -111,10 +115,12 @@ export function ReminderWidget() {
               <div className="flex items-start justify-between gap-1">
                 <p className="text-text-dim leading-relaxed">{r.message}</p>
                 <button
+                  type="button"
+                  aria-label={`Dismiss reminder: ${r.message}`}
                   onClick={() => dismiss(r.id)}
-                  className="text-muted hover:text-text flex-shrink-0"
+                  className="text-muted hover:text-text flex-shrink-0 focus-ring"
                 >
-                  x
+                  <span aria-hidden="true">x</span>
                 </button>
               </div>
               <p className="text-muted mt-0.5">

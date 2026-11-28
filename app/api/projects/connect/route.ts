@@ -10,6 +10,11 @@ import { prisma } from "@/lib/db";
 import { jsonError, requireSignedIn } from "@/lib/access";
 import { normalizeGithubRepo } from "@/lib/github-repo";
 import { REPO_ACCESS_MESSAGE, verifyRepoPushAccess } from "@/lib/github-access";
+import {
+  appInstallUrl,
+  githubAppConfig,
+  installationForRepo,
+} from "@/lib/github-app";
 
 function slugify(name: string): string {
   return (
@@ -46,6 +51,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: REPO_ACCESS_MESSAGE[check.reason], reason: check.reason },
           { status: 403 },
+        );
+      }
+    }
+
+    // Phase 74 — the runner reaches GitHub as the app, so the repo's owner
+    // must have installed it. Everyone, admins included.
+    const app = githubAppConfig();
+    if (app) {
+      const installed = await installationForRepo(app, githubRepo).catch(() => {
+        throw new Error("Couldn't reach GitHub to check the app installation.");
+      });
+      if (installed === null) {
+        return NextResponse.json(
+          {
+            error: `Install the TenSixtyThree GitHub App on ${githubRepo} first, then connect it again.`,
+            reason: "app-not-installed",
+            installUrl: appInstallUrl(app),
+          },
+          { status: 409 },
         );
       }
     }

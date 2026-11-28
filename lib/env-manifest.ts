@@ -159,7 +159,31 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
     name: "GITHUB_TOKEN",
     scope: "runner-optional",
     description:
-      "Clone private repos, push result branches, open PRs. Passed to git only as an http.extraHeader in env (lib/runner/git-ops.ts) — never in a URL or argv. Should be a fine-grained PAT scoped to the dispatched repos.",
+      "LOCAL DEV ONLY once a GitHub App is configured (phase 74): ignored when GITHUB_APP_* is set. Passed to git only as an http.extraHeader in env (lib/runner/git-ops.ts) — never in a URL or argv.",
+  },
+  {
+    name: "RUNNER_ALLOW_SAME_UID",
+    scope: "runner-optional",
+    description:
+      'Phase 74 — debugging only: "1" lets the runner run the agent under its own uid on Railway when the unprivileged agent user is unavailable. Never with GITHUB_APP_PRIVATE_KEY set (refused regardless).',
+  },
+  {
+    name: "GITHUB_APP_ID",
+    scope: "runner-optional",
+    description:
+      "Phase 74 — GitHub App id. With GITHUB_APP_PRIVATE_KEY + GITHUB_APP_SLUG, the runner uses one-hour per-repo installation tokens (lib/github-app.ts) and the web app requires the app on connected repos. Set on BOTH services.",
+  },
+  {
+    name: "GITHUB_APP_PRIVATE_KEY",
+    scope: "runner-optional",
+    description:
+      "Phase 74 — the GitHub App's PEM private key (literal newlines or \\n-escaped). Set on BOTH services. 1Password: Cascade → TenSixtyThree GitHub App.",
+  },
+  {
+    name: "GITHUB_APP_SLUG",
+    scope: "runner-optional",
+    description:
+      "Phase 74 — the app's URL slug (github.com/apps/<slug>); builds the install link. Set on BOTH services.",
   },
   {
     name: "RUNNER_ID",
@@ -192,6 +216,11 @@ export const ENV_MANIFEST: EnvVarSpec[] = [
   { name: "PATH", scope: "platform", description: "Passed through to subprocesses." },
   { name: "TMPDIR", scope: "platform", description: "Scratch directory base." },
   { name: "PORT", scope: "platform", description: "Set by Railway; health server port." },
+  {
+    name: "RAILWAY_ENVIRONMENT",
+    scope: "platform",
+    description: "Set by Railway. Hosted env checks fail hard under it; the runner refuses same-uid agents under it (phase 74).",
+  },
   { name: "CI", scope: "platform", description: "Set by GitHub Actions; tunes Playwright." },
   {
     name: "CLOUDFLARE_API_TOKEN",

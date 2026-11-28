@@ -117,4 +117,13 @@ describe("ProjectGrid", () => {
     expect(container!.textContent).toContain("Beta");
     expect(container!.textContent).toContain("Gamma");
   });
+
+  it("77 — tiles fill the row (auto-fit columns), not a fixed 4-column grid", async () => {
+    const { container } = render(
+      <ProjectGrid projects={mockProjects.slice(0, 2)} loading={false} />,
+    );
+    const grid = container.querySelector(".grid");
+    expect(grid?.className).toContain("auto-fit");
+    expect(grid?.className).not.toContain("xl:grid-cols-4");
+  });
 });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MembersPanel } from "./members-panel";
+import { useIsDemo } from "../components/deployment-mode";
 
 /**
  * 54.3 — the multi-org workspace. Renders the org switcher, shared
@@ -46,6 +47,7 @@ const POST_TYPES = [
 ];
 
 export function OrgWorkspace({ children }: { children: React.ReactNode }) {
+  const isDemo = useIsDemo();
   const [orgs, setOrgs] = useState<Org[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
@@ -140,6 +142,8 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
             </select>
           </>
         )}
+        {/* 75 — the sandbox can't create orgs or invite; don't offer it. */}
+        {isDemo ? null : (
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -182,9 +186,17 @@ export function OrgWorkspace({ children }: { children: React.ReactNode }) {
             Create
           </button>
         </form>
+        )}
       </div>
 
-      {active && (
+      {isDemo && (
+        <p className="text-xs font-mono text-text-dim mb-6">
+          In the demo, creating organizations and inviting teammates are
+          turned off. In a real workspace you invite people by email.
+        </p>
+      )}
+
+      {active && !isDemo && (
         <form
           onSubmit={async (e) => {
             e.preventDefault();

@@ -72,6 +72,67 @@ describe("seedDemo", () => {
   });
 });
 
+describe("seedDemo — a fleet with history (76)", () => {
+  it("seeds three projects with repos, activity, tasks, audits and a finished cloud run", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const demo = await seedDemo(rig.prisma);
+    const projects = await rig.prisma.project.findMany({
+      where: { isDemo: true, orgShares: { some: { organizationId: demo.organizationId } } },
+      orderBy: { name: "asc" },
+    });
+    expect(projects.map((p) => p.name)).toEqual(["Atlas API", "Beacon Mobile", "Meridian Web"]);
+    expect(projects.every((p) => p.githubRepo !== null)).toBe(true);
+    expect(projects.find((p) => p.name === "Beacon Mobile")?.health).toBe("blocked");
+    const ids = projects.map((p) => p.id);
+
+    const [events, tasks, audits] = await Promise.all([
+      rig.prisma.activityEvent.count({ where: { projectId: { in: ids } } }),
+      rig.prisma.humanTask.count({ where: { projectId: { in: ids }, status: "pending" } }),
+      rig.prisma.auditSnapshot.count({ where: { projectId: { in: ids } } }),
+    ]);
+    expect(events).toBeGreaterThanOrEqual(6);
+    expect(tasks).toBeGreaterThanOrEqual(3);
+    expect(audits).toBeGreaterThanOrEqual(3);
+
+    const atlas = projects.find((p) => p.name === "Atlas API")!;
+    const run = await rig.prisma.dispatch.findFirstOrThrow({
+      where: { projectId: atlas.id, runtime: "cloud" },
+      include: { outcome: true },
+    });
+    expect(run.status).toBe("completed");
+    // Matches what the scripted assistant says (lib/demo-overseer.ts).
+    expect(run.resultBranch).toBe("cloud/demo-atlas-retry");
+    expect(run.outcome?.outcome).toBe("success");
+    const progress = await rig.prisma.activityEvent.count({
+      where: { dispatchId: run.id },
+    });
+    expect(progress).toBeGreaterThanOrEqual(3);
+  });
+
+  it("cleanupDemo sweeps the history with the projects", async () => {
+    rig = await createDispatchRig({ fakeTimers: false });
+    const old = await seedDemo(rig.prisma);
+    await rig.prisma.user.update({
+      where: { id: old.userId },
+      data: { createdAt: new Date(Date.now() - 48 * 3600_000) },
+    });
+    await rig.prisma.project.updateMany({
+      where: { isDemo: true },
+      data: { createdAt: new Date(Date.now() - 48 * 3600_000) },
+    });
+    await cleanupDemo(rig.prisma);
+    const counts = await Promise.all([
+      rig.prisma.project.count({ where: { isDemo: true } }),
+      rig.prisma.activityEvent.count(),
+      rig.prisma.humanTask.count(),
+      rig.prisma.auditSnapshot.count(),
+      rig.prisma.dispatch.count(),
+      rig.prisma.dispatchOutcome.count(),
+    ]);
+    expect(counts).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+});
+
 describe("cleanupDemo", () => {
   it("sweeps old demo identities and their content, keeps fresh + real", async () => {
     rig = await createDispatchRig({ fakeTimers: false });

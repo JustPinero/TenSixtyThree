@@ -10,7 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveAnthropicKey } from "@/lib/anthropic-key";
 import { isDemoSession } from "@/lib/demo";
-import { resolveChatModel, DEFAULT_CHAT_MODEL } from "@/lib/model-config";
+import { sseFromText } from "@/lib/sse-text";
+import { demoOverseerReply } from "@/lib/demo-overseer";
+import { resolveChatModel } from "@/lib/model-config";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limiter";
 import { validateMessages } from "@/lib/chat-validation";
 import { buildPersonaBlock } from "@/lib/persona-prompt";
@@ -175,60 +177,22 @@ This is a UI bridge — the canonical record is the propose_dispatch call. Don't
 - Blocked + NEEDS ATTENTION → recommend "investigate" mode and quote the attention message
 - Stalled (low progress + many sessions) → flag it, ask if priorities should shift`;
 
-/**
- * Build an SSE-formatted ReadableStream that emits a single static
- * Markdown payload as one assistant message. Matches the Anthropic
- * streaming envelope so the existing chat client UX (which expects
- * SSE) renders this without any client changes.
- *
- * `model` and message id default to honest values that reflect the
- * caller (not the original feature-check leftover).
- */
-function sseFromText(
-  text: string,
-  options: { model?: string; messageId?: string } = {},
-): ReadableStream<Uint8Array> {
-  const model = options.model ?? DEFAULT_CHAT_MODEL;
-  const messageId = options.messageId ?? `msg-${Date.now().toString(36)}`;
-  const enc = new TextEncoder();
-  return new ReadableStream({
-    start(controller) {
-      const events = [
-        `event: message_start\ndata: ${JSON.stringify({
-          type: "message_start",
-          message: {
-            id: messageId,
-            type: "message",
-            role: "assistant",
-            content: [],
-            model,
-            stop_reason: null,
-            stop_sequence: null,
-            usage: { input_tokens: 0, output_tokens: 0 },
-          },
-        })}\n\n`,
-        `event: content_block_start\ndata: ${JSON.stringify({
-          type: "content_block_start",
-          index: 0,
-          content_block: { type: "text", text: "" },
-        })}\n\n`,
-        `event: content_block_delta\ndata: ${JSON.stringify({
-          type: "content_block_delta",
-          index: 0,
-          delta: { type: "text_delta", text },
-        })}\n\n`,
-        `event: content_block_stop\ndata: ${JSON.stringify({
-          type: "content_block_stop",
-          index: 0,
-        })}\n\n`,
-        `event: message_stop\ndata: ${JSON.stringify({
-          type: "message_stop",
-        })}\n\n`,
-      ];
-      for (const ev of events) controller.enqueue(enc.encode(ev));
-      controller.close();
-    },
-  });
+
+/** 76 — the newest user turn's text from an untrusted body ("" if none). */
+function lastUserQuestion(body: unknown): string {
+  const messages =
+    body && typeof body === "object" && "messages" in body && Array.isArray(body.messages)
+      ? (body.messages as unknown[])
+      : [];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m && typeof m === "object" && "role" in m && m.role === "user") {
+      return "content" in m && typeof m.content === "string"
+        ? m.content.slice(0, 2000)
+        : "";
+    }
+  }
+  return "";
 }
 
 export async function POST(request: NextRequest) {
@@ -244,20 +208,12 @@ export async function POST(request: NextRequest) {
   try {
     // 54.2 — BYOK: a signed-in user's own Anthropic key wins; else app key.
     const byokSession = access.viewer.kind === "user" ? access.viewer.session : null;
-    // 54.5 — demo sessions get a canned reply; zero Anthropic spend.
+    // 54.5 — demo sessions get a scripted reply; zero Anthropic spend.
+    // 76 — routed by the question, about the seeded demo fleet.
     if (isDemoSession(byokSession)) {
+      const question = lastUserQuestion(await request.json().catch(() => null));
       return new Response(
-        sseFromText(
-          [
-            "This is the demo Overseer — my replies here are scripted so the",
-            "sandbox spends nothing. In the real app I read your fleet, plan",
-            "sprints, and dispatch Claude Code sessions with full tool use.",
-            "",
-            "Poke around: **Boards**, **Team**, **Roadmap**, and **Settings →",
-            "Theme Packs** are all live in this demo.",
-          ].join("\n"),
-          { model: "demo-canned" },
-        ),
+        sseFromText(demoOverseerReply(question), { model: "demo-canned" }),
         {
           headers: {
             "Content-Type": "text/event-stream",

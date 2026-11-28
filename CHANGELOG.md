@@ -5,6 +5,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [SemVer](https://semver.org/). Phase numbers in parentheses map to
 `requests/` and the decision log in `references/architecture.md`.
 
+## [Unreleased] — 2026-11-28 — runner hardening, GitHub App, demo polish
+
+- **Runner (73)**: shutdown aborts a slow clone/push and requeues; the hosted env check is scoped per service.
+- **GitHub App (74)**: the cloud runner uses one-hour, single-repo installation tokens from the TenSixtyThree GitHub App instead of the operator's personal token; connecting a repo without the app returns an install link.
+- **Demo fixes (75)**: operator-only widgets no longer show to demo visitors; the demo Team page loads read-only; signed-in visitors skip the landing page; example prompts send on click; "Demo Fleet" without a random tag.
+- **Living demo (76)**: the demo assistant answers per question about the sample fleet (still no model spend); the sandbox seeds a blocked third project, activity, tasks, audit grades and a finished cloud run. Demo repo names can never resolve on GitHub, and the runner refuses demo projects.
+- **First impressions (77)**: loading placeholders on Boards, Roadmap and Tasks; a product preview on the landing page; Settings section links and a portrait picker; the dashboard grid fills the row.
+
 ## [1.0.1] — 2026-09-22 — Cloudflare edge
 
 - **Hosting**: `www.tensixtythree.com` is the canonical host. Cloudflare is authoritative DNS + TLS (Railway never issued a certificate for the zone); the Worker `tensixtythree-edge` reverse-proxies www → the Railway origin, apex/other hosts 301 → www. `pnpm infra:cloudflare` is the idempotent bring-up (`infra/cloudflare/*`, `scripts/cloudflare-setup.ts`).

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PageSkeleton } from "../components/loading-skeleton";
 
 interface HumanTask {
   id: number;
@@ -219,7 +220,7 @@ export default function TasksPage() {
 
       {/* Task List */}
       {loading ? (
-        <p className="text-sm font-mono text-muted">Loading...</p>
+        <PageSkeleton label="Loading tasks" variant="list" />
       ) : tasks.length === 0 ? (
         <div className="p-8 border border-space-600 bg-space-800 text-center">
           <p className="text-sm font-mono text-muted">

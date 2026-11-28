@@ -41,6 +41,14 @@ const statusLabels: Record<string, string> = {
   archived: "Archived",
 };
 
+/**
+ * 77 — columns fit the space: a small fleet's tiles stretch across the row
+ * instead of sitting in two narrow cells of a four-column grid, and a big
+ * fleet still wraps at ~15rem per tile.
+ */
+export const GRID_CLASS =
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3";
+
 export function ProjectGrid({
   projects,
   loading,
@@ -52,7 +60,7 @@ export function ProjectGrid({
 }: ProjectGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className={GRID_CLASS}>
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonTile key={i} />
         ))}
@@ -117,7 +125,7 @@ export function ProjectGrid({
               </span>
               <span className="h-px flex-1 bg-space-600" />
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className={GRID_CLASS}>
               {items.map((project) => (
                 <ProjectTile key={project.slug} project={project} />
               ))}
@@ -129,7 +137,7 @@ export function ProjectGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+    <div className={GRID_CLASS}>
       {projects.map((project) => (
         <ProjectTile key={project.slug} project={project} />
       ))}

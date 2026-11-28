@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MilestonesPanel } from "../components/milestones-panel";
+import { PageSkeleton } from "../components/loading-skeleton";
 
 interface Project {
   slug: string;
@@ -88,15 +89,23 @@ function formatTimeAgo(dateStr: string): string {
 
 export default function RoadmapPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  // 77 — no "0 building · 0 deployed" and empty table before the data.
+  const [loaded, setLoaded] = useState(false);
   const [sortBy, setSortBy] = useState<"health" | "activity" | "name">(
     "health",
   );
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
-    const res = await fetch("/api/projects");
-    const data = await res.json();
-    if (Array.isArray(data)) setProjects(data);
+    try {
+      const res = await fetch("/api/projects");
+      const data = await res.json();
+      if (Array.isArray(data)) setProjects(data);
+    } catch {
+      // Keep the empty list; the page still renders.
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -134,6 +143,10 @@ export default function RoadmapPage() {
       </h1>
 
       <MilestonesPanel />
+      {!loaded ? (
+        <PageSkeleton label="Loading projects" variant="table" />
+      ) : (
+      <>
       <div className="flex gap-4 text-xs font-mono text-text mb-6">
         <span>
           <span className="text-cyan">{buildingCount}</span> building
@@ -248,6 +261,8 @@ export default function RoadmapPage() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }

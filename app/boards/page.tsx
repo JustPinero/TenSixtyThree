@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { ScopeSelect, useActiveOrg, type Scope } from "../components/scope-select";
 import { TicketDialog } from "./ticket-dialog";
+import { PageSkeleton } from "../components/loading-skeleton";
 
 /**
  * 54.4 — kanban boards. Personal + active-org boards; drag tickets
@@ -223,6 +224,9 @@ export default function BoardsPage() {
   // 72 — who a ticket on this board may be assigned to.
   const [assignees, setAssignees] = useState<{ userId: string; label: string }[]>([]);
   const [boardError, setBoardError] = useState<string | null>(null);
+  // 77 — which board's columns are on screen; until it matches the active
+  // board, show a placeholder instead of an empty board.
+  const [loadedBoardId, setLoadedBoardId] = useState<string | null>(null);
 
   const refreshBoards = useCallback(async () => {
     try {
@@ -248,6 +252,7 @@ export default function BoardsPage() {
       setColumns(data.columns);
       setTickets(data.tickets);
     }
+    setLoadedBoardId(id);
   }, []);
 
   useEffect(() => {
@@ -344,7 +349,7 @@ export default function BoardsPage() {
   if (boards === null) {
     return (
       <div className="w-full">
-        <p className="text-sm font-mono text-text-dim">Loading boards…</p>
+        <PageSkeleton label="Loading boards" variant="board" />
       </div>
     );
   }
@@ -448,7 +453,9 @@ export default function BoardsPage() {
         )}
       </div>
 
-      {board ? (
+      {board && loadedBoardId !== board.id ? (
+        <PageSkeleton label="Loading board" variant="board" />
+      ) : board ? (
         <DndContext
           sensors={sensors}
           onDragStart={(e: DragStartEvent) =>

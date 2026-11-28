@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { TryDemoButton } from "../components/try-demo-button";
+import { ProductPreview, HowItWorks } from "./product-preview";
 
 /**
  * Phase 68.1 — public landing page. Signed-out visitors to "/" land here
@@ -32,15 +33,43 @@ const POINTS = [
 
 export default function WelcomePage() {
   return (
-    <div className="mx-auto w-full max-w-3xl py-10 sm:py-16">
-      <h1 className="text-3xl sm:text-4xl font-bold font-mono tracking-wide text-text-bright">
-        TenSixtyThree
-      </h1>
-      <p className="mt-3 text-base font-mono text-text">
-        A control room for running Claude Code across many projects at once.
-      </p>
+    <div className="mx-auto w-full max-w-5xl py-10 sm:py-16">
+      {/* 77 — hero: the pitch and the way in on the left, a picture of
+          the product on the right (stacked below lg). */}
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
+        <div className="min-w-0">
+          <h1 className="text-3xl sm:text-4xl font-bold font-mono tracking-wide text-text-bright">
+            TenSixtyThree
+          </h1>
+          <p className="mt-3 text-base font-mono text-text">
+            A control room for running Claude Code across many projects at once.
+          </p>
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="sm:w-64">
+              <TryDemoButton />
+              <p className="mt-2 text-micro font-mono text-muted">
+                A private sandbox with sample projects. Nothing to install.
+              </p>
+            </div>
+            <Link
+              href="/signin"
+              className="inline-flex min-h-6 items-center justify-center border border-cyan px-4 py-2.5 text-sm font-mono uppercase text-cyan hover:bg-cyan/10 focus-ring"
+            >
+              Sign in
+            </Link>
+          </div>
+          <p className="mt-3 text-xs font-mono text-text-dim">
+            Access is by invitation.
+          </p>
+        </div>
+        <div className="min-w-0">
+          <ProductPreview />
+        </div>
+      </div>
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+      <HowItWorks />
+
+      <ul className="mt-12 grid gap-4 sm:grid-cols-2">
         {POINTS.map((p) => (
           <li
             key={p.title}
@@ -53,24 +82,6 @@ export default function WelcomePage() {
           </li>
         ))}
       </ul>
-
-      <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="sm:w-64">
-          <TryDemoButton />
-          <p className="mt-2 text-micro font-mono text-muted">
-            A private sandbox with sample projects. Nothing to install.
-          </p>
-        </div>
-        <Link
-          href="/signin"
-          className="inline-flex min-h-6 items-center justify-center border border-cyan px-4 py-2.5 text-sm font-mono uppercase text-cyan hover:bg-cyan/10 focus-ring"
-        >
-          Sign in
-        </Link>
-      </div>
-      <p className="mt-3 text-xs font-mono text-text-dim">
-        Access is by invitation.
-      </p>
     </div>
   );
 }

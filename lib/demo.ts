@@ -93,9 +93,11 @@ async function seedDemoIn(prisma: Prisma.TransactionClient): Promise<DemoIdentit
           ...p,
           path: `/demo/${p.slug}`,
           isDemo: true,
-          // 76 — sample repo names (never cloned: demo dispatch is refused).
-          githubRepo: `demo-fleet/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
-          autonomyMode: "full",
+          // 76 — display-only repo names. The owner part contains a dot,
+          // which no GitHub account name can, so this never resolves to a
+          // real repo; enqueue (cloud route, ops) and the runner's claim
+          // also refuse isDemo projects.
+          githubRepo: `demo.example/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
         },
       }),
     ),
@@ -249,7 +251,7 @@ async function seedDemoHistory(
   });
 
   const progress = [
-    "Cloned demo-fleet/atlas-api into the sandbox",
+    "Cloned demo.example/atlas-api into the sandbox",
     "Read the webhook client and its tests",
     "Added retry with exponential backoff (3 attempts, jittered)",
     "Tests pass: 128 of 128",

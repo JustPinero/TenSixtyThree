@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
       { status: 403 },
     );
   }
-  if (!project.githubRepo) {
+  // 76 — demo repo names are display-only; never enqueue one.
+  if (!project.githubRepo || project.isDemo) {
     return NextResponse.json(
       { error: "Cloud dispatch needs a GitHub repo on the project" },
       { status: 400 },

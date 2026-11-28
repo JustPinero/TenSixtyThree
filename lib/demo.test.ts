@@ -82,6 +82,8 @@ describe("seedDemo — a fleet with history (76)", () => {
     });
     expect(projects.map((p) => p.name)).toEqual(["Atlas API", "Beacon Mobile", "Meridian Web"]);
     expect(projects.every((p) => p.githubRepo !== null)).toBe(true);
+    // Display-only: a dot in the owner part is not a valid GitHub account.
+    expect(projects.every((p) => p.githubRepo!.startsWith("demo.example/"))).toBe(true);
     expect(projects.find((p) => p.name === "Beacon Mobile")?.health).toBe("blocked");
     const ids = projects.map((p) => p.id);
 
